@@ -18,8 +18,6 @@ Subsonic 互換の音楽サーバー（`server/`、Rust）と Web クライア�
   ```
 
 ## Subsonic API
-- 仕様の基準は OpenSubsonic（https://opensubsonic.netlify.app/）。
-- エラーも HTTP 200 で返し、本文の `status="failed"` とエラーコードで伝える。
-- 認証は平文パスワード（`p`）とトークン認証（`t` + `s`、MD5）の両方に対応する。
-- `f=json` / `f=xml` の両方を返す。パスは `.view` の有無どちらでも受ける。
-- GET のクエリだけでなく、POST のフォーム送信でもパラメータを受ける。
+- 仕様の基準は OpenSubsonic（https://opensubsonic.netlify.app/）。Subsonic からの差分を見落とさない。
+- 認証に `apiKey` がある。非対応の方式には 41 / 42、競合するパラメータには 43 を返す。
+- POST のフォーム送信（`formPost` 拡張）でも引数を受ける。
