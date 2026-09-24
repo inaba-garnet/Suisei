@@ -21,3 +21,6 @@ Subsonic 互換の音楽サーバー（`server/`、Rust）と Web クライア�
 - 仕様の基準は OpenSubsonic（https://opensubsonic.netlify.app/）。Subsonic からの差分を見落とさない。
 - 認証に `apiKey` がある。非対応の方式には 41 / 42、競合するパラメータには 43 を返す。
 - POST のフォーム送信（`formPost` 拡張）でも引数を受ける。
+
+## PR
+- main に rebase してからマージコミットで取り込む。main をブランチへ merge しない。
