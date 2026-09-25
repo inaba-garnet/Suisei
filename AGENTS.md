@@ -21,6 +21,7 @@ Subsonic 互換の音楽サーバー（`server/`、Rust）と Web クライア�
 - 仕様の基準は OpenSubsonic（https://opensubsonic.netlify.app/）。Subsonic からの差分を見落とさない。
 - 認証に `apiKey` がある。非対応の方式には 41 / 42、競合するパラメータには 43 を返す。
 - POST のフォーム送信（`formPost` 拡張）でも引数を受ける。
+- Symfonium は全件同期で `search3` を `query=""`（引用符二つの文字列）で呼ぶ。全件を返す。
 
 ## ブランチ
 - `<type>/<scope>-<issue 番号>-<説明>`。type と scope はコミットと同じ。issue やチケットが出自でなければ番号は省く。
