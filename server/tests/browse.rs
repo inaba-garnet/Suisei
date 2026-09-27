@@ -15,17 +15,25 @@ use suisei::{AppState, Credentials};
 use tempfile::TempDir;
 use tower::ServiceExt;
 
+mod common;
+use common::{assert_subset, navidrome, payload};
+
 struct Server {
     _dir: TempDir,
     app: axum::Router,
+    db: suisei::db::Pool,
 }
 
 struct Song<'a> {
     path: &'a str,
+    title: Option<&'a str>,
     artist: &'a str,
     album: &'a str,
     album_artist: &'a str,
     artist_sort: Option<&'a str>,
+    disc: Option<u32>,
+    track: Option<u32>,
+    genre: Option<&'a str>,
 }
 
 /// タグのない FLAC にタグを書いて並べ、スキャンしてからサーバーを作る。
@@ -39,6 +47,18 @@ async fn server(songs: &[Song<'_>]) -> Server {
         let mut file = lofty::read_from_path(&path).unwrap();
         let mut tag = Tag::new(file.primary_tag_type());
         tag.set_artist(song.artist.to_owned());
+        if let Some(title) = song.title {
+            tag.set_title(title.to_owned());
+        }
+        if let Some(disc) = song.disc {
+            tag.set_disk(disc);
+        }
+        if let Some(track) = song.track {
+            tag.set_track(track);
+        }
+        if let Some(genre) = song.genre {
+            tag.set_genre(genre.to_owned());
+        }
         tag.set_album(song.album.to_owned());
         tag.insert_text(ItemKey::AlbumArtist, song.album_artist.to_owned());
         if let Some(sort) = song.artist_sort {
@@ -59,14 +79,14 @@ async fn server(songs: &[Song<'_>]) -> Server {
             password: "sesame".into(),
             api_key: None,
         },
-        db,
+        db: db.clone(),
         scanner: Arc::clone(&scanner),
     });
-    Server { _dir: dir, app }
+    Server { _dir: dir, app, db }
 }
 
 impl Server {
-    async fn get(&self, endpoint: &str, query: &str) -> Value {
+    async fn raw(&self, endpoint: &str, query: &str) -> Value {
         let uri = format!("/rest/{endpoint}?u=inaba&p=sesame&f=json{query}");
         let res = self
             .app
@@ -75,19 +95,37 @@ impl Server {
             .await
             .unwrap();
         let body = res.into_body().collect().await.unwrap().to_bytes();
-        let value: Value = serde_json::from_slice(&body).unwrap();
+        serde_json::from_slice(&body).unwrap()
+    }
+
+    async fn get(&self, endpoint: &str, query: &str) -> Value {
+        let value = self.raw(endpoint, query).await;
         assert_eq!(value["subsonic-response"]["status"], "ok", "{value}");
         value["subsonic-response"].clone()
+    }
+
+    async fn id(&self, table: &str, name_column: &str, name: &str) -> String {
+        sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
+            "SELECT id FROM {table} WHERE {name_column} = ?"
+        )))
+        .bind(name)
+        .fetch_one(&self.db)
+        .await
+        .unwrap()
     }
 }
 
 fn song<'a>(path: &'a str, album_artist: &'a str, album: &'a str) -> Song<'a> {
     Song {
         path,
+        title: None,
         artist: album_artist,
         album,
         album_artist,
         artist_sort: None,
+        disc: None,
+        track: None,
+        genre: None,
     }
 }
 
@@ -172,4 +210,132 @@ async fn indexes_respect_if_modified_since() {
         .await;
     assert!(res["indexes"].get("index").is_none());
     assert_eq!(res["indexes"]["lastModified"], last_modified);
+}
+
+fn track<'a>(path: &'a str, title: &'a str, disc: u32, track: u32) -> Song<'a> {
+    Song {
+        title: Some(title),
+        disc: Some(disc),
+        track: Some(track),
+        genre: Some("Rock"),
+        ..song(path, "ClariS", "Fairy Castle")
+    }
+}
+
+fn titles(songs: &Value) -> Vec<&str> {
+    songs
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s["title"].as_str().unwrap())
+        .collect()
+}
+
+#[tokio::test]
+async fn album_lists_songs_in_disc_and_track_order() {
+    let server = server(&[
+        track("a/2-01.flac", "c", 2, 1),
+        track("a/1-02.flac", "b", 1, 2),
+        track("a/1-01.flac", "a", 1, 1),
+        Song {
+            genre: Some("Pop"),
+            ..track("a/1-03.flac", "d", 1, 3)
+        },
+    ])
+    .await;
+    let album_id = server.id("album", "name", "Fairy Castle").await;
+
+    let res = server.get("getAlbum", &format!("&id={album_id}")).await;
+    let album = &res["album"];
+    assert_eq!(titles(&album["song"]), ["a", "b", "d", "c"]);
+    assert_eq!(album["songCount"], 4);
+    assert_eq!(album["displayArtist"], "ClariS");
+    assert_eq!(album["artists"][0]["name"], "ClariS");
+    // ジャンルは曲数の多い順
+    assert_eq!(album["genre"], "Rock");
+    assert_eq!(
+        album["genres"],
+        serde_json::json!([{ "name": "Rock" }, { "name": "Pop" }])
+    );
+    assert_eq!(album["isCompilation"], false);
+
+    let song = &album["song"][0];
+    assert_eq!(song["parent"], album_id.as_str());
+    assert_eq!(song["path"], "a/1-01.flac");
+    assert_eq!(song["discNumber"], 1);
+    assert_eq!(song["track"], 1);
+    assert_eq!(song["duration"], 1);
+    assert_eq!(song["suffix"], "flac");
+    assert_eq!(song["albumArtists"][0]["name"], "ClariS");
+}
+
+#[tokio::test]
+async fn artist_includes_albums_with_guest_appearances() {
+    let server = server(&[
+        song("1.flac", "ClariS", "a"),
+        song("2.flac", "ClariS", "b"),
+        Song {
+            artist: "ゲスト",
+            ..song("3.flac", "やなぎなぎ", "c")
+        },
+    ])
+    .await;
+
+    let claris = server.id("artist", "name", "ClariS").await;
+    let res = server.get("getArtist", &format!("&id={claris}")).await;
+    assert_eq!(res["artist"]["albumCount"], 2);
+    assert_eq!(res["artist"]["album"].as_array().unwrap().len(), 2);
+
+    // 曲にだけ参加しているアーティストも、参加したアルバムを返す
+    let guest = server.id("artist", "name", "ゲスト").await;
+    let res = server.get("getArtist", &format!("&id={guest}")).await;
+    assert_eq!(res["artist"]["albumCount"], 1);
+    assert_eq!(res["artist"]["album"][0]["name"], "c");
+}
+
+#[tokio::test]
+async fn old_id_is_resolved_through_alias() {
+    let server = server(&[track("a/1-01.flac", "a", 1, 1)]).await;
+    let id = server.id("track", "title", "a").await;
+    sqlx::query("INSERT INTO id_alias (old_id, new_id) VALUES ('tr-00000000', ?)")
+        .bind(&id)
+        .execute(&server.db)
+        .await
+        .unwrap();
+
+    let res = server.get("getSong", "&id=tr-00000000").await;
+    assert_eq!(res["song"]["id"], id.as_str());
+}
+
+#[tokio::test]
+async fn unknown_id_is_not_found() {
+    let server = server(&[track("a/1-01.flac", "a", 1, 1)]).await;
+    for endpoint in ["getArtist", "getAlbum", "getSong"] {
+        let res = server.raw(endpoint, "&id=xx-00000000").await;
+        assert_eq!(res["subsonic-response"]["error"]["code"], 70, "{endpoint}");
+    }
+    let res = server.raw("getSong", "").await;
+    assert_eq!(res["subsonic-response"]["error"]["code"], 10);
+}
+
+/// こちらの項目がすべて Navidrome の応答にあり、型が同じことを確かめる。
+#[tokio::test]
+async fn shapes_match_navidrome() {
+    let server = server(&[Song {
+        artist_sort: Some("Kurarisu"),
+        ..track("a/1-01.flac", "a", 1, 1)
+    }])
+    .await;
+    let artist = server.id("artist", "name", "ClariS").await;
+    let album = server.id("album", "name", "Fairy Castle").await;
+    let song = server.id("track", "title", "a").await;
+    for (endpoint, id) in [
+        ("getArtist", artist),
+        ("getAlbum", album),
+        ("getSong", song),
+    ] {
+        let ours = payload(server.raw(endpoint, &format!("&id={id}")).await);
+        let theirs = navidrome(endpoint);
+        assert_subset(endpoint, &Value::Object(ours), &Value::Object(theirs));
+    }
 }

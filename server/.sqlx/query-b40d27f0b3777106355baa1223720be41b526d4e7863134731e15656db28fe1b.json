@@ -1,0 +1,254 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT track.id AS \"id!\", track.album_id, track.title, track.display_artist,\n                  track.sort_name, track.disc_number, track.track_number, track.year,\n                  track.created_at, album.name AS album_name,\n                  album.display_artist AS album_display_artist, file.path, file.size,\n                  file.suffix, file.content_type, file.duration_ms, file.bit_rate,\n                  file.sample_rate, file.channels, file.bit_depth\n           FROM track\n             JOIN album ON album.id = track.album_id\n             JOIN file ON file.id = track.primary_file_id\n           WHERE track.id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "album_id",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "album_id"
+          }
+        }
+      },
+      {
+        "name": "title",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "name": "display_artist",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "display_artist"
+          }
+        }
+      },
+      {
+        "name": "sort_name",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "sort_name"
+          }
+        }
+      },
+      {
+        "name": "disc_number",
+        "ordinal": 5,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "disc_number"
+          }
+        }
+      },
+      {
+        "name": "track_number",
+        "ordinal": 6,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "track_number"
+          }
+        }
+      },
+      {
+        "name": "year",
+        "ordinal": 7,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "year"
+          }
+        }
+      },
+      {
+        "name": "created_at",
+        "ordinal": 8,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "name": "album_name",
+        "ordinal": 9,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "name": "album_display_artist",
+        "ordinal": 10,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "display_artist"
+          }
+        }
+      },
+      {
+        "name": "path",
+        "ordinal": 11,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "path"
+          }
+        }
+      },
+      {
+        "name": "size",
+        "ordinal": 12,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "size"
+          }
+        }
+      },
+      {
+        "name": "suffix",
+        "ordinal": 13,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "suffix"
+          }
+        }
+      },
+      {
+        "name": "content_type",
+        "ordinal": 14,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "content_type"
+          }
+        }
+      },
+      {
+        "name": "duration_ms",
+        "ordinal": 15,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "duration_ms"
+          }
+        }
+      },
+      {
+        "name": "bit_rate",
+        "ordinal": 16,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "bit_rate"
+          }
+        }
+      },
+      {
+        "name": "sample_rate",
+        "ordinal": 17,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "sample_rate"
+          }
+        }
+      },
+      {
+        "name": "channels",
+        "ordinal": 18,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "channels"
+          }
+        }
+      },
+      {
+        "name": "bit_depth",
+        "ordinal": 19,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "bit_depth"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "b40d27f0b3777106355baa1223720be41b526d4e7863134731e15656db28fe1b"
+}
