@@ -1,5 +1,6 @@
 use std::net::SocketAddr;
 use std::path::PathBuf;
+use std::time::Duration;
 
 /// 起動引数と環境変数から読む設定。
 #[derive(Debug, Clone, clap::Parser)]
@@ -15,6 +16,10 @@ pub struct Config {
     /// 音楽フォルダ。一つだけ渡す。
     #[arg(long, env = "SUISEI_MUSIC_DIR")]
     pub music_dir: PathBuf,
+
+    /// 定期スキャンの間隔（`1h`、`30m` など）。前のスキャンが終わってから数える。`0` で起動時の一度だけ。
+    #[arg(long, env = "SUISEI_SCAN_INTERVAL", default_value = "1h", value_parser = humantime::parse_duration)]
+    pub scan_interval: Duration,
 
     #[command(flatten)]
     pub credentials: Credentials,

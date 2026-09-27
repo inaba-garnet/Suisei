@@ -36,7 +36,6 @@ pub fn respond(
         "getShares" => json!({ "shares": {} }),
         "getInternetRadioStations" => json!({ "internetRadioStations": {} }),
         "getNowPlaying" => json!({ "nowPlaying": {} }),
-        "getScanStatus" => json!({ "scanStatus": { "scanning": false, "count": 0 } }),
         // 保存した再生キューがなければ、中身のない応答を返す（OpenSubsonic の仕様）。
         "getPlayQueue" => json!({}),
         "getUser" => return Some(user(params, state)),

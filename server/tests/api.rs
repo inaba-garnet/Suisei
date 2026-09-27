@@ -8,13 +8,15 @@ use tower::ServiceExt;
 const AUTH: &str = "u=inaba&p=sesame";
 
 async fn app() -> axum::Router {
+    let db = suisei::db::open_in_memory().await.unwrap();
     suisei::router(AppState {
         credentials: Credentials {
             user: "inaba".into(),
             password: "sesame".into(),
             api_key: None,
         },
-        db: suisei::db::open_in_memory().await.unwrap(),
+        db: db.clone(),
+        scanner: suisei::scan::Scanner::new(db, "/nonexistent".into()),
     })
 }
 

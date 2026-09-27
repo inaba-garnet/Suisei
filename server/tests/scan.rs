@@ -2,12 +2,18 @@
 
 use std::path::{Path, PathBuf};
 
+use axum::body::Body;
+use axum::http::Request;
+use http_body_util::BodyExt;
 use lofty::config::WriteOptions;
 use lofty::file::{AudioFile, TaggedFileExt};
 use lofty::tag::Accessor;
+use serde_json::Value;
 use suisei::db::{self, Pool};
-use suisei::scan::{self, Mode};
+use suisei::scan::{self, Mode, Scanner};
+use suisei::{AppState, Credentials};
 use tempfile::TempDir;
+use tower::ServiceExt;
 
 struct Library {
     dir: TempDir,
@@ -252,4 +258,50 @@ async fn unreadable_file_is_kept() {
     let summary = lib.scan().await;
     assert_eq!(summary.failed, 1);
     assert_eq!(lib.files().await, before);
+}
+
+#[tokio::test]
+async fn scan_endpoints() {
+    let lib = Library::new().await;
+    lib.put("full.flac", "a/01.flac");
+    lib.put("id3v1.mp3", "b/01.mp3");
+    let scanner = Scanner::new(lib.pool.clone(), lib.dir.path().to_owned());
+    let app = suisei::router(AppState {
+        credentials: Credentials {
+            user: "inaba".into(),
+            password: "sesame".into(),
+            api_key: None,
+        },
+        db: lib.pool.clone(),
+        scanner: scanner.clone(),
+    });
+    let status = |endpoint: &'static str| {
+        let app = app.clone();
+        async move {
+            let uri = format!("/rest/{endpoint}?u=inaba&p=sesame&f=json");
+            let res = app
+                .oneshot(Request::get(uri).body(Body::empty()).unwrap())
+                .await
+                .unwrap();
+            let body = res.into_body().collect().await.unwrap().to_bytes();
+            let value: Value = serde_json::from_slice(&body).unwrap();
+            value["subsonic-response"]["scanStatus"].clone()
+        }
+    };
+
+    let before = status("getScanStatus").await;
+    assert_eq!(before["scanning"], false);
+    assert_eq!(before["count"], 0);
+    assert!(before.get("lastScan").is_none());
+
+    // 始めた直後の応答から、スキャン中として返す
+    assert_eq!(status("startScan").await["scanning"], true);
+    scanner.wait().await;
+
+    let after = status("getScanStatus").await;
+    assert_eq!(after["scanning"], false);
+    assert_eq!(after["count"], 2);
+    assert_eq!(after["folderCount"], 2);
+    assert!(after["lastScan"].as_str().unwrap().ends_with('Z'));
+    assert_eq!(lib.count("track").await, 2);
 }
