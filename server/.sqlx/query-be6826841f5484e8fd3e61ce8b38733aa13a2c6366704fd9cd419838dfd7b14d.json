@@ -1,0 +1,182 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id AS \"id!\", path, size, mtime, track_id, suffix, content_type, duration_ms,\n                  bit_rate, sample_rate, channels, bit_depth, lossless, tags\n           FROM file WHERE music_folder_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "path",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "path"
+          }
+        }
+      },
+      {
+        "name": "size",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "size"
+          }
+        }
+      },
+      {
+        "name": "mtime",
+        "ordinal": 3,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "mtime"
+          }
+        }
+      },
+      {
+        "name": "track_id",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "track_id"
+          }
+        }
+      },
+      {
+        "name": "suffix",
+        "ordinal": 5,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "suffix"
+          }
+        }
+      },
+      {
+        "name": "content_type",
+        "ordinal": 6,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "content_type"
+          }
+        }
+      },
+      {
+        "name": "duration_ms",
+        "ordinal": 7,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "duration_ms"
+          }
+        }
+      },
+      {
+        "name": "bit_rate",
+        "ordinal": 8,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "bit_rate"
+          }
+        }
+      },
+      {
+        "name": "sample_rate",
+        "ordinal": 9,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "sample_rate"
+          }
+        }
+      },
+      {
+        "name": "channels",
+        "ordinal": 10,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "channels"
+          }
+        }
+      },
+      {
+        "name": "bit_depth",
+        "ordinal": 11,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "bit_depth"
+          }
+        }
+      },
+      {
+        "name": "lossless",
+        "ordinal": 12,
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "lossless"
+          }
+        }
+      },
+      {
+        "name": "tags",
+        "ordinal": 13,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "tags"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "be6826841f5484e8fd3e61ce8b38733aa13a2c6366704fd9cd419838dfd7b14d"
+}

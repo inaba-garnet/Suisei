@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT old_id AS \"old_id!\" FROM id_alias",
+  "describe": {
+    "columns": [
+      {
+        "name": "old_id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "id_alias",
+            "name": "old_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "22d68b7bb8d7ec08d424709fa1b8c1edcca11b02572d0679fafa1d6dc8baf046"
+}

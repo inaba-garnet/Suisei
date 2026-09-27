@@ -1,6 +1,7 @@
 //! DB 層。クエリはこのモジュールの中に閉じ込める（docs/server.md）。
 
 mod id;
+pub mod library;
 
 use std::path::Path;
 

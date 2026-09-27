@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO music_folder (id, name, path) VALUES (?, 'Music', ?)\n         ON CONFLICT (id) DO UPDATE SET path = excluded.path",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "46180bb702fdcdf05a82edb5f5c682a3d3f430e26cb65593cc2a12d04feccd8f"
+}

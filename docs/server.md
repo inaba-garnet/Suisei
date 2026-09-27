@@ -5,6 +5,7 @@
 
 ## DB ライブラリ
 - sqlx を使う。SQL をコンパイル時にスキーマと照合でき、PostgreSQL にも同じ API で移れるため。
+- クエリは sqlx のマクロで書き、`cargo sqlx prepare` で作る `server/.sqlx/` をリポジトリに入れる。DB のない CI でも、SQL とスキーマを照合するため。
 - 将来 PostgreSQL に移りやすいよう、クエリは DB 層のモジュールに閉じ込め、SQL は SQLite と PostgreSQL に共通する書き方に限る。
   - upsert は `ON CONFLICT`、挿入した行は `RETURNING` で取る。
   - 日時は ISO 8601 の文字列か UNIX 時刻で持ち、SQLite の日付関数に頼らない。

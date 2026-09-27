@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM track WHERE id NOT IN (SELECT track_id FROM file)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "1f54341aac1965ed8c9f6c9564dee5553813cf14ae3a15d60fe72b18be234b16"
+}

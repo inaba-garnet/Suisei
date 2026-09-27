@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM id_alias WHERE new_id NOT IN (SELECT id FROM track)\n             AND new_id NOT IN (SELECT id FROM album) AND new_id NOT IN (SELECT id FROM artist)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "523bfe4fc710fa3cca15fb66dc1dcff56dd8be187035962d429cfda535138c7d"
+}

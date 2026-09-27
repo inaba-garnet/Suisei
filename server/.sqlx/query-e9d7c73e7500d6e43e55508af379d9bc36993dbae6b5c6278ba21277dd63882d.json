@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE id_alias SET new_id = ? WHERE new_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "e9d7c73e7500d6e43e55508af379d9bc36993dbae6b5c6278ba21277dd63882d"
+}
