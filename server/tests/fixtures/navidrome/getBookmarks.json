@@ -1,0 +1,160 @@
+{
+  "subsonic-response": {
+    "status": "ok",
+    "version": "1.16.1",
+    "type": "navidrome",
+    "serverVersion": "0.64.0 (1072e9f7)",
+    "openSubsonic": true,
+    "bookmarks": {
+      "bookmark": [
+        {
+          "entry": {
+            "id": "192S6AAWlt3lw2taWjeHYx",
+            "parent": "2rRMBoWZLXXnWKg3W7qFuM",
+            "isDir": false,
+            "title": "A Tooth For An Eye",
+            "album": "Shaking The Habitual",
+            "artist": "The Knife",
+            "track": 1,
+            "year": 2013,
+            "genre": "Electronic",
+            "coverArt": "al-2rRMBoWZLXXnWKg3W7qFuM",
+            "size": 13440422,
+            "contentType": "audio/mp4",
+            "suffix": "m4a",
+            "duration": 364,
+            "bitRate": 257,
+            "path": "The Knife/Shaking The Habitual/01 - A Tooth For An Eye.m4a",
+            "playCount": 367,
+            "created": "2025-03-26T22:26:44.434941263Z",
+            "albumId": "2rRMBoWZLXXnWKg3W7qFuM",
+            "artistId": "0Qg0EyigYQqs3B5wVa3BfO",
+            "type": "music",
+            "userRating": 5,
+            "averageRating": 5,
+            "bookmarkPosition": 53000,
+            "played": "2026-09-27T00:53:00.055407505Z",
+            "bpm": 0,
+            "comment": "",
+            "sortName": "a tooth for an eye",
+            "mediaType": "song",
+            "musicBrainzId": "",
+            "isrc": [],
+            "genres": [
+              {
+                "name": "Electronic"
+              }
+            ],
+            "replayGain": {
+              "trackGain": -7.12,
+              "albumGain": -7.97,
+              "trackPeak": 1.059023,
+              "albumPeak": 1.536296
+            },
+            "channelCount": 2,
+            "samplingRate": 44100,
+            "bitDepth": 16,
+            "moods": [],
+            "artists": [
+              {
+                "id": "0Qg0EyigYQqs3B5wVa3BfO",
+                "name": "The Knife"
+              }
+            ],
+            "displayArtist": "The Knife",
+            "albumArtists": [
+              {
+                "id": "0Qg0EyigYQqs3B5wVa3BfO",
+                "name": "The Knife"
+              }
+            ],
+            "displayAlbumArtist": "The Knife",
+            "contributors": [],
+            "displayComposer": "",
+            "explicitStatus": "",
+            "groupings": [],
+            "works": [],
+            "movements": []
+          },
+          "position": 53000,
+          "username": "demo",
+          "comment": "",
+          "created": "2026-06-12T03:33:01.992338424Z",
+          "changed": "2026-06-12T03:33:01.992339034Z"
+        },
+        {
+          "entry": {
+            "id": "2m0uSgeEDdI8eKpl33cKvC",
+            "parent": "6IBIiCkWECDiUQQUaQ8X7u",
+            "isDir": false,
+            "title": "Your New Normal",
+            "album": "Ghosts VI: Locusts",
+            "artist": "Nine Inch Nails",
+            "track": 10,
+            "year": 2020,
+            "coverArt": "mf-2m0uSgeEDdI8eKpl33cKvC",
+            "size": 11706470,
+            "contentType": "audio/mpeg",
+            "suffix": "mp3",
+            "duration": 225,
+            "bitRate": 320,
+            "path": "Nine Inch Nails/Ghosts VI: Locusts/10 - Your New Normal.mp3",
+            "playCount": 63,
+            "created": "2025-03-26T22:26:47.673059512Z",
+            "albumId": "6IBIiCkWECDiUQQUaQ8X7u",
+            "artistId": "3GSnSEURz17ltddsamzmSD",
+            "type": "music",
+            "userRating": 4,
+            "averageRating": 4,
+            "bookmarkPosition": 85000,
+            "played": "2026-09-26T14:42:55.045911068Z",
+            "bpm": 0,
+            "comment": "",
+            "sortName": "your new normal",
+            "mediaType": "song",
+            "musicBrainzId": "",
+            "isrc": [
+              "TCAES2061859"
+            ],
+            "genres": [],
+            "replayGain": {
+              "trackGain": 0,
+              "albumGain": 0,
+              "trackPeak": 1,
+              "albumPeak": 1
+            },
+            "channelCount": 2,
+            "samplingRate": 48000,
+            "bitDepth": 0,
+            "moods": [],
+            "artists": [
+              {
+                "id": "3GSnSEURz17ltddsamzmSD",
+                "name": "Nine Inch Nails"
+              }
+            ],
+            "displayArtist": "Nine Inch Nails",
+            "albumArtists": [
+              {
+                "id": "3GSnSEURz17ltddsamzmSD",
+                "name": "Nine Inch Nails"
+              }
+            ],
+            "displayAlbumArtist": "Nine Inch Nails",
+            "contributors": [],
+            "displayComposer": "",
+            "explicitStatus": "",
+            "groupings": [],
+            "works": [],
+            "movements": []
+          },
+          "position": 85000,
+          "username": "demo",
+          "comment": "",
+          "created": "2026-06-13T02:25:26.541447995Z",
+          "changed": "2026-06-13T02:25:26.541448593Z"
+        }
+      ]
+    }
+  }
+}

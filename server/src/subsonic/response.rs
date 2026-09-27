@@ -34,6 +34,7 @@ pub enum ErrorCode {
     AuthMechanismNotSupported = 42,
     ConflictingAuth = 43,
     InvalidApiKey = 44,
+    NotFound = 70,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

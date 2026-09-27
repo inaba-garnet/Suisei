@@ -65,10 +65,10 @@ async fn unimplemented_endpoint_requires_auth() {
 
 #[tokio::test]
 async fn unimplemented_endpoint_returns_generic_error() {
-    let res = get_json(&format!("/rest/getArtists.view?{AUTH}&f=json")).await;
+    let res = get_json(&format!("/rest/getPodcasts.view?{AUTH}&f=json")).await;
     assert_eq!(res["status"], "failed");
     assert_eq!(res["error"]["code"], 0);
-    assert_eq!(res["error"]["message"], "not implemented: getArtists");
+    assert_eq!(res["error"]["message"], "not implemented: getPodcasts");
 }
 
 #[tokio::test]
@@ -91,7 +91,13 @@ async fn form_post() {
 }
 
 #[tokio::test]
-async fn outside_rest_is_not_found() {
+async fn root_is_reachable() {
     let (status, _) = get("/").await;
+    assert_eq!(status, StatusCode::OK);
+}
+
+#[tokio::test]
+async fn outside_rest_is_not_found() {
+    let (status, _) = get("/server/xml.server.php").await;
     assert_eq!(status, StatusCode::NOT_FOUND);
 }

@@ -1,0 +1,66 @@
+{
+  "subsonic-response": {
+    "status": "ok",
+    "version": "1.16.1",
+    "type": "navidrome",
+    "serverVersion": "0.64.0 (1072e9f7)",
+    "openSubsonic": true,
+    "artists": {
+      "index": [
+        {
+          "name": "#",
+          "artist": [
+            {
+              "id": "33X3V2Xn7Cip7WqqfXNkL8",
+              "name": "2 Mello",
+              "coverArt": "ar-33X3V2Xn7Cip7WqqfXNkL8_58cee78a6f9157c9",
+              "albumCount": 1,
+              "artistImageUrl": "https://demo.navidrome.org/share/img/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFyLTMzWDNWMlhuN0NpcDdXcXFmWE5rTDhfNThjZWU3OGE2ZjkxNTdjOSIsImlzcyI6Ik5EIn0.W3JGkNxQR-LtXxzeGY18_hCojebLCH_enTC0ekrFO00?size=600",
+              "musicBrainzId": "",
+              "sortName": "2 mello",
+              "roles": [
+                "maincredit",
+                "albumartist"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "B",
+          "artist": [
+            {
+              "id": "04HrSORpypcLGNUdQp37gn",
+              "name": "Back On Earth",
+              "coverArt": "ar-04HrSORpypcLGNUdQp37gn_cd791a083ebf42c2",
+              "albumCount": 3,
+              "userRating": 1,
+              "averageRating": 1,
+              "artistImageUrl": "https://demo.navidrome.org/share/img/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFyLTA0SHJTT1JweXBjTEdOVWRRcDM3Z25fY2Q3OTFhMDgzZWJmNDJjMiIsImlzcyI6Ik5EIn0.xZi49RHk1ZH0rebVw2fVG9cuCcfFz1Mu7gRCHzpsps8?size=600",
+              "musicBrainzId": "",
+              "sortName": "back on earth",
+              "roles": [
+                "albumartist",
+                "artist"
+              ]
+            },
+            {
+              "id": "30YNjv3jIc6CC6EkI84uWi",
+              "name": "Binaerpilot",
+              "albumCount": 1,
+              "userRating": 2,
+              "averageRating": 2,
+              "musicBrainzId": "",
+              "sortName": "binaerpilot",
+              "roles": [
+                "artist",
+                "composer"
+              ]
+            }
+          ]
+        }
+      ],
+      "lastModified": 1790012586000,
+      "ignoredArticles": "The El La Los Las Le Les Os As O A"
+    }
+  }
+}

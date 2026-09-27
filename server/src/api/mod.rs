@@ -1,10 +1,13 @@
+mod empty;
+
 use std::sync::Arc;
 
 use axum::Router;
 use axum::extract::{Path, State};
-use axum::http::{Method, StatusCode, Uri};
+use axum::http::header::USER_AGENT;
+use axum::http::{HeaderMap, Method, StatusCode, Uri};
 use axum::response::Response;
-use axum::routing::any;
+use axum::routing::{any, get};
 use serde_json::{Map, Value, json};
 
 use crate::subsonic::{self, Error, ErrorCode, Format, Params};
@@ -25,6 +28,7 @@ impl From<Config> for AppState {
 
 pub fn router(state: AppState) -> Router {
     Router::new()
+        .route("/", get(root))
         .route("/rest/{endpoint}", any(rest))
         .fallback(not_found)
         .with_state(Arc::new(state))
@@ -34,12 +38,19 @@ pub fn router(state: AppState) -> Router {
 async fn rest(
     State(state): State<Arc<AppState>>,
     method: Method,
+    headers: HeaderMap,
     Path(endpoint): Path<String>,
     params: Params,
 ) -> Response {
     let name = endpoint.strip_suffix(".view").unwrap_or(&endpoint);
     let format = Format::from_params(&params);
-    tracing::info!(%method, endpoint = name, params = %params.masked(), "request");
+    tracing::info!(
+        %method,
+        endpoint = name,
+        params = %params.masked(),
+        user_agent = user_agent(&headers),
+        "request"
+    );
 
     // OpenSubsonic の仕様で、認証なしで呼べることになっている。
     if name != "getOpenSubsonicExtensions"
@@ -57,7 +68,11 @@ async fn rest(
         "ping" => subsonic::ok(format, Map::new()),
         "getLicense" => subsonic::ok(format, payload(json!({ "license": { "valid": true } }))),
         "getOpenSubsonicExtensions" => subsonic::ok(format, extensions(&state)),
-        _ => not_implemented(name, &method, &params, format),
+        _ => match empty::respond(name, &params, &state) {
+            Some(Ok(payload)) => subsonic::ok(format, payload),
+            Some(Err(err)) => subsonic::error(format, &err),
+            None => not_implemented(name, &method, &params, format),
+        },
     }
 }
 
@@ -72,11 +87,31 @@ fn not_implemented(name: &str, method: &Method, params: &Params, format: Format)
     )
 }
 
+/// Amperfy はログインの前にサーバーの URL そのものを GET し、400 以上なら接続できないとみなす。
+/// Web クライアントを `/` で配信するかが決まるまでの仮の応答。
+async fn root(headers: HeaderMap) -> &'static str {
+    tracing::info!(user_agent = user_agent(&headers), "root");
+    "Suisei"
+}
+
 /// `/rest/` 以外へのリクエストも、クライアントの解析のために残す。
 /// クエリには認証情報が入りうるので、パスだけを残す。
-async fn not_found(method: Method, uri: Uri) -> StatusCode {
-    tracing::warn!(%method, path = uri.path(), "not found");
+async fn not_found(method: Method, uri: Uri, headers: HeaderMap) -> StatusCode {
+    tracing::warn!(
+        %method,
+        path = uri.path(),
+        user_agent = user_agent(&headers),
+        "not found"
+    );
     StatusCode::NOT_FOUND
+}
+
+/// `c=` を付けない呼び出しでも送り主を見分けられるよう、ログに残す。
+fn user_agent(headers: &HeaderMap) -> &str {
+    headers
+        .get(USER_AGENT)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("-")
 }
 
 fn extensions(state: &AppState) -> Map<String, Value> {
@@ -87,7 +122,7 @@ fn extensions(state: &AppState) -> Map<String, Value> {
     payload(json!({ "openSubsonicExtensions": list }))
 }
 
-fn payload(value: Value) -> Map<String, Value> {
+pub(super) fn payload(value: Value) -> Map<String, Value> {
     match value {
         Value::Object(map) => map,
         _ => unreachable!("payload must be an object"),
