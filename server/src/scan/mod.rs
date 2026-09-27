@@ -14,7 +14,7 @@ use walkdir::WalkDir;
 
 use crate::db::Pool;
 use crate::db::library::{self, FileRow, Snapshot};
-use crate::tags::{self, RawTags};
+use crate::tags;
 
 use build::Scanned;
 pub use scanner::{Scanner, Status};
@@ -107,7 +107,7 @@ async fn run_with_progress(
     let music_dir = music_dir.to_owned();
     let (library, mut summary) = tokio::task::spawn_blocking(move || {
         let started = Instant::now();
-        let (files, mut summary) = collect(&music_dir, &snapshot, mode, &progress)?;
+        let (files, images, mut summary) = collect(&music_dir, &snapshot, mode, &progress)?;
         summary.timings.collect_ms = elapsed_ms(started);
         if files.is_empty() && !snapshot.files.is_empty() {
             return Err(Error::Empty);
@@ -115,6 +115,7 @@ async fn run_with_progress(
         let started = Instant::now();
         let library = build::build(
             files,
+            &images,
             &snapshot,
             &music_dir.to_string_lossy(),
             unix_millis(SystemTime::now()),
@@ -151,7 +152,7 @@ fn collect(
     snapshot: &Snapshot,
     mode: Mode,
     progress: &AtomicUsize,
-) -> Result<(Vec<Scanned>, Summary), Error> {
+) -> Result<(Vec<Scanned>, Images, Summary), Error> {
     std::fs::read_dir(music_dir).map_err(Error::Folder)?;
     let stored: HashMap<&str, &FileRow> = snapshot
         .files
@@ -161,6 +162,7 @@ fn collect(
     let mut summary = Summary::default();
     let mut files = Vec::new();
     let mut seen = HashSet::new();
+    let mut images = Images::new();
     // 読めなかったディレクトリ。その下にあった行は、消さずに残す
     let mut unreadable_dirs: Vec<PathBuf> = Vec::new();
 
@@ -178,7 +180,20 @@ fn collect(
                 continue;
             }
         };
-        if !entry.file_type().is_file() || !is_audio(entry.path()) {
+        if !entry.file_type().is_file() {
+            continue;
+        }
+        if is_image(entry.path()) {
+            if let Some(rel) = relative(music_dir, entry.path()) {
+                let (dir, name) = rel.rsplit_once('/').unwrap_or(("", &rel));
+                images
+                    .entry(dir.to_owned())
+                    .or_default()
+                    .push(name.to_owned());
+            }
+            continue;
+        }
+        if !is_audio(entry.path()) {
             continue;
         }
         progress.fetch_add(1, Ordering::Relaxed);
@@ -204,7 +219,7 @@ fn collect(
 
         if mode == Mode::Quick
             && let Some(row) = previous.filter(|r| r.size == size && r.mtime == mtime)
-            && let Ok(scanned) = parse_stored(row)
+            && let Some(scanned) = parse_current(row)
         {
             files.push(scanned);
             continue;
@@ -249,26 +264,42 @@ fn collect(
             files.push(unchanged(row));
         }
     }
-    Ok((files, summary))
+    Ok((files, images, summary))
 }
 
-fn parse_stored(row: &FileRow) -> Result<Scanned, serde_json::Error> {
-    Ok(Scanned {
-        tags: serde_json::from_str::<RawTags>(&row.tags)?,
+/// 今の版で保存したタグなら、読み直さずに使う。
+fn parse_current(row: &FileRow) -> Option<Scanned> {
+    let (tags, current) = tags::from_stored(&row.tags)?;
+    current.then(|| Scanned {
+        tags,
         row: row.clone(),
     })
 }
 
-/// 前回の行をそのまま使う。保存したタグが壊れていれば、タグなしとして扱う
+/// 前回の行をそのまま使う。版が古くても使い、保存したタグが壊れていれば、タグなしとして扱う
 fn unchanged(row: &FileRow) -> Scanned {
-    parse_stored(row).unwrap_or_else(|_| Scanned {
+    Scanned {
+        tags: tags::from_stored(&row.tags)
+            .map(|(tags, _)| tags)
+            .unwrap_or_default(),
         row: row.clone(),
-        tags: RawTags::default(),
-    })
+    }
 }
 
 fn is_hidden(name: &std::ffi::OsStr) -> bool {
     name.as_encoded_bytes().starts_with(b".")
+}
+
+/// カバーアートの候補になる画像の拡張子
+const IMAGE_EXTENSIONS: &[&str] = &["gif", "jpeg", "jpg", "png", "webp"];
+
+/// ディレクトリ（音楽フォルダからの相対パス）ごとの画像のファイル名
+pub type Images = HashMap<String, Vec<String>>;
+
+fn is_image(path: &Path) -> bool {
+    path.extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| IMAGE_EXTENSIONS.contains(&ext.to_ascii_lowercase().as_str()))
 }
 
 fn is_audio(path: &Path) -> bool {

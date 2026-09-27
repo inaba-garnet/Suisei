@@ -51,6 +51,7 @@ pub struct AlbumRow {
     pub year: Option<i64>,
     pub created_at: i64,
     pub compilation: bool,
+    pub cover_path: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -224,13 +225,14 @@ pub async fn replace(pool: &Pool, library: &Library) -> Result<(), sqlx::Error> 
     for a in &library.albums {
         sqlx::query!(
             "INSERT INTO album (id, match_key, name, display_artist, sort_name, sort_name_source,
-                 year, created_at, sort_key, compilation, search_text)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 year, created_at, sort_key, compilation, search_text, cover_path)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT (id) DO UPDATE SET match_key = excluded.match_key, name = excluded.name,
                  display_artist = excluded.display_artist, sort_name = excluded.sort_name,
                  sort_name_source = excluded.sort_name_source, year = excluded.year,
                  sort_key = excluded.sort_key, compilation = excluded.compilation,
-                 created_at = excluded.created_at, search_text = excluded.search_text",
+                 created_at = excluded.created_at, search_text = excluded.search_text,
+                 cover_path = excluded.cover_path",
             a.id,
             a.match_key,
             a.name,
@@ -241,7 +243,8 @@ pub async fn replace(pool: &Pool, library: &Library) -> Result<(), sqlx::Error> 
             a.created_at,
             a.sort_key,
             a.compilation,
-            a.search_text
+            a.search_text,
+            a.cover_path
         )
         .execute(&mut *tx)
         .await?;

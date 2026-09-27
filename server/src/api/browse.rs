@@ -255,6 +255,10 @@ pub(super) async fn album_json(state: &AppState, album: &Album) -> Result<Value,
     if let Some(first) = artists.first() {
         value["artistId"] = json!(first.artist_id);
     }
+    // 画像のないアルバムに付けると、クライアントが取りに来ては失敗する
+    if album.has_cover {
+        value["coverArt"] = json!(album.id);
+    }
     if let Some(year) = album.year {
         value["year"] = json!(year);
     }
@@ -348,6 +352,10 @@ fn song_json(
     }
     if let Some(first) = artists.first() {
         value["artistId"] = json!(first.artist_id);
+    }
+    // 曲ごとの画像は扱わず、アルバムの画像を使う
+    if song.album_has_cover {
+        value["coverArt"] = json!(song.album_id);
     }
     if let Some(genre) = genres.first() {
         value["genre"] = json!(genre);

@@ -60,6 +60,7 @@ pub struct Album {
     pub year: Option<i64>,
     pub created_at: i64,
     pub compilation: bool,
+    pub has_cover: bool,
     pub song_count: i64,
     /// 配信ファイルの長さの合計
     pub duration_ms: i64,
@@ -73,6 +74,7 @@ macro_rules! albums {
             Album,
             r#"SELECT album.id AS "id!", album.name, album.display_artist, album.sort_name,
                       album.year, album.created_at, album.compilation,
+                      album.cover_path IS NOT NULL AS "has_cover!: bool",
                       (SELECT COUNT(*) FROM track WHERE track.album_id = album.id)
                         AS "song_count!: i64",
                       (SELECT COALESCE(SUM(file.duration_ms), 0) FROM track
@@ -314,6 +316,7 @@ pub struct Song {
     pub created_at: i64,
     pub album_name: String,
     pub album_display_artist: String,
+    pub album_has_cover: bool,
     pub path: String,
     pub size: i64,
     pub suffix: String,
@@ -332,7 +335,8 @@ pub async fn songs_of_album(pool: &Pool, album_id: &str) -> Result<Vec<Song>, sq
         r#"SELECT track.id AS "id!", track.album_id, track.title, track.display_artist,
                   track.sort_name, track.disc_number, track.track_number, track.year,
                   track.created_at, album.name AS album_name,
-                  album.display_artist AS album_display_artist, file.path, file.size,
+                  album.display_artist AS album_display_artist,
+                  album.cover_path IS NOT NULL AS "album_has_cover!: bool", file.path, file.size,
                   file.suffix, file.content_type, file.duration_ms, file.bit_rate,
                   file.sample_rate, file.channels, file.bit_depth
            FROM track
@@ -353,7 +357,8 @@ pub async fn song(pool: &Pool, id: &str) -> Result<Option<Song>, sqlx::Error> {
         r#"SELECT track.id AS "id!", track.album_id, track.title, track.display_artist,
                   track.sort_name, track.disc_number, track.track_number, track.year,
                   track.created_at, album.name AS album_name,
-                  album.display_artist AS album_display_artist, file.path, file.size,
+                  album.display_artist AS album_display_artist,
+                  album.cover_path IS NOT NULL AS "album_has_cover!: bool", file.path, file.size,
                   file.suffix, file.content_type, file.duration_ms, file.bit_rate,
                   file.sample_rate, file.channels, file.bit_depth
            FROM track
@@ -384,4 +389,20 @@ pub async fn stream_file(pool: &Pool, track_id: &str) -> Result<Option<StreamFil
     )
     .fetch_optional(pool)
     .await
+}
+
+/// アルバムか曲の ID から、カバーアートの元（音楽フォルダからの相対パス）を引く。
+/// ID がなければ None、画像がなければ Some(None)。
+pub async fn cover_path(pool: &Pool, id: &str) -> Result<Option<Option<String>>, sqlx::Error> {
+    let row = sqlx::query_scalar!(
+        "SELECT cover_path FROM album WHERE id = ?
+         UNION ALL
+         SELECT album.cover_path FROM track JOIN album ON album.id = track.album_id
+         WHERE track.id = ?",
+        id,
+        id
+    )
+    .fetch_optional(pool)
+    .await?;
+    Ok(row)
 }

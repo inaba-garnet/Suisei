@@ -72,7 +72,11 @@ async fn server(songs: &[Song<'_>]) -> Server {
         file.insert_tag(tag);
         file.save_to_path(&path, WriteOptions::default()).unwrap();
     }
+    start(dir).await
+}
 
+/// 並べ終えたディレクトリをスキャンして、サーバーを作る。
+async fn start(dir: TempDir) -> Server {
     let db = suisei::db::open_in_memory().await.unwrap();
     let scanner = Scanner::new(db.clone(), dir.path().to_owned());
     assert!(scanner.start(Mode::Quick));
@@ -655,5 +659,90 @@ async fn stream_errors() {
     let id = server.id("track", "title", "a").await;
     std::fs::remove_file(server.dir.path().join("a/1-01.flac")).unwrap();
     let res = server.raw("stream", &format!("&id={id}")).await;
+    assert_eq!(res["subsonic-response"]["error"]["code"], 70);
+}
+
+fn fixture(name: &str) -> std::path::PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/tags")
+        .join(name)
+}
+
+/// テスト用の音声や画像を、ディレクトリに並べる。
+fn place(dir: &TempDir, files: &[(&str, &str)]) {
+    for (source, rel) in files {
+        let path = dir.path().join(rel);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::copy(fixture(source), path).unwrap();
+    }
+}
+
+async fn cover_server() -> Server {
+    let dir = tempfile::tempdir().unwrap();
+    place(
+        &dir,
+        &[
+            // フォルダの画像が埋め込みより先
+            ("picture.flac", "folder/1.flac"),
+            ("cover.png", "folder/Folder.PNG"),
+            // 埋め込みだけ
+            ("picture.flac", "embedded/1.flac"),
+            // どちらもない
+            ("notag.flac", "none/1.flac"),
+        ],
+    );
+    // 同じタグのファイルが一枚にまとまらないよう、アルバム名を変える
+    for (rel, album) in [("folder/1.flac", "folder"), ("embedded/1.flac", "embedded")] {
+        let path = dir.path().join(rel);
+        let mut file = lofty::read_from_path(&path).unwrap();
+        file.primary_tag_mut().unwrap().set_album(album.to_owned());
+        file.save_to_path(&path, WriteOptions::default()).unwrap();
+    }
+    start(dir).await
+}
+
+#[tokio::test]
+async fn cover_art_prefers_folder_image() {
+    let server = cover_server().await;
+    let png = std::fs::read(fixture("cover.png")).unwrap();
+
+    for album in ["folder", "embedded"] {
+        let id = server.id("album", "name", album).await;
+        let (status, headers, body) = server
+            .bytes("getCoverArt", &format!("&id={id}"), None)
+            .await;
+        assert_eq!(status, 200, "{album}");
+        assert_eq!(headers["content-type"], "image/png", "{album}");
+        assert_eq!(body, png, "{album}");
+
+        // 曲の ID でも、アルバムの画像を返す
+        let res = server.get("getAlbum", &format!("&id={id}")).await;
+        assert_eq!(res["album"]["coverArt"], id.as_str());
+        let song = res["album"]["song"][0]["id"].as_str().unwrap().to_owned();
+        assert_eq!(res["album"]["song"][0]["coverArt"], id.as_str());
+        let (status, _, body) = server
+            .bytes("getCoverArt", &format!("&id={song}"), None)
+            .await;
+        assert_eq!(status, 200);
+        assert_eq!(body, png);
+    }
+    let path: Option<String> =
+        sqlx::query_scalar("SELECT cover_path FROM album WHERE name = 'folder'")
+            .fetch_one(&server.db)
+            .await
+            .unwrap();
+    assert_eq!(path.as_deref(), Some("folder/Folder.PNG"));
+}
+
+#[tokio::test]
+async fn album_without_cover_has_no_cover_art() {
+    let server = cover_server().await;
+    let id = server.id("album", "name", "none").await;
+    let res = server.get("getAlbum", &format!("&id={id}")).await;
+    assert!(res["album"].get("coverArt").is_none());
+    assert!(res["album"]["song"][0].get("coverArt").is_none());
+    let res = server.raw("getCoverArt", &format!("&id={id}")).await;
+    assert_eq!(res["subsonic-response"]["error"]["code"], 70);
+    let res = server.raw("getCoverArt", "&id=al-00000000").await;
     assert_eq!(res["subsonic-response"]["error"]["code"], 70);
 }

@@ -29,6 +29,36 @@ pub struct RawTags {
     pub year: Option<i32>,
     pub genres: Vec<String>,
     pub compilation: bool,
+    /// 埋め込みの画像があるか。カバーアートを探すのに使う
+    pub has_picture: bool,
+}
+
+/// DB に保存するタグの版。タグから読む項目を足したら上げ、古い版で保存したファイルを読み直させる。
+/// 版 1 で `has_picture` を足した。
+const STORED_VERSION: u32 = 1;
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct Stored {
+    /// 版を持つ前の JSON は 0 になる
+    #[serde(default)]
+    version: u32,
+    #[serde(flatten)]
+    tags: RawTags,
+}
+
+/// DB に保存する JSON にする。
+pub fn to_stored(tags: &RawTags) -> String {
+    serde_json::to_string(&Stored {
+        version: STORED_VERSION,
+        tags: tags.clone(),
+    })
+    .expect("RawTags は JSON にできる")
+}
+
+/// 保存した JSON を読む。壊れていれば None。`current` は今の版で保存したものか。
+pub fn from_stored(json: &str) -> Option<(RawTags, bool)> {
+    let stored: Stored = serde_json::from_str(json).ok()?;
+    Some((stored.tags, stored.version >= STORED_VERSION))
 }
 
 /// file 表の列に対応する音声の情報。
@@ -84,6 +114,7 @@ fn from_tag(tag: &Tag) -> RawTags {
         compilation: tag
             .get_string(ItemKey::FlagCompilation)
             .is_some_and(|value| matches!(value.trim(), "1") || value.eq_ignore_ascii_case("true")),
+        has_picture: !tag.pictures().is_empty(),
     }
 }
 
@@ -174,6 +205,7 @@ mod tests {
             year: Some(2015),
             genres: strings(&["Rock", "Pop"]),
             compilation: true,
+            has_picture: false,
         }
     }
 
@@ -234,6 +266,24 @@ mod tests {
         assert_eq!(tags, full());
         assert_eq!(props.content_type, "audio/mp4");
         assert!(!props.lossless);
+    }
+
+    #[test]
+    fn embedded_picture() {
+        let (tags, _) = fixture("picture.flac");
+        assert!(tags.has_picture);
+        assert!(!fixture("full.flac").0.has_picture);
+    }
+
+    #[test]
+    fn stored_json_round_trips() {
+        let tags = full();
+        assert_eq!(from_stored(&to_stored(&tags)), Some((tags, true)));
+        // 版を持つ前の JSON は、読めても今の版ではない
+        let (old, current) = from_stored(r#"{"title":"a"}"#).unwrap();
+        assert_eq!(old.title.as_deref(), Some("a"));
+        assert!(!current);
+        assert_eq!(from_stored("broken"), None);
     }
 
     #[test]

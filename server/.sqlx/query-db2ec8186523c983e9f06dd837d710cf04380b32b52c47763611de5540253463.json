@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT album.id AS \"id!\", album.name, album.display_artist, album.sort_name,\n                      album.year, album.created_at, album.compilation,\n                      (SELECT COUNT(*) FROM track WHERE track.album_id = album.id)\n                        AS \"song_count!: i64\",\n                      (SELECT COALESCE(SUM(file.duration_ms), 0) FROM track\n                         JOIN file ON file.id = track.primary_file_id\n                         WHERE track.album_id = album.id) AS \"duration_ms!: i64\"\n               FROM album WHERE album.id IN (\n             SELECT album_id FROM album_artist WHERE artist_id = ?\n             UNION\n             SELECT track.album_id FROM track\n               JOIN track_artist ON track_artist.track_id = track.id\n               WHERE track_artist.artist_id = ?)\n         ORDER BY album.year IS NULL, album.year, album.sort_key, album.id",
+  "query": "SELECT album.id AS \"id!\", album.name, album.display_artist, album.sort_name,\n                      album.year, album.created_at, album.compilation,\n                      album.cover_path IS NOT NULL AS \"has_cover!: bool\",\n                      (SELECT COUNT(*) FROM track WHERE track.album_id = album.id)\n                        AS \"song_count!: i64\",\n                      (SELECT COALESCE(SUM(file.duration_ms), 0) FROM track\n                         JOIN file ON file.id = track.primary_file_id\n                         WHERE track.album_id = album.id) AS \"duration_ms!: i64\"\n               FROM album WHERE album.id = ?",
   "describe": {
     "columns": [
       {
@@ -81,20 +81,26 @@
         }
       },
       {
-        "name": "song_count!: i64",
+        "name": "has_cover!: bool",
         "ordinal": 7,
         "type_info": "Integer",
         "origin": "Expression"
       },
       {
-        "name": "duration_ms!: i64",
+        "name": "song_count!: i64",
         "ordinal": 8,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "duration_ms!: i64",
+        "ordinal": 9,
         "type_info": "Integer",
         "origin": "Expression"
       }
     ],
     "parameters": {
-      "Right": 2
+      "Right": 1
     },
     "nullable": [
       true,
@@ -105,8 +111,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "0972d4fd7b80262d8535f96bbda5c06049ee958b8d42da9e17fad8c053d30666"
+  "hash": "db2ec8186523c983e9f06dd837d710cf04380b32b52c47763611de5540253463"
 }

@@ -10,7 +10,7 @@ mod sort_key;
 use std::path::Path;
 
 pub use match_key::normalize;
-pub use raw::{AudioProps, RawTags, read};
+pub use raw::{AudioProps, RawTags, from_stored, read, to_stored};
 pub use reading::{Reading, ReadingSource, reading};
 pub use search_text::{search_form, search_text};
 pub use sort_key::{index_heading, sort_key};

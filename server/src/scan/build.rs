@@ -4,11 +4,12 @@ use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::path::Path;
 
+use super::Images;
 use crate::db::library::{
     AlbumRow, ArtistRow, CreditRow, FileRow, GenreRow, Library, Snapshot, TrackRow,
 };
 use crate::db::{IdKind, new_id};
-use crate::tags::{Credit, RawTags, TrackInfo, reading, search_text, sort_key};
+use crate::tags::{Credit, RawTags, TrackInfo, reading, search_text, sort_key, to_stored};
 
 /// スキャンで見つけたファイル。
 #[derive(Debug, Clone)]
@@ -128,7 +129,13 @@ fn group_by<'a>(keys: impl Iterator<Item = &'a str>) -> (Vec<String>, Vec<usize>
     (order, membership)
 }
 
-pub fn build(mut files: Vec<Scanned>, snapshot: &Snapshot, music_dir: &str, now: i64) -> Library {
+pub fn build(
+    mut files: Vec<Scanned>,
+    images: &Images,
+    snapshot: &Snapshot,
+    music_dir: &str,
+    now: i64,
+) -> Library {
     files.sort_by(|a, b| a.row.path.cmp(&b.row.path));
     let mut taken: HashSet<String> = snapshot
         .files
@@ -305,15 +312,18 @@ pub fn build(mut files: Vec<Scanned>, snapshot: &Snapshot, music_dir: &str, now:
                 .iter()
                 .flat_map(|&t| track_files[t].iter().copied())
                 .collect();
-            album_row(
-                id,
-                key,
-                &members,
-                &files,
-                &infos,
-                &readings(credits),
-                created_at.get(id.as_str()).copied().unwrap_or(now),
-            )
+            AlbumRow {
+                cover_path: cover_path(&members, &files, images),
+                ..album_row(
+                    id,
+                    key,
+                    &members,
+                    &files,
+                    &infos,
+                    &readings(credits),
+                    created_at.get(id.as_str()).copied().unwrap_or(now),
+                )
+            }
         })
         .collect();
 
@@ -377,7 +387,7 @@ pub fn build(mut files: Vec<Scanned>, snapshot: &Snapshot, music_dir: &str, now:
         .zip(&file_track)
         .map(|(file, &t)| FileRow {
             track_id: track_ids[t].clone(),
-            tags: serde_json::to_string(&file.tags).expect("RawTags は JSON にできる"),
+            tags: to_stored(&file.tags),
             ..file.row
         })
         .collect();
@@ -424,6 +434,47 @@ fn credit_rows(
             credited_sort: c.sort.clone(),
         })
         .collect()
+}
+
+/// フォルダの画像を探す順。Navidrome の既定と同じ
+const COVER_STEMS: [&str; 3] = ["cover", "folder", "front"];
+
+/// カバーアートの元。アルバムのファイルがあるフォルダの画像（`cover.*`、`folder.*`、`front.*` の順）、
+/// なければ画像を埋め込んだ最初のファイル。
+fn cover_path(members: &[usize], files: &[Scanned], images: &Images) -> Option<String> {
+    let mut dirs: Vec<&str> = Vec::new();
+    for &f in members {
+        let dir = files[f]
+            .row
+            .path
+            .rsplit_once('/')
+            .map_or("", |(dir, _)| dir);
+        if !dirs.contains(&dir) {
+            dirs.push(dir);
+        }
+    }
+    for dir in &dirs {
+        let Some(names) = images.get(*dir) else {
+            continue;
+        };
+        for stem in COVER_STEMS {
+            let found = names.iter().find(|name| {
+                name.rsplit_once('.')
+                    .is_some_and(|(s, _)| s.eq_ignore_ascii_case(stem))
+            });
+            if let Some(name) = found {
+                return Some(if dir.is_empty() {
+                    name.clone()
+                } else {
+                    format!("{dir}/{name}")
+                });
+            }
+        }
+    }
+    members
+        .iter()
+        .find(|&&f| files[f].tags.has_picture)
+        .map(|&f| files[f].row.path.clone())
 }
 
 /// アルバムの表記は、属するファイルの多数決で決める。年は最も新しい年。
@@ -473,6 +524,8 @@ fn album_row(
             .map(i64::from),
         created_at,
         compilation: members.iter().any(|&f| infos[f].album.compilation),
+        // カバーアートは呼び出し側で埋める
+        cover_path: None,
         name,
     }
 }
