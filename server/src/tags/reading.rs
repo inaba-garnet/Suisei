@@ -89,6 +89,8 @@ fn romaji_to_katakana(romaji: &str) -> Option<String> {
             'ō' | 'ô' => prepared.push_str("ou"),
             // wana_kana は l を小書きの接頭辞として読む（Lui が ぅい になる）ので R として読む
             'l' => prepared.push('r'),
+            // 「姓, 名」形式の区切り。wana_kana は読点にするが、読みには要らない
+            ',' => {}
             _ => prepared.push(c),
         }
     }
@@ -140,6 +142,18 @@ mod tests {
             sort_tag("タカネ ルイ")
         );
         assert_eq!(reading("向上", Some("Kōjō")), sort_tag("コウジョウ"));
+    }
+
+    #[test]
+    fn family_name_first_sort_tag() {
+        assert_eq!(
+            reading("やなぎなぎ", Some("Yanagi, Nagi")),
+            sort_tag("ヤナギ ナギ")
+        );
+        assert_eq!(
+            reading("芹澤優", Some("Serizawa, Yū")),
+            sort_tag("セリザワ ユウ")
+        );
     }
 
     #[test]
