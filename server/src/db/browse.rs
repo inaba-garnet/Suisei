@@ -64,6 +64,10 @@ pub struct Album {
     pub song_count: i64,
     /// 配信ファイルの長さの合計
     pub duration_ms: i64,
+    /// 属する曲の再生回数の合計
+    pub play_count: i64,
+    /// 属する曲を最後に再生した時刻
+    pub last_played: Option<i64>,
 }
 
 /// アルバムと、曲数と長さの合計を読む。`$tail` に絞り込みと並び順を書く。
@@ -79,7 +83,13 @@ macro_rules! albums {
                         AS "song_count!: i64",
                       (SELECT COALESCE(SUM(file.duration_ms), 0) FROM track
                          JOIN file ON file.id = track.primary_file_id
-                         WHERE track.album_id = album.id) AS "duration_ms!: i64"
+                         WHERE track.album_id = album.id) AS "duration_ms!: i64",
+                      (SELECT COUNT(*) FROM play_history
+                         JOIN track ON track.id = play_history.track_id
+                         WHERE track.album_id = album.id) AS "play_count!: i64",
+                      (SELECT MAX(play_history.played_at) FROM play_history
+                         JOIN track ON track.id = play_history.track_id
+                         WHERE track.album_id = album.id) AS "last_played: i64"
                FROM album "# + $tail
             $(, $arg)*
         )
@@ -123,6 +133,10 @@ pub enum AlbumOrder {
         to: i64,
     },
     ByGenre(String),
+    /// 最後に再生した新しい順。再生したことのないアルバムは含めない
+    Recent,
+    /// 再生回数の多い順。再生したことのないアルバムは含めない
+    Frequent,
 }
 
 pub async fn album_list(
@@ -200,6 +214,42 @@ pub async fn album_list(
                      WHERE track_genre.genre = ?)
                  ORDER BY album.sort_key, album.id LIMIT ? OFFSET ?",
                 genre,
+                size,
+                offset
+            )
+            .fetch_all(pool)
+            .await
+        }
+        // 列の別名は型の注釈を含むので、並べ替えには式を書き直す
+        AlbumOrder::Recent => {
+            albums!(
+                "WHERE album.id IN (
+                     SELECT track.album_id FROM play_history
+                       JOIN track ON track.id = play_history.track_id)
+                 ORDER BY (SELECT MAX(play_history.played_at) FROM play_history
+                             JOIN track ON track.id = play_history.track_id
+                           WHERE track.album_id = album.id) DESC,
+                          album.sort_key, album.id
+                 LIMIT ? OFFSET ?",
+                size,
+                offset
+            )
+            .fetch_all(pool)
+            .await
+        }
+        AlbumOrder::Frequent => {
+            albums!(
+                "WHERE album.id IN (
+                     SELECT track.album_id FROM play_history
+                       JOIN track ON track.id = play_history.track_id)
+                 ORDER BY (SELECT COUNT(*) FROM play_history
+                             JOIN track ON track.id = play_history.track_id
+                           WHERE track.album_id = album.id) DESC,
+                          (SELECT MAX(play_history.played_at) FROM play_history
+                             JOIN track ON track.id = play_history.track_id
+                           WHERE track.album_id = album.id) DESC,
+                          album.sort_key, album.id
+                 LIMIT ? OFFSET ?",
                 size,
                 offset
             )
@@ -326,6 +376,9 @@ pub struct Song {
     pub sample_rate: Option<i64>,
     pub channels: Option<i64>,
     pub bit_depth: Option<i64>,
+    pub play_count: i64,
+    /// 最後に再生した時刻
+    pub last_played: Option<i64>,
 }
 
 /// ディスク番号、トラック番号、並べ替えキーの順。
@@ -338,7 +391,11 @@ pub async fn songs_of_album(pool: &Pool, album_id: &str) -> Result<Vec<Song>, sq
                   album.display_artist AS album_display_artist,
                   album.cover_path IS NOT NULL AS "album_has_cover!: bool", file.path, file.size,
                   file.suffix, file.content_type, file.duration_ms, file.bit_rate,
-                  file.sample_rate, file.channels, file.bit_depth
+                  file.sample_rate, file.channels, file.bit_depth,
+                  (SELECT COUNT(*) FROM play_history WHERE play_history.track_id = track.id)
+                    AS "play_count!: i64",
+                  (SELECT MAX(played_at) FROM play_history WHERE play_history.track_id = track.id)
+                    AS "last_played: i64"
            FROM track
              JOIN album ON album.id = track.album_id
              JOIN file ON file.id = track.primary_file_id
@@ -360,7 +417,11 @@ pub async fn song(pool: &Pool, id: &str) -> Result<Option<Song>, sqlx::Error> {
                   album.display_artist AS album_display_artist,
                   album.cover_path IS NOT NULL AS "album_has_cover!: bool", file.path, file.size,
                   file.suffix, file.content_type, file.duration_ms, file.bit_rate,
-                  file.sample_rate, file.channels, file.bit_depth
+                  file.sample_rate, file.channels, file.bit_depth,
+                  (SELECT COUNT(*) FROM play_history WHERE play_history.track_id = track.id)
+                    AS "play_count!: i64",
+                  (SELECT MAX(played_at) FROM play_history WHERE play_history.track_id = track.id)
+                    AS "last_played: i64"
            FROM track
              JOIN album ON album.id = track.album_id
              JOIN file ON file.id = track.primary_file_id

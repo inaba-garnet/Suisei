@@ -93,7 +93,7 @@ fn words(query: &str) -> Vec<String> {
 }
 
 /// 曲を順序どおりに Child にする。アーティストとジャンルはアルバムごとにまとめて読む。
-async fn songs(state: &AppState, ids: &[String]) -> Result<Vec<Value>, Error> {
+pub(super) async fn songs(state: &AppState, ids: &[String]) -> Result<Vec<Value>, Error> {
     let mut by_album: HashMap<String, Vec<(usize, browse::Song)>> = HashMap::new();
     for (i, id) in ids.iter().enumerate() {
         if let Some(song) = browse::song(&state.db, id).await.map_err(db_error)? {

@@ -5,5 +5,5 @@ pub mod scan;
 pub mod subsonic;
 pub mod tags;
 
-pub use api::{AppState, router};
+pub use api::{AppState, NowPlaying, router};
 pub use config::{Config, Credentials};

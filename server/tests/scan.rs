@@ -211,6 +211,53 @@ async fn merged_track_leaves_alias() {
     assert_eq!(alias, kept);
 }
 
+/// マージで消える曲の再生履歴は、残る曲へ付け替える。同じ時刻の再生は一回にまとめる。
+#[tokio::test]
+async fn merged_track_keeps_play_history() {
+    let lib = Library::new().await;
+    lib.put("full.flac", "a/01.flac");
+    lib.put("full.flac", "a/02.flac");
+    lib.set_title("a/02.flac", "別の曲");
+    lib.scan().await;
+    let kept = lib.track_id("a/01.flac").await;
+    let merged = lib.track_id("a/02.flac").await;
+    for (id, at) in [(&kept, 1), (&merged, 1), (&merged, 2)] {
+        sqlx::query("INSERT INTO play_history (track_id, played_at) VALUES (?, ?)")
+            .bind(id)
+            .bind(at)
+            .execute(&lib.pool)
+            .await
+            .unwrap();
+    }
+
+    lib.set_title("a/02.flac", "テスト曲");
+    lib.scan().await;
+    let played: Vec<(String, i64)> =
+        sqlx::query_as("SELECT track_id, played_at FROM play_history ORDER BY played_at")
+            .fetch_all(&lib.pool)
+            .await
+            .unwrap();
+    assert_eq!(played, [(kept.clone(), 1), (kept, 2)]);
+}
+
+#[tokio::test]
+async fn deleted_file_removes_play_history() {
+    let lib = Library::new().await;
+    lib.put("full.flac", "a/01.flac");
+    lib.put("id3v1.mp3", "b/01.mp3");
+    lib.scan().await;
+    let id = lib.track_id("b/01.mp3").await;
+    sqlx::query("INSERT INTO play_history (track_id, played_at) VALUES (?, 1)")
+        .bind(&id)
+        .execute(&lib.pool)
+        .await
+        .unwrap();
+
+    std::fs::remove_file(lib.path("b/01.mp3")).unwrap();
+    lib.scan().await;
+    assert_eq!(lib.count("play_history").await, 0);
+}
+
 #[tokio::test]
 async fn deleted_file_removes_track() {
     let lib = Library::new().await;
@@ -274,6 +321,7 @@ async fn scan_endpoints() {
         },
         db: lib.pool.clone(),
         scanner: scanner.clone(),
+        now_playing: Default::default(),
     });
     let status = |endpoint: &'static str| {
         let app = app.clone();

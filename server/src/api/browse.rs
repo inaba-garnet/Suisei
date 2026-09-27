@@ -198,8 +198,10 @@ async fn album_list(params: &Params, state: &AppState) -> Result<Map<String, Val
                 })?
                 .to_owned(),
         ),
-        // 再生履歴、評価、お気に入りを持つまでは空の一覧を返す。エラーだとクライアントのホーム画面が止まるおそれがある
-        "recent" | "frequent" | "highest" | "starred" => {
+        "recent" => AlbumOrder::Recent,
+        "frequent" => AlbumOrder::Frequent,
+        // 評価とお気に入りを持つまでは空の一覧を返す。エラーだとクライアントのホーム画面が止まるおそれがある
+        "highest" | "starred" => {
             return Ok(payload(json!({ "albumList2": { "album": [] } })));
         }
         _ => {
@@ -232,7 +234,7 @@ async fn genres(state: &AppState) -> Result<Map<String, Value>, Error> {
     Ok(payload(json!({ "genres": { "genre": list } })))
 }
 
-/// AlbumID3。カバーアート、再生回数、評価は、まだ持っていないので返さない。
+/// AlbumID3。評価は、まだ持っていないので返さない。
 pub(super) async fn album_json(state: &AppState, album: &Album) -> Result<Value, Error> {
     let artists = browse::credits_of_album(&state.db, &album.id)
         .await
@@ -249,6 +251,7 @@ pub(super) async fn album_json(state: &AppState, album: &Album) -> Result<Value,
         "duration": seconds(album.duration_ms),
         "created": timestamp(album.created_at),
         "isCompilation": album.compilation,
+        "playCount": album.play_count,
         "artists": artists_json(&artists),
         "genres": genres_json(&genres),
     });
@@ -261,6 +264,9 @@ pub(super) async fn album_json(state: &AppState, album: &Album) -> Result<Value,
     }
     if let Some(year) = album.year {
         value["year"] = json!(year);
+    }
+    if let Some(at) = album.last_played {
+        value["played"] = json!(timestamp(at));
     }
     if let Some(genre) = genres.first() {
         value["genre"] = json!(genre);
@@ -333,6 +339,7 @@ fn song_json(
         "duration": seconds(song.duration_ms),
         "path": song.path,
         "created": timestamp(song.created_at),
+        "playCount": song.play_count,
         "type": "music",
         "mediaType": "song",
     });
@@ -352,6 +359,9 @@ fn song_json(
     }
     if let Some(first) = artists.first() {
         value["artistId"] = json!(first.artist_id);
+    }
+    if let Some(at) = song.last_played {
+        value["played"] = json!(timestamp(at));
     }
     // 曲ごとの画像は扱わず、アルバムの画像を使う
     if song.album_has_cover {

@@ -1,5 +1,6 @@
 mod browse;
 mod empty;
+mod history;
 mod media;
 mod search;
 mod unsupported;
@@ -19,11 +20,14 @@ use crate::db::Pool;
 use crate::scan::{self, Scanner};
 use crate::subsonic::{self, Error, ErrorCode, Format, Params};
 
+pub use history::NowPlaying;
+
 #[derive(Debug, Clone)]
 pub struct AppState {
     pub credentials: Credentials,
     pub db: Pool,
     pub scanner: Arc<Scanner>,
+    pub now_playing: Arc<NowPlaying>,
 }
 
 pub fn router(state: AppState) -> Router {
@@ -89,6 +93,9 @@ async fn rest(
             subsonic::ok(format, scan_status(&state))
         }
         "getScanStatus" => subsonic::ok(format, scan_status(&state)),
+        "scrobble" => reply(format, history::scrobble(&params, &state).await),
+        "getNowPlaying" => reply(format, history::now_playing(&state).await),
+        "getTopSongs" => reply(format, history::top_songs(&params, &state).await),
         _ => match browse::respond(name, &params, &state)
             .await
             .or_else(|| empty::respond(name, &params, &state))
@@ -105,6 +112,13 @@ async fn rest(
                 StatusCode::NOT_FOUND.into_response()
             }
         },
+    }
+}
+
+fn reply(format: Format, result: Result<Map<String, Value>, Error>) -> Response {
+    match result {
+        Ok(payload) => subsonic::ok(format, payload),
+        Err(err) => subsonic::error(format, &err),
     }
 }
 

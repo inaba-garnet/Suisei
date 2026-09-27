@@ -361,6 +361,19 @@ pub async fn replace(pool: &Pool, library: &Library) -> Result<(), sqlx::Error> 
         .await?;
     }
 
+    // マージで消える曲の再生履歴を、残る曲へ付け替える。消える曲の行は下で連鎖して消える
+    for (old_id, new_id) in &library.aliases {
+        sqlx::query!(
+            "INSERT INTO play_history (track_id, played_at)
+             SELECT ?, played_at FROM play_history WHERE track_id = ?
+             ON CONFLICT (track_id, played_at) DO NOTHING",
+            new_id,
+            old_id
+        )
+        .execute(&mut *tx)
+        .await?;
+    }
+
     // 参照がなくなった行を消す。file と track_artist などは入れ直したので、残っているのは使われない行
     sqlx::query!("DELETE FROM track WHERE id NOT IN (SELECT track_id FROM file)")
         .execute(&mut *tx)

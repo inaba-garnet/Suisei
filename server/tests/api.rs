@@ -17,6 +17,7 @@ async fn app() -> axum::Router {
         },
         db: db.clone(),
         scanner: suisei::scan::Scanner::new(db, "/nonexistent".into()),
+        now_playing: Default::default(),
     })
 }
 
@@ -68,10 +69,10 @@ async fn unimplemented_endpoint_requires_auth() {
 
 #[tokio::test]
 async fn pending_endpoint_returns_generic_error() {
-    let res = get_json(&format!("/rest/scrobble.view?{AUTH}&f=json&id=tr-00000000")).await;
+    let res = get_json(&format!("/rest/star.view?{AUTH}&f=json&id=tr-00000000")).await;
     assert_eq!(res["status"], "failed");
     assert_eq!(res["error"]["code"], 0);
-    assert_eq!(res["error"]["message"], "not implemented: scrobble");
+    assert_eq!(res["error"]["message"], "not implemented: star");
 }
 
 #[tokio::test]

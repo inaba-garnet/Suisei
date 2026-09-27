@@ -19,6 +19,7 @@ async fn main() -> std::io::Result<()> {
         credentials: config.credentials,
         db,
         scanner,
+        now_playing: Default::default(),
     };
     let listener = TcpListener::bind(config.listen).await?;
     tracing::info!(addr = %config.listen, "listening");

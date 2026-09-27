@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO play_history (track_id, played_at)\n             SELECT ?, played_at FROM play_history WHERE track_id = ?\n             ON CONFLICT (track_id, played_at) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "f920942687f0bf453143b497b226a3669adec23232ccfc74a26e27233ac11eb5"
+}

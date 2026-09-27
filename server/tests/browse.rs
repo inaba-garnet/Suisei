@@ -89,6 +89,7 @@ async fn start(dir: TempDir) -> Server {
         },
         db: db.clone(),
         scanner: Arc::clone(&scanner),
+        now_playing: Default::default(),
     });
     Server { dir, app, db }
 }
@@ -745,4 +746,133 @@ async fn album_without_cover_has_no_cover_art() {
     assert_eq!(res["subsonic-response"]["error"]["code"], 70);
     let res = server.raw("getCoverArt", "&id=al-00000000").await;
     assert_eq!(res["subsonic-response"]["error"]["code"], 70);
+}
+
+/// b（ClariS）を 2 回、a（やなぎなぎ）を 1 回、あとから再生する。
+async fn played_server() -> Server {
+    let server = album_list_server().await;
+    let a = server.id("track", "title", "a").await;
+    let b = server.id("track", "title", "b").await;
+    let query = format!("&id={b}&time=1700000000000&id={b}&time=1700000050000");
+    server.get("scrobble", &query).await;
+    let query = format!("&id={a}&time=1700000100000");
+    server.get("scrobble", &query).await;
+    server
+}
+
+#[tokio::test]
+async fn scrobble_counts_plays() {
+    let server = played_server().await;
+    let b = server.id("track", "title", "b").await;
+
+    let res = server.get("getSong", &format!("&id={b}")).await;
+    assert_eq!(res["song"]["playCount"], 2);
+    assert_eq!(res["song"]["played"], "2023-11-14T22:14:10.000Z");
+    let album = server.id("album", "name", "b").await;
+    let res = server.get("getAlbum", &format!("&id={album}")).await;
+    assert_eq!(res["album"]["playCount"], 2);
+    assert_eq!(res["album"]["played"], "2023-11-14T22:14:10.000Z");
+
+    // 再生していない曲には played を付けない
+    let c = server.id("track", "title", "c").await;
+    let res = server.get("getSong", &format!("&id={c}")).await;
+    assert_eq!(res["song"]["playCount"], 0);
+    assert!(res["song"].get("played").is_none());
+}
+
+/// オフラインで溜めた再生の再送では、回数を増やさない。
+#[tokio::test]
+async fn resent_scrobble_is_counted_once() {
+    let server = played_server().await;
+    let b = server.id("track", "title", "b").await;
+    server
+        .get("scrobble", &format!("&id={b}&time=1700000000000"))
+        .await;
+
+    let res = server.get("getSong", &format!("&id={b}")).await;
+    assert_eq!(res["song"]["playCount"], 2);
+}
+
+/// 知らない ID は飛ばし、残りを記録する。
+#[tokio::test]
+async fn scrobble_skips_unknown_ids() {
+    let server = album_list_server().await;
+    let c = server.id("track", "title", "c").await;
+    server
+        .get("scrobble", &format!("&id=tr-00000000&id={c}"))
+        .await;
+
+    let res = server.get("getSong", &format!("&id={c}")).await;
+    assert_eq!(res["song"]["playCount"], 1);
+}
+
+#[tokio::test]
+async fn scrobble_requires_id() {
+    let server = album_list_server().await;
+    let res = server.raw("scrobble", "").await;
+    assert_eq!(res["subsonic-response"]["error"]["code"], 10);
+}
+
+#[tokio::test]
+async fn album_list_by_plays() {
+    let server = played_server().await;
+    let list = |kind: &'static str| {
+        let server = &server;
+        async move {
+            let res = server.get("getAlbumList2", &format!("&type={kind}")).await;
+            names(&res["albumList2"]["album"])
+                .into_iter()
+                .map(str::to_owned)
+                .collect::<Vec<_>>()
+        }
+    };
+    // 再生したことのない c は含めない
+    assert_eq!(list("recent").await, ["a", "b"]);
+    assert_eq!(list("frequent").await, ["b", "a"]);
+}
+
+#[tokio::test]
+async fn top_songs_follow_play_count() {
+    let server = played_server().await;
+    let res = server.get("getTopSongs", "&artist=ClariS").await;
+    assert_eq!(titles(&res["topSongs"]["song"]), ["b"]);
+    let res = server.get("getTopSongs", "&artist=4U").await;
+    assert!(res["topSongs"]["song"].as_array().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn now_playing_until_submission() {
+    let server = album_list_server().await;
+    let a = server.id("track", "title", "a").await;
+    server
+        .get("scrobble", &format!("&id={a}&submission=false&c=Symfonium"))
+        .await;
+
+    let res = server.get("getNowPlaying", "").await;
+    let entry = &res["nowPlaying"]["entry"][0];
+    assert_eq!(entry["id"], a.as_str());
+    assert_eq!(entry["username"], "inaba");
+    assert_eq!(entry["playerName"], "Symfonium");
+    assert_eq!(entry["minutesAgo"], 0);
+
+    // 再生を終えたら外す
+    server
+        .get("scrobble", &format!("&id={a}&c=Symfonium"))
+        .await;
+    let res = server.get("getNowPlaying", "").await;
+    assert_eq!(res["nowPlaying"], serde_json::json!({}));
+}
+
+/// 曲の長さ（1 秒）を過ぎたものは返さない。
+#[tokio::test]
+async fn now_playing_expires_after_duration() {
+    let server = album_list_server().await;
+    let a = server.id("track", "title", "a").await;
+    server
+        .get("scrobble", &format!("&id={a}&submission=false&c=Symfonium"))
+        .await;
+
+    tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
+    let res = server.get("getNowPlaying", "").await;
+    assert_eq!(res["nowPlaying"], serde_json::json!({}));
 }
