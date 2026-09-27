@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT album.id AS \"id!\", album.name, album.display_artist, album.sort_name,\n                      album.year, album.created_at, album.compilation,\n                      album.cover_path IS NOT NULL AS \"has_cover!: bool\",\n                      (SELECT COUNT(*) FROM track WHERE track.album_id = album.id)\n                        AS \"song_count!: i64\",\n                      (SELECT COALESCE(SUM(file.duration_ms), 0) FROM track\n                         JOIN file ON file.id = track.primary_file_id\n                         WHERE track.album_id = album.id) AS \"duration_ms!: i64\"\n               FROM album ORDER BY (SELECT artist.sort_key FROM album_artist\n                             JOIN artist ON artist.id = album_artist.artist_id\n                           WHERE album_artist.album_id = album.id AND album_artist.position = 0),\n                          album.sort_key, album.id\n                 LIMIT ? OFFSET ?",
+  "query": "SELECT album.id AS \"id!\", album.name, album.display_artist, album.sort_name,\n                      album.year, album.created_at, album.compilation,\n                      album.cover_path IS NOT NULL AS \"has_cover!: bool\",\n                      (SELECT COUNT(*) FROM track WHERE track.album_id = album.id)\n                        AS \"song_count!: i64\",\n                      (SELECT COALESCE(SUM(file.duration_ms), 0) FROM track\n                         JOIN file ON file.id = track.primary_file_id\n                         WHERE track.album_id = album.id) AS \"duration_ms!: i64\",\n                      (SELECT COUNT(*) FROM play_history\n                         JOIN track ON track.id = play_history.track_id\n                         WHERE track.album_id = album.id) AS \"play_count!: i64\",\n                      (SELECT MAX(play_history.played_at) FROM play_history\n                         JOIN track ON track.id = play_history.track_id\n                         WHERE track.album_id = album.id) AS \"last_played: i64\"\n               FROM album WHERE album.year BETWEEN ? AND ?\n                 ORDER BY album.year DESC, album.sort_key, album.id LIMIT ? OFFSET ?",
   "describe": {
     "columns": [
       {
@@ -97,10 +97,22 @@
         "ordinal": 9,
         "type_info": "Integer",
         "origin": "Expression"
+      },
+      {
+        "name": "play_count!: i64",
+        "ordinal": 10,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "last_played: i64",
+        "ordinal": 11,
+        "type_info": "Integer",
+        "origin": "Expression"
       }
     ],
     "parameters": {
-      "Right": 2
+      "Right": 4
     },
     "nullable": [
       true,
@@ -112,8 +124,10 @@
       false,
       false,
       false,
-      false
+      false,
+      false,
+      true
     ]
   },
-  "hash": "56cb2436ccd0acd0394816317d61869648a078ef5e73b2e6960207bec24b4f1f"
+  "hash": "29d85297001e04dddf5610875db80111fe992e6bbcebaac570819394f7b4d824"
 }

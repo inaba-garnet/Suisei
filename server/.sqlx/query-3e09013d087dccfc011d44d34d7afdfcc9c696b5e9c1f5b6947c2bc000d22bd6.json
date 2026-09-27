@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT track.id AS \"id!\" FROM track\n             JOIN play_history ON play_history.track_id = track.id\n           WHERE track.id IN (\n               SELECT track_artist.track_id FROM track_artist\n                 JOIN artist ON artist.id = track_artist.artist_id\n               WHERE artist.name = ?)\n           GROUP BY track.id\n           ORDER BY COUNT(*) DESC, MAX(play_history.played_at) DESC, track.id\n           LIMIT ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "3e09013d087dccfc011d44d34d7afdfcc9c696b5e9c1f5b6947c2bc000d22bd6"
+}

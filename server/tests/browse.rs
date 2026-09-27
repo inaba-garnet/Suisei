@@ -89,6 +89,7 @@ async fn start(dir: TempDir) -> Server {
         },
         db: db.clone(),
         scanner: Arc::clone(&scanner),
+        now_playing: Default::default(),
     });
     Server { dir, app, db }
 }

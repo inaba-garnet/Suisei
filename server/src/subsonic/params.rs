@@ -19,6 +19,14 @@ impl Params {
             .map(|(_, v)| v.as_str())
     }
 
+    /// 繰り返された引数の値を、送られた順に返す。
+    pub fn get_all<'a>(&'a self, key: &'a str) -> impl Iterator<Item = &'a str> {
+        self.0
+            .iter()
+            .filter(move |(k, _)| k == key)
+            .map(|(_, v)| v.as_str())
+    }
+
     pub fn contains(&self, key: &str) -> bool {
         self.get(key).is_some()
     }

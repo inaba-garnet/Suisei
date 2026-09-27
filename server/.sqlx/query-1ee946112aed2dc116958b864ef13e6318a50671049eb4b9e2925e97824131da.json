@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT track.id AS \"id!\", track.album_id, track.title, track.display_artist,\n                  track.sort_name, track.disc_number, track.track_number, track.year,\n                  track.created_at, album.name AS album_name,\n                  album.display_artist AS album_display_artist,\n                  album.cover_path IS NOT NULL AS \"album_has_cover!: bool\", file.path, file.size,\n                  file.suffix, file.content_type, file.duration_ms, file.bit_rate,\n                  file.sample_rate, file.channels, file.bit_depth\n           FROM track\n             JOIN album ON album.id = track.album_id\n             JOIN file ON file.id = track.primary_file_id\n           WHERE track.album_id = ?\n           ORDER BY track.disc_number IS NULL, track.disc_number,\n                    track.track_number IS NULL, track.track_number, track.sort_key, track.id",
+  "query": "SELECT track.id AS \"id!\", track.album_id, track.title, track.display_artist,\n                  track.sort_name, track.disc_number, track.track_number, track.year,\n                  track.created_at, album.name AS album_name,\n                  album.display_artist AS album_display_artist,\n                  album.cover_path IS NOT NULL AS \"album_has_cover!: bool\", file.path, file.size,\n                  file.suffix, file.content_type, file.duration_ms, file.bit_rate,\n                  file.sample_rate, file.channels, file.bit_depth,\n                  (SELECT COUNT(*) FROM play_history WHERE play_history.track_id = track.id)\n                    AS \"play_count!: i64\",\n                  (SELECT MAX(played_at) FROM play_history WHERE play_history.track_id = track.id)\n                    AS \"last_played: i64\"\n           FROM track\n             JOIN album ON album.id = track.album_id\n             JOIN file ON file.id = track.primary_file_id\n           WHERE track.id = ?",
   "describe": {
     "columns": [
       {
@@ -228,6 +228,18 @@
             "name": "bit_depth"
           }
         }
+      },
+      {
+        "name": "play_count!: i64",
+        "ordinal": 21,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "last_played: i64",
+        "ordinal": 22,
+        "type_info": "Integer",
+        "origin": "Expression"
       }
     ],
     "parameters": {
@@ -254,8 +266,10 @@
       true,
       true,
       true,
+      true,
+      false,
       true
     ]
   },
-  "hash": "0758f2a0210291e48f8f97f78bfb8c234a242e1ef35e0175aec71f21b9070cac"
+  "hash": "1ee946112aed2dc116958b864ef13e6318a50671049eb4b9e2925e97824131da"
 }

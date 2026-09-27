@@ -27,7 +27,6 @@ pub fn respond(
         "getStarred" => json!({ "starred": {} }),
         "getStarred2" => json!({ "starred2": {} }),
         "getPlaylists" => json!({ "playlists": {} }),
-        "getNowPlaying" => json!({ "nowPlaying": {} }),
         // 保存した再生キューがなければ、中身のない応答を返す（OpenSubsonic の仕様）。
         "getPlayQueue" => json!({}),
         "getUser" => return Some(user(params, state)),

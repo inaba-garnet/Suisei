@@ -21,6 +21,7 @@ async fn suisei(endpoint: &str, query: &str) -> Map<String, Value> {
         },
         db: db.clone(),
         scanner: suisei::scan::Scanner::new(db, "/nonexistent".into()),
+        now_playing: Default::default(),
     });
     let uri = format!("/rest/{endpoint}?u=inaba&p=sesame&f=json{query}");
     let res = app

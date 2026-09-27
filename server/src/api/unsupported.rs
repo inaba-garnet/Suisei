@@ -7,7 +7,6 @@ use crate::subsonic::{Error, ErrorCode, Params};
 
 /// 実装を予定しているエンドポイント。実装するまで仮の措置（200 と code 0）を返す（docs/verification.md）。
 pub const PENDING: &[&str] = &[
-    "scrobble",
     "star",
     "unstar",
     "setRating",
@@ -70,8 +69,6 @@ pub fn respond(name: &str, params: &Params) -> Option<Result<Map<String, Value>,
         "getAlbumInfo" | "getAlbumInfo2" => return Some(info(params, "id", "albumInfo")),
         "getSimilarSongs" => return Some(info(params, "id", "similarSongs")),
         "getSimilarSongs2" => return Some(info(params, "id", "similarSongs2")),
-        // 再生履歴を持つまで空（docs/verification.md）
-        "getTopSongs" => return Some(info(params, "artist", "topSongs")),
         _ => return None,
     };
     Some(Ok(payload(value)))
