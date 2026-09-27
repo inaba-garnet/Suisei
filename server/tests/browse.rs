@@ -459,3 +459,120 @@ async fn list_shapes_match_navidrome() {
         assert_subset(endpoint, &Value::Object(ours), &Value::Object(theirs));
     }
 }
+
+async fn search_server() -> Server {
+    server(&[
+        Song {
+            title: Some("感電"),
+            artist_sort: Some("Yonezu, Kenshi"),
+            ..song("1.flac", "米津玄師", "STRAY SHEEP")
+        },
+        Song {
+            title: Some("again"),
+            ..song("2.flac", "ClariS", "Fairy Castle")
+        },
+        Song {
+            title: Some("border"),
+            artist: "ゲスト",
+            ..song("3.flac", "ClariS", "Fairy Castle")
+        },
+    ])
+    .await
+}
+
+fn search_names(result: &Value, kind: &str, field: &str) -> Vec<String> {
+    result[kind]
+        .as_array()
+        .map(|items| {
+            items
+                .iter()
+                .map(|i| i[field].as_str().unwrap().to_owned())
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+#[tokio::test]
+async fn search_with_empty_query_returns_everything() {
+    let server = search_server().await;
+    // Symfonium は引用符二つ、substreamer は空の文字列で全件を求める
+    for query in ["%22%22", ""] {
+        let res = server
+            .get(
+                "search3",
+                &format!("&query={query}&artistCount=500&albumCount=500&songCount=500"),
+            )
+            .await;
+        let result = &res["searchResult3"];
+        // 曲にだけ参加しているアーティストも含める
+        assert_eq!(
+            search_names(result, "artist", "name"),
+            ["ClariS", "ゲスト", "米津玄師"]
+        );
+        assert_eq!(
+            search_names(result, "album", "name"),
+            ["Fairy Castle", "STRAY SHEEP"]
+        );
+        assert_eq!(search_names(result, "song", "title").len(), 3);
+    }
+}
+
+#[tokio::test]
+async fn search_pages_without_gaps() {
+    let server = search_server().await;
+    let mut titles = Vec::new();
+    for offset in 0..3 {
+        let res = server
+            .get(
+                "search3",
+                &format!("&query=&artistCount=0&albumCount=0&songCount=1&songOffset={offset}"),
+            )
+            .await;
+        titles.extend(search_names(&res["searchResult3"], "song", "title"));
+    }
+    titles.sort();
+    assert_eq!(titles, ["again", "border", "感電"]);
+}
+
+#[tokio::test]
+async fn search_matches_reading_and_all_words() {
+    let server = search_server().await;
+    // 読み（ヨネズ ケンシ）にひらがなで一致する
+    let res = server
+        .get("search3", "&query=%E3%82%88%E3%81%AD%E3%81%9A")
+        .await;
+    let result = &res["searchResult3"];
+    assert_eq!(search_names(result, "artist", "name"), ["米津玄師"]);
+    assert_eq!(search_names(result, "album", "name"), ["STRAY SHEEP"]);
+    assert_eq!(search_names(result, "song", "title"), ["感電"]);
+
+    // 語はすべてを含むものだけ。曲はアーティスト名とアルバム名でも一致する
+    let res = server.get("search3", "&query=fairy%20BORDER").await;
+    let result = &res["searchResult3"];
+    assert!(result.get("artist").is_none());
+    assert!(result.get("album").is_none());
+    assert_eq!(search_names(result, "song", "title"), ["border"]);
+}
+
+#[tokio::test]
+async fn search_shapes_match_navidrome() {
+    let server = search_server().await;
+    let res = server
+        .raw(
+            "search3",
+            "&query=claris&artistCount=1&albumCount=1&songCount=1",
+        )
+        .await;
+    let ours = payload(res);
+    let result = &ours["searchResult3"];
+    let artists = navidrome("getArtists");
+    let albums = navidrome("getAlbumList2");
+    let songs = navidrome("search3");
+    assert_subset(
+        "artist",
+        &result["artist"],
+        &artists["artists"]["index"][0]["artist"],
+    );
+    assert_subset("album", &result["album"], &albums["albumList2"]["album"]);
+    assert_subset("song", &result["song"], &songs["searchResult3"]["song"]);
+}

@@ -3,6 +3,7 @@
 pub mod browse;
 mod id;
 pub mod library;
+pub mod search;
 
 use std::path::Path;
 

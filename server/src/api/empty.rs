@@ -24,7 +24,6 @@ pub fn respond(
         "getRandomSongs" => json!({ "randomSongs": {} }),
         "getSongsByGenre" => json!({ "songsByGenre": {} }),
         "search2" => json!({ "searchResult2": {} }),
-        "search3" => json!({ "searchResult3": {} }),
         "getStarred" => json!({ "starred": {} }),
         "getStarred2" => json!({ "starred2": {} }),
         "getBookmarks" => json!({ "bookmarks": {} }),

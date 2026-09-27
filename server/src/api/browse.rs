@@ -24,12 +24,13 @@ pub async fn respond(
         "getSong" => song(params, state).await,
         "getAlbumList2" => album_list(params, state).await,
         "getGenres" => genres(state).await,
+        "search3" => super::search::search3(params, state).await,
         _ => return None,
     };
     Some(result)
 }
 
-fn db_error(err: sqlx::Error) -> Error {
+pub(super) fn db_error(err: sqlx::Error) -> Error {
     tracing::error!(error = %err, "db error");
     Error::new(ErrorCode::Generic, "database error")
 }
@@ -232,7 +233,7 @@ async fn genres(state: &AppState) -> Result<Map<String, Value>, Error> {
 }
 
 /// AlbumID3。カバーアート、再生回数、評価は、まだ持っていないので返さない。
-async fn album_json(state: &AppState, album: &Album) -> Result<Value, Error> {
+pub(super) async fn album_json(state: &AppState, album: &Album) -> Result<Value, Error> {
     let artists = browse::credits_of_album(&state.db, &album.id)
         .await
         .map_err(db_error)?;
@@ -267,7 +268,11 @@ async fn album_json(state: &AppState, album: &Album) -> Result<Value, Error> {
 }
 
 /// 同じアルバムの曲を Child にする。アーティストとジャンルはアルバムの分をまとめて読む。
-async fn songs_json(state: &AppState, album_id: &str, songs: &[Song]) -> Result<Vec<Value>, Error> {
+pub(super) async fn songs_json(
+    state: &AppState,
+    album_id: &str,
+    songs: &[Song],
+) -> Result<Vec<Value>, Error> {
     let album_artists = browse::credits_of_album(&state.db, album_id)
         .await
         .map_err(db_error)?;
