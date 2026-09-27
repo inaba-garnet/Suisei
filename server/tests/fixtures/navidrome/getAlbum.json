@@ -1,0 +1,1049 @@
+{
+  "subsonic-response": {
+    "status": "ok",
+    "version": "1.16.1",
+    "type": "navidrome",
+    "serverVersion": "0.64.0 (1072e9f7)",
+    "openSubsonic": true,
+    "album": {
+      "id": "2h5JJXNsEdrYbwM5b7hbAS",
+      "name": "Big House",
+      "artist": "CrumbSnatchers",
+      "artistId": "54xIbFYq9XbxPHSjN4m90c",
+      "coverArt": "al-2h5JJXNsEdrYbwM5b7hbAS_7aec65882144c5cc",
+      "songCount": 13,
+      "duration": 3176,
+      "playCount": 2058,
+      "created": "2025-03-26T22:26:38.753934963Z",
+      "starred": "2026-09-25T12:49:11.63468695Z",
+      "year": 2016,
+      "genre": "Punk",
+      "played": "2026-09-26T23:44:49.056972437Z",
+      "userRating": 4,
+      "averageRating": 4,
+      "genres": [
+        {
+          "name": "Punk"
+        }
+      ],
+      "musicBrainzId": "39c6fa9e-42aa-40e3-89e8-f303eb15141c",
+      "isCompilation": false,
+      "sortName": "big house",
+      "discTitles": [],
+      "originalReleaseDate": {
+        "year": 2016,
+        "month": 5,
+        "day": 20
+      },
+      "releaseDate": {},
+      "releaseTypes": [
+        "album"
+      ],
+      "recordLabels": [
+        {
+          "name": "Jamendo"
+        }
+      ],
+      "moods": [],
+      "artists": [
+        {
+          "id": "54xIbFYq9XbxPHSjN4m90c",
+          "name": "CrumbSnatchers"
+        }
+      ],
+      "displayArtist": "CrumbSnatchers",
+      "explicitStatus": "",
+      "version": "",
+      "song": [
+        {
+          "id": "2VRsy3kKsRcaGYsmwuUmOI",
+          "parent": "2h5JJXNsEdrYbwM5b7hbAS",
+          "isDir": false,
+          "title": "Rubituckin",
+          "album": "Big House",
+          "artist": "CrumbSnatchers",
+          "track": 1,
+          "year": 2016,
+          "genre": "Punk",
+          "coverArt": "mf-2VRsy3kKsRcaGYsmwuUmOI_7aec65882144c5cc",
+          "size": 5435473,
+          "contentType": "audio/mpeg",
+          "suffix": "mp3",
+          "duration": 219,
+          "bitRate": 195,
+          "path": "CrumbSnatchers/Big House/01-01 - Rubituckin.mp3",
+          "playCount": 475,
+          "discNumber": 1,
+          "created": "2025-03-26T22:26:38.769609792Z",
+          "albumId": "2h5JJXNsEdrYbwM5b7hbAS",
+          "artistId": "54xIbFYq9XbxPHSjN4m90c",
+          "type": "music",
+          "userRating": 1,
+          "averageRating": 1,
+          "bookmarkPosition": 35000,
+          "played": "2026-09-26T22:45:02.196124454Z",
+          "bpm": 0,
+          "comment": "http://www.jamendo.com cc_standard",
+          "sortName": "rubituckin",
+          "mediaType": "song",
+          "musicBrainzId": "c53bd526-9883-421f-8dba-636f2af3aa78",
+          "isrc": [],
+          "genres": [
+            {
+              "name": "Punk"
+            }
+          ],
+          "replayGain": {
+            "trackGain": 0,
+            "albumGain": 0,
+            "trackPeak": 1,
+            "albumPeak": 1
+          },
+          "channelCount": 2,
+          "samplingRate": 44100,
+          "bitDepth": 0,
+          "moods": [],
+          "artists": [
+            {
+              "id": "54xIbFYq9XbxPHSjN4m90c",
+              "name": "CrumbSnatchers"
+            }
+          ],
+          "displayArtist": "CrumbSnatchers",
+          "albumArtists": [
+            {
+              "id": "54xIbFYq9XbxPHSjN4m90c",
+              "name": "CrumbSnatchers"
+            }
+          ],
+          "displayAlbumArtist": "CrumbSnatchers",
+          "contributors": [
+            {
+              "role": "composer",
+              "artist": {
+                "id": "54xIbFYq9XbxPHSjN4m90c",
+                "name": "CrumbSnatchers"
+              }
+            }
+          ],
+          "displayComposer": "CrumbSnatchers",
+          "explicitStatus": "",
+          "groupings": [],
+          "works": [],
+          "movements": []
+        },
+        {
+          "id": "1qNeFCCihcDlw65uIZZNQj",
+          "parent": "2h5JJXNsEdrYbwM5b7hbAS",
+          "isDir": false,
+          "title": "Reckless Breakfast",
+          "album": "Big House",
+          "artist": "CrumbSnatchers",
+          "track": 2,
+          "year": 2016,
+          "genre": "Punk",
+          "coverArt": "mf-1qNeFCCihcDlw65uIZZNQj_7aec65882144c5cc",
+          "size": 4806463,
+          "contentType": "audio/mpeg",
+          "suffix": "mp3",
+          "starred": "2026-09-21T23:09:36.903484035Z",
+          "duration": 184,
+          "bitRate": 205,
+          "path": "CrumbSnatchers/Big House/01-02 - Reckless Breakfast.mp3",
+          "playCount": 178,
+          "discNumber": 1,
+          "created": "2025-03-26T22:26:38.779937612Z",
+          "albumId": "2h5JJXNsEdrYbwM5b7hbAS",
+          "artistId": "54xIbFYq9XbxPHSjN4m90c",
+          "type": "music",
+          "userRating": 1,
+          "averageRating": 1,
+          "played": "2026-09-26T08:59:59.805405311Z",
+          "bpm": 0,
+          "comment": "http://www.jamendo.com cc_standard",
+          "sortName": "reckless breakfast",
+          "mediaType": "song",
+          "musicBrainzId": "a9f4b96e-e53d-485d-b50e-3afda4497c7b",
+          "isrc": [],
+          "genres": [
+            {
+              "name": "Punk"
+            }
+          ],
+          "replayGain": {
+            "trackGain": 0,
+            "albumGain": 0,
+            "trackPeak": 1,
+            "albumPeak": 1
+          },
+          "channelCount": 2,
+          "samplingRate": 44100,
+          "bitDepth": 0,
+          "moods": [],
+          "artists": [
+            {
+              "id": "54xIbFYq9XbxPHSjN4m90c",
+              "name": "CrumbSnatchers"
+            }
+          ],
+          "displayArtist": "CrumbSnatchers",
+          "albumArtists": [
+            {
+              "id": "54xIbFYq9XbxPHSjN4m90c",
+              "name": "CrumbSnatchers"
+            }
+          ],
+          "displayAlbumArtist": "CrumbSnatchers",
+          "contributors": [
+            {
+              "role": "composer",
+              "artist": {
+                "id": "54xIbFYq9XbxPHSjN4m90c",
+                "name": "CrumbSnatchers"
+              }
+            }
+          ],
+          "displayComposer": "CrumbSnatchers",
+          "explicitStatus": "",
+          "groupings": [],
+          "works": [],
+          "movements": []
+        },
+        {
+          "id": "6oiXTkv7P2CKwXjBck5PiF",
+          "parent": "2h5JJXNsEdrYbwM5b7hbAS",
+          "isDir": false,
+          "title": "Swimming Upstream",
+          "album": "Big House",
+          "artist": "CrumbSnatchers",
+          "track": 3,
+          "year": 2016,
+          "genre": "Punk",
+          "coverArt": "mf-6oiXTkv7P2CKwXjBck5PiF_7aec65882144c5cc",
+          "size": 6749651,
+          "contentType": "audio/mpeg",
+          "suffix": "mp3",
+          "duration": 253,
+          "bitRate": 211,
+          "path": "CrumbSnatchers/Big House/01-03 - Swimming Upstream.mp3",
+          "playCount": 141,
+          "discNumber": 1,
+          "created": "2025-03-26T22:26:38.788268025Z",
+          "albumId": "2h5JJXNsEdrYbwM5b7hbAS",
+          "artistId": "54xIbFYq9XbxPHSjN4m90c",
+          "type": "music",
+          "userRating": 5,
+          "averageRating": 5,
+          "played": "2026-09-26T15:49:42.258771303Z",
+          "bpm": 0,
+          "comment": "http://www.jamendo.com cc_standard",
+          "sortName": "swimming upstream",
+          "mediaType": "song",
+          "musicBrainzId": "b5db9c91-ff7c-4db7-a7b9-97def080380b",
+          "isrc": [],
+          "genres": [
+            {
+              "name": "Punk"
+            }
+          ],
+          "replayGain": {
+            "trackGain": 0,
+            "albumGain": 0,
+            "trackPeak": 1,
+            "albumPeak": 1
+          },
+          "channelCount": 2,
+          "samplingRate": 44100,
+          "bitDepth": 0,
+          "moods": [],
+          "artists": [
+            {
+              "id": "54xIbFYq9XbxPHSjN4m90c",
+              "name": "CrumbSnatchers"
+            }
+          ],
+          "displayArtist": "CrumbSnatchers",
+          "albumArtists": [
+            {
+              "id": "54xIbFYq9XbxPHSjN4m90c",
+              "name": "CrumbSnatchers"
+            }
+          ],
+          "displayAlbumArtist": "CrumbSnatchers",
+          "contributors": [
+            {
+              "role": "composer",
+              "artist": {
+                "id": "54xIbFYq9XbxPHSjN4m90c",
+                "name": "CrumbSnatchers"
+              }
+            }
+          ],
+          "displayComposer": "CrumbSnatchers",
+          "explicitStatus": "",
+          "groupings": [],
+          "works": [],
+          "movements": []
+        },
+        {
+          "id": "3R5t6zfmDBmLS66aowuh4I",
+          "parent": "2h5JJXNsEdrYbwM5b7hbAS",
+          "isDir": false,
+          "title": "A Short Leash",
+          "album": "Big House",
+          "artist": "CrumbSnatchers",
+          "track": 4,
+          "year": 2016,
+          "genre": "Punk",
+          "coverArt": "mf-3R5t6zfmDBmLS66aowuh4I_7aec65882144c5cc",
+          "size": 5812948,
+          "contentType": "audio/mpeg",
+          "suffix": "mp3",
+          "duration": 205,
+          "bitRate": 223,
+          "path": "CrumbSnatchers/Big House/01-04 - A Short Leash.mp3",
+          "playCount": 182,
+          "discNumber": 1,
+          "created": "2025-03-26T22:26:38.790285803Z",
+          "albumId": "2h5JJXNsEdrYbwM5b7hbAS",
+          "artistId": "54xIbFYq9XbxPHSjN4m90c",
+          "type": "music",
+          "userRating": 1,
+          "averageRating": 1,
+          "played": "2026-09-26T04:21:42.051997514Z",
+          "bpm": 0,
+          "comment": "http://www.jamendo.com cc_standard",
+          "sortName": "a short leash",
+          "mediaType": "song",
+          "musicBrainzId": "de80df7a-49b2-4639-99d9-1cb0965a8118",
+          "isrc": [],
+          "genres": [
+            {
+              "name": "Punk"
+            }
+          ],
+          "replayGain": {
+            "trackGain": 0,
+            "albumGain": 0,
+            "trackPeak": 1,
+            "albumPeak": 1
+          },
+          "channelCount": 2,
+          "samplingRate": 44100,
+          "bitDepth": 0,
+          "moods": [],
+          "artists": [
+            {
+              "id": "54xIbFYq9XbxPHSjN4m90c",
+              "name": "CrumbSnatchers"
+            }
+          ],
+          "displayArtist": "CrumbSnatchers",
+          "albumArtists": [
+            {
+              "id": "54xIbFYq9XbxPHSjN4m90c",
+              "name": "CrumbSnatchers"
+            }
+          ],
+          "displayAlbumArtist": "CrumbSnatchers",
+          "contributors": [
+            {
+              "role": "composer",
+              "artist": {
+                "id": "54xIbFYq9XbxPHSjN4m90c",
+                "name": "CrumbSnatchers"
+              }
+            }
+          ],
+          "displayComposer": "CrumbSnatchers",
+          "explicitStatus": "",
+          "groupings": [],
+          "works": [],
+          "movements": []
+        },
+        {
+          "id": "5tpXd1fnVAw1rNVeZHORkq",
+          "parent": "2h5JJXNsEdrYbwM5b7hbAS",
+          "isDir": false,
+          "title": "Tinfoil Friend",
+          "album": "Big House",
+          "artist": "CrumbSnatchers",
+          "track": 5,
+          "year": 2016,
+          "genre": "Punk",
+          "coverArt": "mf-5tpXd1fnVAw1rNVeZHORkq_7aec65882144c5cc",
+          "size": 5557143,
+          "contentType": "audio/mpeg",
+          "suffix": "mp3",
+          "duration": 196,
+          "bitRate": 224,
+          "path": "CrumbSnatchers/Big House/01-05 - Tinfoil Friend.mp3",
+          "playCount": 157,
+          "discNumber": 1,
+          "created": "2025-03-26T22:26:38.767522277Z",
+          "albumId": "2h5JJXNsEdrYbwM5b7hbAS",
+          "artistId": "54xIbFYq9XbxPHSjN4m90c",
+          "type": "music",
+          "userRating": 1,
+          "averageRating": 1,
+          "played": "2026-09-23T13:03:26.074415345Z",
+          "bpm": 0,
+          "comment": "http://www.jamendo.com cc_standard",
+          "sortName": "tinfoil friend",
+          "mediaType": "song",
+          "musicBrainzId": "2b30abf4-1cab-490c-9f76-7b959b96a580",
+          "isrc": [],
+          "genres": [
+            {
+              "name": "Punk"
+            }
+          ],
+          "replayGain": {
+            "trackGain": 0,
+            "albumGain": 0,
+            "trackPeak": 1,
+            "albumPeak": 1
+          },
+          "channelCount": 2,
+          "samplingRate": 44100,
+          "bitDepth": 0,
+          "moods": [],
+          "artists": [
+            {
+              "id": "54xIbFYq9XbxPHSjN4m90c",
+              "name": "CrumbSnatchers"
+            }
+          ],
+          "displayArtist": "CrumbSnatchers",
+          "albumArtists": [
+            {
+              "id": "54xIbFYq9XbxPHSjN4m90c",
+              "name": "CrumbSnatchers"
+            }
+          ],
+          "displayAlbumArtist": "CrumbSnatchers",
+          "contributors": [
+            {
+              "role": "composer",
+              "artist": {
+                "id": "54xIbFYq9XbxPHSjN4m90c",
+                "name": "CrumbSnatchers"
+              }
+            }
+          ],
+          "displayComposer": "CrumbSnatchers",
+          "explicitStatus": "",
+          "groupings": [],
+          "works": [],
+          "movements": []
+        },
+        {
+          "id": "4i1GAvDHUJOzuYtVX3yMx7",
+          "parent": "2h5JJXNsEdrYbwM5b7hbAS",
+          "isDir": false,
+          "title": "Warm and Ripe",
+          "album": "Big House",
+          "artist": "CrumbSnatchers",
+          "track": 6,
+          "year": 2016,
+          "genre": "Punk",
+          "coverArt": "mf-4i1GAvDHUJOzuYtVX3yMx7_7aec65882144c5cc",
+          "size": 4882778,
+          "contentType": "audio/mpeg",
+          "suffix": "mp3",
+          "duration": 189,
+          "bitRate": 203,
+          "path": "CrumbSnatchers/Big House/01-06 - Warm and Ripe.mp3",
+          "playCount": 186,
+          "discNumber": 1,
+          "created": "2025-03-26T22:26:38.78404098Z",
+          "albumId": "2h5JJXNsEdrYbwM5b7hbAS",
+          "artistId": "54xIbFYq9XbxPHSjN4m90c",
+          "type": "music",
+          "userRating": 4,
+          "averageRating": 4,
+          "played": "2026-09-23T13:06:36.17572093Z",
+          "bpm": 0,
+          "comment": "http://www.jamendo.com cc_standard",
+          "sortName": "warm and ripe",
+          "mediaType": "song",
+          "musicBrainzId": "8f193f07-ae3e-4fb6-9619-d07ce012510f",
+          "isrc": [],
+          "genres": [
+            {
+              "name": "Punk"
+            }
+          ],
+          "replayGain": {
+            "trackGain": 0,
+            "albumGain": 0,
+            "trackPeak": 1,
+            "albumPeak": 1
+          },
+          "channelCount": 2,
+          "samplingRate": 44100,
+          "bitDepth": 0,
+          "moods": [],
+          "artists": [
+            {
+              "id": "54xIbFYq9XbxPHSjN4m90c",
+              "name": "CrumbSnatchers"
+            }
+          ],
+          "displayArtist": "CrumbSnatchers",
+          "albumArtists": [
+            {
+              "id": "54xIbFYq9XbxPHSjN4m90c",
+              "name": "CrumbSnatchers"
+            }
+          ],
+          "displayAlbumArtist": "CrumbSnatchers",
+          "contributors": [
+            {
+              "role": "composer",
+              "artist": {
+                "id": "54xIbFYq9XbxPHSjN4m90c",
+                "name": "CrumbSnatchers"
+              }
+            }
+          ],
+          "displayComposer": "CrumbSnatchers",
+          "explicitStatus": "",
+          "groupings": [],
+          "works": [],
+          "movements": []
+        },
+        {
+          "id": "1QUUg94n804ZChyfjWlDLP",
+          "parent": "2h5JJXNsEdrYbwM5b7hbAS",
+          "isDir": false,
+          "title": "Queen of My World",
+          "album": "Big House",
+          "artist": "CrumbSnatchers",
+          "track": 7,
+          "year": 2016,
+          "genre": "Punk",
+          "coverArt": "mf-1QUUg94n804ZChyfjWlDLP_7aec65882144c5cc",
+          "size": 4719435,
+          "contentType": "audio/mpeg",
+          "suffix": "mp3",
+          "duration": 240,
+          "bitRate": 155,
+          "path": "CrumbSnatchers/Big House/01-07 - Queen of My World.mp3",
+          "playCount": 135,
+          "discNumber": 1,
+          "created": "2025-03-26T22:26:38.781964661Z",
+          "albumId": "2h5JJXNsEdrYbwM5b7hbAS",
+          "artistId": "54xIbFYq9XbxPHSjN4m90c",
+          "type": "music",
+          "userRating": 3,
+          "averageRating": 3,
+          "played": "2026-09-23T13:10:37.167386663Z",
+          "bpm": 0,
+          "comment": "http://www.jamendo.com cc_standard",
+          "sortName": "queen of my world",
+          "mediaType": "song",
+          "musicBrainzId": "8ef81520-05c8-460f-b31e-3f06e8ea9ded",
+          "isrc": [],
+          "genres": [
+            {
+              "name": "Punk"
+            }
+          ],
+          "replayGain": {
+            "trackGain": 0,
+            "albumGain": 0,
+            "trackPeak": 1,
+            "albumPeak": 1
+          },
+          "channelCount": 2,
+          "samplingRate": 44100,
+          "bitDepth": 0,
+          "moods": [],
+          "artists": [
+            {
+              "id": "54xIbFYq9XbxPHSjN4m90c",
+              "name": "CrumbSnatchers"
+            }
+          ],
+          "displayArtist": "CrumbSnatchers",
+          "albumArtists": [
+            {
+              "id": "54xIbFYq9XbxPHSjN4m90c",
+              "name": "CrumbSnatchers"
+            }
+          ],
+          "displayAlbumArtist": "CrumbSnatchers",
+          "contributors": [
+            {
+              "role": "composer",
+              "artist": {
+                "id": "54xIbFYq9XbxPHSjN4m90c",
+                "name": "CrumbSnatchers"
+              }
+            }
+          ],
+          "displayComposer": "CrumbSnatchers",
+          "explicitStatus": "",
+          "groupings": [],
+          "works": [],
+          "movements": []
+        },
+        {
+          "id": "0jVeOaOqqYnb3DGLCvexga",
+          "parent": "2h5JJXNsEdrYbwM5b7hbAS",
+          "isDir": false,
+          "title": "Declaration",
+          "album": "Big House",
+          "artist": "CrumbSnatchers",
+          "track": 8,
+          "year": 2016,
+          "genre": "Punk",
+          "coverArt": "mf-0jVeOaOqqYnb3DGLCvexga_7aec65882144c5cc",
+          "size": 8687268,
+          "contentType": "audio/mpeg",
+          "suffix": "mp3",
+          "duration": 335,
+          "bitRate": 206,
+          "path": "CrumbSnatchers/Big House/01-08 - Declaration.mp3",
+          "playCount": 87,
+          "discNumber": 1,
+          "created": "2025-03-26T22:26:38.77783932Z",
+          "albumId": "2h5JJXNsEdrYbwM5b7hbAS",
+          "artistId": "54xIbFYq9XbxPHSjN4m90c",
+          "type": "music",
+          "userRating": 4,
+          "averageRating": 4,
+          "bookmarkPosition": 145000,
+          "played": "2026-09-23T13:16:13.004997037Z",
+          "bpm": 0,
+          "comment": "http://www.jamendo.com cc_standard",
+          "sortName": "declaration",
+          "mediaType": "song",
+          "musicBrainzId": "05aa4e8e-090a-4762-ac7e-68aa99febf55",
+          "isrc": [],
+          "genres": [
+            {
+              "name": "Punk"
+            }
+          ],
+          "replayGain": {
+            "trackGain": 0,
+            "albumGain": 0,
+            "trackPeak": 1,
+            "albumPeak": 1
+          },
+          "channelCount": 2,
+          "samplingRate": 44100,
+          "bitDepth": 0,
+          "moods": [],
+          "artists": [
+            {
+              "id": "54xIbFYq9XbxPHSjN4m90c",
+              "name": "CrumbSnatchers"
+            }
+          ],
+          "displayArtist": "CrumbSnatchers",
+          "albumArtists": [
+            {
+              "id": "54xIbFYq9XbxPHSjN4m90c",
+              "name": "CrumbSnatchers"
+            }
+          ],
+          "displayAlbumArtist": "CrumbSnatchers",
+          "contributors": [
+            {
+              "role": "composer",
+              "artist": {
+                "id": "54xIbFYq9XbxPHSjN4m90c",
+                "name": "CrumbSnatchers"
+              }
+            }
+          ],
+          "displayComposer": "CrumbSnatchers",
+          "explicitStatus": "",
+          "groupings": [],
+          "works": [],
+          "movements": []
+        },
+        {
+          "id": "6U7dh2t2g9Nz79HTtHqtsT",
+          "parent": "2h5JJXNsEdrYbwM5b7hbAS",
+          "isDir": false,
+          "title": "Rubber Trees",
+          "album": "Big House",
+          "artist": "CrumbSnatchers",
+          "track": 9,
+          "year": 2016,
+          "genre": "Punk",
+          "coverArt": "mf-6U7dh2t2g9Nz79HTtHqtsT_7aec65882144c5cc",
+          "size": 6609370,
+          "contentType": "audio/mpeg",
+          "suffix": "mp3",
+          "duration": 277,
+          "bitRate": 188,
+          "path": "CrumbSnatchers/Big House/01-09 - Rubber Trees.mp3",
+          "playCount": 109,
+          "discNumber": 1,
+          "created": "2025-03-26T22:26:38.786267537Z",
+          "albumId": "2h5JJXNsEdrYbwM5b7hbAS",
+          "artistId": "54xIbFYq9XbxPHSjN4m90c",
+          "type": "music",
+          "played": "2026-09-26T15:09:56.611015539Z",
+          "bpm": 0,
+          "comment": "http://www.jamendo.com cc_standard",
+          "sortName": "rubber trees",
+          "mediaType": "song",
+          "musicBrainzId": "5453440f-ad8a-4d56-aaf0-79df9d0259c8",
+          "isrc": [],
+          "genres": [
+            {
+              "name": "Punk"
+            }
+          ],
+          "replayGain": {
+            "trackGain": 0,
+            "albumGain": 0,
+            "trackPeak": 1,
+            "albumPeak": 1
+          },
+          "channelCount": 2,
+          "samplingRate": 44100,
+          "bitDepth": 0,
+          "moods": [],
+          "artists": [
+            {
+              "id": "54xIbFYq9XbxPHSjN4m90c",
+              "name": "CrumbSnatchers"
+            }
+          ],
+          "displayArtist": "CrumbSnatchers",
+          "albumArtists": [
+            {
+              "id": "54xIbFYq9XbxPHSjN4m90c",
+              "name": "CrumbSnatchers"
+            }
+          ],
+          "displayAlbumArtist": "CrumbSnatchers",
+          "contributors": [
+            {
+              "role": "composer",
+              "artist": {
+                "id": "54xIbFYq9XbxPHSjN4m90c",
+                "name": "CrumbSnatchers"
+              }
+            }
+          ],
+          "displayComposer": "CrumbSnatchers",
+          "explicitStatus": "",
+          "groupings": [],
+          "works": [],
+          "movements": []
+        },
+        {
+          "id": "18HSpTsI0U87pVBHpvwUzi",
+          "parent": "2h5JJXNsEdrYbwM5b7hbAS",
+          "isDir": false,
+          "title": "Damage",
+          "album": "Big House",
+          "artist": "CrumbSnatchers",
+          "track": 10,
+          "year": 2016,
+          "genre": "Punk",
+          "coverArt": "mf-18HSpTsI0U87pVBHpvwUzi_7aec65882144c5cc",
+          "size": 4279136,
+          "contentType": "audio/mpeg",
+          "suffix": "mp3",
+          "duration": 164,
+          "bitRate": 205,
+          "path": "CrumbSnatchers/Big House/01-10 - Damage.mp3",
+          "playCount": 102,
+          "discNumber": 1,
+          "created": "2025-03-26T22:26:38.771732768Z",
+          "albumId": "2h5JJXNsEdrYbwM5b7hbAS",
+          "artistId": "54xIbFYq9XbxPHSjN4m90c",
+          "type": "music",
+          "bookmarkPosition": 74000,
+          "played": "2026-09-24T03:27:49.946249367Z",
+          "bpm": 0,
+          "comment": "http://www.jamendo.com cc_standard",
+          "sortName": "damage",
+          "mediaType": "song",
+          "musicBrainzId": "63d3620d-da3a-4405-80fb-0e4459e19c3d",
+          "isrc": [],
+          "genres": [
+            {
+              "name": "Punk"
+            }
+          ],
+          "replayGain": {
+            "trackGain": 0,
+            "albumGain": 0,
+            "trackPeak": 1,
+            "albumPeak": 1
+          },
+          "channelCount": 2,
+          "samplingRate": 44100,
+          "bitDepth": 0,
+          "moods": [],
+          "artists": [
+            {
+              "id": "54xIbFYq9XbxPHSjN4m90c",
+              "name": "CrumbSnatchers"
+            }
+          ],
+          "displayArtist": "CrumbSnatchers",
+          "albumArtists": [
+            {
+              "id": "54xIbFYq9XbxPHSjN4m90c",
+              "name": "CrumbSnatchers"
+            }
+          ],
+          "displayAlbumArtist": "CrumbSnatchers",
+          "contributors": [
+            {
+              "role": "composer",
+              "artist": {
+                "id": "54xIbFYq9XbxPHSjN4m90c",
+                "name": "CrumbSnatchers"
+              }
+            }
+          ],
+          "displayComposer": "CrumbSnatchers",
+          "explicitStatus": "",
+          "groupings": [],
+          "works": [],
+          "movements": []
+        },
+        {
+          "id": "2jqya5oRXZtE1nPbSM6ze7",
+          "parent": "2h5JJXNsEdrYbwM5b7hbAS",
+          "isDir": false,
+          "title": "Arrogance",
+          "album": "Big House",
+          "artist": "CrumbSnatchers",
+          "track": 11,
+          "year": 2016,
+          "genre": "Punk",
+          "coverArt": "mf-2jqya5oRXZtE1nPbSM6ze7_7aec65882144c5cc",
+          "size": 5739152,
+          "contentType": "audio/mpeg",
+          "suffix": "mp3",
+          "duration": 227,
+          "bitRate": 199,
+          "path": "CrumbSnatchers/Big House/01-11 - Arrogance.mp3",
+          "playCount": 125,
+          "discNumber": 1,
+          "created": "2025-03-26T22:26:38.792283741Z",
+          "albumId": "2h5JJXNsEdrYbwM5b7hbAS",
+          "artistId": "54xIbFYq9XbxPHSjN4m90c",
+          "type": "music",
+          "userRating": 1,
+          "averageRating": 1,
+          "bookmarkPosition": 3774,
+          "played": "2026-09-26T23:44:49.056972437Z",
+          "bpm": 0,
+          "comment": "http://www.jamendo.com cc_standard",
+          "sortName": "arrogance",
+          "mediaType": "song",
+          "musicBrainzId": "96fd911c-5975-4066-ad26-2c43b95a44c0",
+          "isrc": [],
+          "genres": [
+            {
+              "name": "Punk"
+            }
+          ],
+          "replayGain": {
+            "trackGain": 0,
+            "albumGain": 0,
+            "trackPeak": 1,
+            "albumPeak": 1
+          },
+          "channelCount": 2,
+          "samplingRate": 44100,
+          "bitDepth": 0,
+          "moods": [],
+          "artists": [
+            {
+              "id": "54xIbFYq9XbxPHSjN4m90c",
+              "name": "CrumbSnatchers"
+            }
+          ],
+          "displayArtist": "CrumbSnatchers",
+          "albumArtists": [
+            {
+              "id": "54xIbFYq9XbxPHSjN4m90c",
+              "name": "CrumbSnatchers"
+            }
+          ],
+          "displayAlbumArtist": "CrumbSnatchers",
+          "contributors": [
+            {
+              "role": "composer",
+              "artist": {
+                "id": "54xIbFYq9XbxPHSjN4m90c",
+                "name": "CrumbSnatchers"
+              }
+            }
+          ],
+          "displayComposer": "CrumbSnatchers",
+          "explicitStatus": "",
+          "groupings": [],
+          "works": [],
+          "movements": []
+        },
+        {
+          "id": "11UaWn7dkd0uS4cLJGcQ6u",
+          "parent": "2h5JJXNsEdrYbwM5b7hbAS",
+          "isDir": false,
+          "title": "Shut the Fuck UP",
+          "album": "Big House",
+          "artist": "CrumbSnatchers",
+          "track": 12,
+          "year": 2016,
+          "genre": "Punk",
+          "coverArt": "mf-11UaWn7dkd0uS4cLJGcQ6u_7aec65882144c5cc",
+          "size": 5601537,
+          "contentType": "audio/mpeg",
+          "suffix": "mp3",
+          "duration": 228,
+          "bitRate": 193,
+          "path": "CrumbSnatchers/Big House/01-12 - Shut the Fuck UP.mp3",
+          "playCount": 72,
+          "discNumber": 1,
+          "created": "2025-03-26T22:26:38.765308243Z",
+          "albumId": "2h5JJXNsEdrYbwM5b7hbAS",
+          "artistId": "54xIbFYq9XbxPHSjN4m90c",
+          "type": "music",
+          "bookmarkPosition": 16000,
+          "played": "2026-09-23T13:31:13.669614364Z",
+          "bpm": 0,
+          "comment": "http://www.jamendo.com cc_standard",
+          "sortName": "shut the fuck up",
+          "mediaType": "song",
+          "musicBrainzId": "ba31855b-8b52-4ddf-a700-cf6720053294",
+          "isrc": [],
+          "genres": [
+            {
+              "name": "Punk"
+            }
+          ],
+          "replayGain": {
+            "trackGain": 0,
+            "albumGain": 0,
+            "trackPeak": 1,
+            "albumPeak": 1
+          },
+          "channelCount": 2,
+          "samplingRate": 44100,
+          "bitDepth": 0,
+          "moods": [],
+          "artists": [
+            {
+              "id": "54xIbFYq9XbxPHSjN4m90c",
+              "name": "CrumbSnatchers"
+            }
+          ],
+          "displayArtist": "CrumbSnatchers",
+          "albumArtists": [
+            {
+              "id": "54xIbFYq9XbxPHSjN4m90c",
+              "name": "CrumbSnatchers"
+            }
+          ],
+          "displayAlbumArtist": "CrumbSnatchers",
+          "contributors": [
+            {
+              "role": "composer",
+              "artist": {
+                "id": "54xIbFYq9XbxPHSjN4m90c",
+                "name": "CrumbSnatchers"
+              }
+            }
+          ],
+          "displayComposer": "CrumbSnatchers",
+          "explicitStatus": "",
+          "groupings": [],
+          "works": [],
+          "movements": []
+        },
+        {
+          "id": "1z91c7wsrw0fRPaldjV0tc",
+          "parent": "2h5JJXNsEdrYbwM5b7hbAS",
+          "isDir": false,
+          "title": "Adult Things",
+          "album": "Big House",
+          "artist": "CrumbSnatchers",
+          "track": 13,
+          "year": 2016,
+          "genre": "Punk",
+          "coverArt": "mf-1z91c7wsrw0fRPaldjV0tc_7aec65882144c5cc",
+          "size": 11124745,
+          "contentType": "audio/mpeg",
+          "suffix": "mp3",
+          "duration": 453,
+          "bitRate": 195,
+          "path": "CrumbSnatchers/Big House/01-13 - Adult Things.mp3",
+          "playCount": 109,
+          "discNumber": 1,
+          "created": "2025-03-26T22:26:38.775383768Z",
+          "albumId": "2h5JJXNsEdrYbwM5b7hbAS",
+          "artistId": "54xIbFYq9XbxPHSjN4m90c",
+          "type": "music",
+          "userRating": 3,
+          "averageRating": 3,
+          "played": "2026-09-18T02:35:51.659968239Z",
+          "bpm": 0,
+          "comment": "http://www.jamendo.com cc_standard",
+          "sortName": "adult things",
+          "mediaType": "song",
+          "musicBrainzId": "eac5827e-22e6-406f-896c-524232736152",
+          "isrc": [],
+          "genres": [
+            {
+              "name": "Punk"
+            }
+          ],
+          "replayGain": {
+            "trackGain": 0,
+            "albumGain": 0,
+            "trackPeak": 1,
+            "albumPeak": 1
+          },
+          "channelCount": 2,
+          "samplingRate": 44100,
+          "bitDepth": 0,
+          "moods": [],
+          "artists": [
+            {
+              "id": "54xIbFYq9XbxPHSjN4m90c",
+              "name": "CrumbSnatchers"
+            }
+          ],
+          "displayArtist": "CrumbSnatchers",
+          "albumArtists": [
+            {
+              "id": "54xIbFYq9XbxPHSjN4m90c",
+              "name": "CrumbSnatchers"
+            }
+          ],
+          "displayAlbumArtist": "CrumbSnatchers",
+          "contributors": [
+            {
+              "role": "composer",
+              "artist": {
+                "id": "54xIbFYq9XbxPHSjN4m90c",
+                "name": "CrumbSnatchers"
+              }
+            }
+          ],
+          "displayComposer": "CrumbSnatchers",
+          "explicitStatus": "",
+          "groupings": [],
+          "works": [],
+          "movements": []
+        }
+      ]
+    }
+  }
+}
