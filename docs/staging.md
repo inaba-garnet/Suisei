@@ -41,3 +41,7 @@ URL は Sprite の作成時に `url_settings.auth` を `public` にして公開�
 ## ログ
 - 直近のログは `GET /services/suisei/logs?lines=100`。
 - 全体は `POST /exec` で `/home/sprite/suisei/suisei.log` を読む。
+
+## 休止
+- Sprite はリクエストが途切れるとすぐ休止する（状態は `warm`）。休止中は裏のスキャンも進まない。
+- そのため、スキャンの所要時間は本番より長く出る。メモリ上の計算だけの段階も延びるので、性能の判断には使わない。
