@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT track_genre.genre AS \"genre!\" FROM track_genre\n             JOIN track ON track.id = track_genre.track_id\n           WHERE track.album_id = ?\n           GROUP BY track_genre.genre\n           ORDER BY COUNT(*) DESC, track_genre.genre",
+  "describe": {
+    "columns": [
+      {
+        "name": "genre!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track_genre",
+            "name": "genre"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "8005fb5dd394ce34135d301db9993faaf72572e983169bae89eff0a27ad5ef5d"
+}

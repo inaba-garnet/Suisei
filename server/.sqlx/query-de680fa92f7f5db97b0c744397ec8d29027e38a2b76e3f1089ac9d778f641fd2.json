@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT new_id FROM id_alias WHERE old_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "new_id",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "id_alias",
+            "name": "new_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "de680fa92f7f5db97b0c744397ec8d29027e38a2b76e3f1089ac9d778f641fd2"
+}

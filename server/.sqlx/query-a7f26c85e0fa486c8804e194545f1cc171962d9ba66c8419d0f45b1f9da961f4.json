@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!\", match_key, album_id FROM track",
+  "query": "SELECT id AS \"id!\", match_key, album_id, created_at FROM track",
   "describe": {
     "columns": [
       {
@@ -35,6 +35,17 @@
             "name": "album_id"
           }
         }
+      },
+      {
+        "name": "created_at",
+        "ordinal": 3,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "created_at"
+          }
+        }
       }
     ],
     "parameters": {
@@ -43,8 +54,9 @@
     "nullable": [
       true,
       false,
+      false,
       false
     ]
   },
-  "hash": "e0a93ffe9aefe6cae0d7d15cb29a133b1f6de2b3953a17833a9a4b3bb9349af3"
+  "hash": "a7f26c85e0fa486c8804e194545f1cc171962d9ba66c8419d0f45b1f9da961f4"
 }

@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT track_genre.track_id, track_genre.genre FROM track_genre\n           JOIN track ON track.id = track_genre.track_id\n         WHERE track.album_id = ?\n         ORDER BY track_genre.track_id, track_genre.position",
+  "describe": {
+    "columns": [
+      {
+        "name": "track_id",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track_genre",
+            "name": "track_id"
+          }
+        }
+      },
+      {
+        "name": "genre",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track_genre",
+            "name": "genre"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "5583bf7b558848448708e64f6a896cbdc9872c258454523be8614e7e346fb189"
+}

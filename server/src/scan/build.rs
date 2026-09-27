@@ -172,7 +172,7 @@ pub fn build(mut files: Vec<Scanned>, snapshot: &Snapshot, music_dir: &str, now:
     let existing_tracks: Vec<(String, String)> = snapshot
         .tracks
         .iter()
-        .map(|(id, key, _)| (id.clone(), key.clone()))
+        .map(|(id, key, ..)| (id.clone(), key.clone()))
         .collect();
     let track_ids = assign_ids(
         IdKind::Track,
@@ -192,7 +192,7 @@ pub fn build(mut files: Vec<Scanned>, snapshot: &Snapshot, music_dir: &str, now:
     let previous_album: HashMap<&str, &str> = snapshot
         .tracks
         .iter()
-        .map(|(id, _, album)| (id.as_str(), album.as_str()))
+        .map(|(id, _, album, _)| (id.as_str(), album.as_str()))
         .collect();
     let mut album_tracks: Vec<Vec<usize>> = vec![Vec::new(); album_keys.len()];
     for (track, &album) in track_album.iter().enumerate() {
@@ -304,6 +304,11 @@ pub fn build(mut files: Vec<Scanned>, snapshot: &Snapshot, music_dir: &str, now:
         })
         .collect();
 
+    let track_created_at: HashMap<&str, i64> = snapshot
+        .tracks
+        .iter()
+        .map(|(id, _, _, at)| (id.as_str(), *at))
+        .collect();
     let mut tracks = Vec::new();
     let mut track_artists = Vec::new();
     let mut track_genres = Vec::new();
@@ -324,6 +329,12 @@ pub fn build(mut files: Vec<Scanned>, snapshot: &Snapshot, music_dir: &str, now:
             track_number: info.track_number.map(i64::from),
             year: info.year.map(i64::from),
             primary_file_id: files[primary].row.id.clone(),
+            // 0 は、created_at を持つ前のマイグレーションで入った行
+            created_at: track_created_at
+                .get(id.as_str())
+                .copied()
+                .filter(|at| *at > 0)
+                .unwrap_or(now),
         });
         track_artists.extend(credit_rows(id, &info.artists, &artist_by_key));
         track_genres.extend(info.genres.iter().enumerate().map(|(p, genre)| GenreRow {
@@ -427,6 +438,7 @@ fn album_row(
             .max()
             .map(i64::from),
         created_at,
+        compilation: members.iter().any(|&f| infos[f].album.compilation),
         name,
     }
 }
