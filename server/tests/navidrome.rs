@@ -19,6 +19,7 @@ async fn suisei(endpoint: &str, query: &str) -> Map<String, Value> {
             password: "sesame".into(),
             api_key: None,
         },
+        db: suisei::db::open_in_memory().await.unwrap(),
     });
     let uri = format!("/rest/{endpoint}?u=inaba&p=sesame&f=json{query}");
     let res = app

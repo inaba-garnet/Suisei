@@ -10,20 +10,14 @@ use axum::response::Response;
 use axum::routing::{any, get};
 use serde_json::{Map, Value, json};
 
+use crate::Credentials;
+use crate::db::Pool;
 use crate::subsonic::{self, Error, ErrorCode, Format, Params};
-use crate::{Config, Credentials};
 
 #[derive(Debug, Clone)]
 pub struct AppState {
     pub credentials: Credentials,
-}
-
-impl From<Config> for AppState {
-    fn from(config: Config) -> Self {
-        Self {
-            credentials: config.credentials,
-        }
-    }
+    pub db: Pool,
 }
 
 pub fn router(state: AppState) -> Router {

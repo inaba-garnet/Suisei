@@ -1,4 +1,5 @@
 use std::net::SocketAddr;
+use std::path::PathBuf;
 
 /// 起動引数と環境変数から読む設定。
 #[derive(Debug, Clone, clap::Parser)]
@@ -6,6 +7,10 @@ use std::net::SocketAddr;
 pub struct Config {
     #[arg(long, env = "SUISEI_LISTEN", default_value = "0.0.0.0:4533")]
     pub listen: SocketAddr,
+
+    /// DB などを置くディレクトリ。
+    #[arg(long, env = "SUISEI_DATA_DIR", default_value = "data")]
+    pub data_dir: PathBuf,
 
     #[command(flatten)]
     pub credentials: Credentials,

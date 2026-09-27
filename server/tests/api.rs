@@ -7,18 +7,19 @@ use tower::ServiceExt;
 
 const AUTH: &str = "u=inaba&p=sesame";
 
-fn app() -> axum::Router {
+async fn app() -> axum::Router {
     suisei::router(AppState {
         credentials: Credentials {
             user: "inaba".into(),
             password: "sesame".into(),
             api_key: None,
         },
+        db: suisei::db::open_in_memory().await.unwrap(),
     })
 }
 
 async fn send(req: Request<Body>) -> (StatusCode, String) {
-    let res = app().oneshot(req).await.unwrap();
+    let res = app().await.oneshot(req).await.unwrap();
     let status = res.status();
     let body = res.into_body().collect().await.unwrap().to_bytes();
     (status, String::from_utf8(body.to_vec()).unwrap())
@@ -100,4 +101,26 @@ async fn root_is_reachable() {
 async fn outside_rest_is_not_found() {
     let (status, _) = get("/server/xml.server.php").await;
     assert_eq!(status, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn database_is_created_and_migrated() {
+    let dir = std::env::temp_dir().join(format!("suisei-test-{}", std::process::id()));
+    let pool = suisei::db::open(&dir).await.unwrap();
+    // 二回目に開いても、適用済みのマイグレーションで失敗しない
+    drop(pool);
+    suisei::db::open(&dir).await.unwrap();
+    assert!(dir.join("suisei.db").exists());
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[tokio::test]
+async fn foreign_keys_are_enforced() {
+    let pool = suisei::db::open_in_memory().await.unwrap();
+    let res = sqlx::query(
+        "INSERT INTO track_artist (track_id, position, artist_id, credited_name) VALUES ('tr-00000000', 0, 'ar-00000000', 'x')",
+    )
+    .execute(&pool)
+    .await;
+    assert!(res.is_err(), "存在しない曲とアーティストを参照できてしまう");
 }
