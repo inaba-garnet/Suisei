@@ -876,3 +876,111 @@ async fn now_playing_expires_after_duration() {
     let res = server.get("getNowPlaying", "").await;
     assert_eq!(res["nowPlaying"], serde_json::json!({}));
 }
+
+#[tokio::test]
+async fn star_and_unstar() {
+    let server = album_list_server().await;
+    let song = server.id("track", "title", "a").await;
+    let album = server.id("album", "name", "b").await;
+    let artist = server.id("artist", "name", "4U").await;
+    let query = format!("&id={song}&albumId={album}&artistId={artist}&id=tr-00000000");
+    server.get("star", &query).await;
+
+    let res = server.get("getSong", &format!("&id={song}")).await;
+    assert!(res["song"]["starred"].is_string());
+    let res = server.get("getAlbum", &format!("&id={album}")).await;
+    assert!(res["album"]["starred"].is_string());
+    let res = server.get("getArtist", &format!("&id={artist}")).await;
+    assert!(res["artist"]["starred"].is_string());
+    let res = server.get("getArtists", "").await;
+    let starred: Vec<&str> = res["artists"]["index"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|i| i["artist"].as_array().unwrap())
+        .filter(|a| a.get("starred").is_some())
+        .map(|a| a["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(starred, ["4U"]);
+
+    let res = server.get("getStarred2", "").await;
+    assert_eq!(titles(&res["starred2"]["song"]), ["a"]);
+    assert_eq!(names(&res["starred2"]["album"]), ["b"]);
+    assert_eq!(names(&res["starred2"]["artist"]), ["4U"]);
+    let res = server.get("getAlbumList2", "&type=starred").await;
+    assert_eq!(names(&res["albumList2"]["album"]), ["b"]);
+
+    server.get("unstar", &query).await;
+    let res = server.get("getSong", &format!("&id={song}")).await;
+    assert!(res["song"].get("starred").is_none());
+    let res = server.get("getStarred2", "").await;
+    assert_eq!(res["starred2"], serde_json::json!({}));
+}
+
+/// お気に入りにし直しても日時は変えない。
+#[tokio::test]
+async fn restar_keeps_date() {
+    let server = album_list_server().await;
+    let song = server.id("track", "title", "a").await;
+    server.get("star", &format!("&id={song}")).await;
+    let first = server.get("getSong", &format!("&id={song}")).await["song"]["starred"].clone();
+
+    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    server.get("star", &format!("&id={song}")).await;
+    let res = server.get("getSong", &format!("&id={song}")).await;
+    assert_eq!(res["song"]["starred"], first);
+}
+
+#[tokio::test]
+async fn rating_orders_highest() {
+    let server = played_server().await;
+    let a = server.id("album", "name", "a").await;
+    let b = server.id("album", "name", "b").await;
+    let c = server.id("album", "name", "c").await;
+    for (id, rating) in [(&a, 4), (&b, 4), (&c, 5)] {
+        server
+            .get("setRating", &format!("&id={id}&rating={rating}"))
+            .await;
+    }
+
+    let res = server.get("getAlbum", &format!("&id={c}")).await;
+    assert_eq!(res["album"]["userRating"], 5);
+    // 同じ評価なら再生回数の多い順（b が 2 回、a が 1 回）
+    let res = server.get("getAlbumList2", "&type=highest").await;
+    assert_eq!(names(&res["albumList2"]["album"]), ["c", "b", "a"]);
+
+    server.get("setRating", &format!("&id={c}&rating=0")).await;
+    let res = server.get("getAlbum", &format!("&id={c}")).await;
+    assert!(res["album"].get("userRating").is_none());
+    let res = server.get("getAlbumList2", "&type=highest").await;
+    assert_eq!(names(&res["albumList2"]["album"]), ["b", "a"]);
+}
+
+#[tokio::test]
+async fn rating_errors() {
+    let server = album_list_server().await;
+    let song = server.id("track", "title", "a").await;
+    let res = server
+        .raw("setRating", &format!("&id={song}&rating=6"))
+        .await;
+    assert_eq!(res["subsonic-response"]["error"]["code"], 0);
+    let res = server.raw("setRating", &format!("&id={song}")).await;
+    assert_eq!(res["subsonic-response"]["error"]["code"], 10);
+    // 知らない ID は飛ばす
+    server.get("setRating", "&id=tr-00000000&rating=3").await;
+}
+
+#[tokio::test]
+async fn search_shows_starred_artist() {
+    let server = album_list_server().await;
+    let artist = server.id("artist", "name", "4U").await;
+    server.get("star", &format!("&artistId={artist}")).await;
+    server
+        .get("setRating", &format!("&id={artist}&rating=2"))
+        .await;
+
+    let res = server.get("search3", "&query=4U").await;
+    let hit = &res["searchResult3"]["artist"][0];
+    assert!(hit["starred"].is_string());
+    assert_eq!(hit["userRating"], 2);
+}
