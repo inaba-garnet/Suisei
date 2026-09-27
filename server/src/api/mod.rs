@@ -1,5 +1,6 @@
 mod browse;
 mod empty;
+mod search;
 
 use std::sync::Arc;
 

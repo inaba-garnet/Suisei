@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO artist (id, match_key, name, sort_name, sort_name_source, sort_key,\n                 search_text)\n             VALUES (?, ?, ?, ?, ?, ?, ?)\n             ON CONFLICT (id) DO UPDATE SET match_key = excluded.match_key, name = excluded.name,\n                 sort_name = excluded.sort_name, sort_name_source = excluded.sort_name_source,\n                 sort_key = excluded.sort_key, search_text = excluded.search_text",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": []
+  },
+  "hash": "6aafd19af742b3d115d727854c56caa0960521bfe520f88ab1131a1730498af4"
+}

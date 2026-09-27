@@ -8,7 +8,7 @@ use crate::db::library::{
     AlbumRow, ArtistRow, CreditRow, FileRow, GenreRow, Library, Snapshot, TrackRow,
 };
 use crate::db::{IdKind, new_id};
-use crate::tags::{Credit, RawTags, TrackInfo, reading, sort_key};
+use crate::tags::{Credit, RawTags, TrackInfo, reading, search_text, sort_key};
 
 /// スキャンで見つけたファイル。
 #[derive(Debug, Clone)]
@@ -284,11 +284,23 @@ pub fn build(mut files: Vec<Scanned>, snapshot: &Snapshot, music_dir: &str, now:
         .iter()
         .map(|(id, _, at)| (id.as_str(), *at))
         .collect();
+    // アーティストの読みでも曲とアルバムを探せるよう、照らす文字列に足す
+    let artist_reading: HashMap<&str, &str> = artists
+        .iter()
+        .filter_map(|a| Some((a.match_key.as_str(), a.sort_name.as_deref()?)))
+        .collect();
+    let readings = |credits: &[Credit]| -> Vec<&str> {
+        credits
+            .iter()
+            .filter_map(|c| artist_reading.get(c.match_key.as_str()).copied())
+            .collect()
+    };
     let albums: Vec<AlbumRow> = album_keys
         .iter()
         .zip(&album_ids)
         .zip(&album_tracks)
-        .map(|((key, id), tracks)| {
+        .zip(&album_credits)
+        .map(|(((key, id), tracks), credits)| {
             let members: Vec<usize> = tracks
                 .iter()
                 .flat_map(|&t| track_files[t].iter().copied())
@@ -299,6 +311,7 @@ pub fn build(mut files: Vec<Scanned>, snapshot: &Snapshot, music_dir: &str, now:
                 &members,
                 &files,
                 &infos,
+                &readings(credits),
                 created_at.get(id.as_str()).copied().unwrap_or(now),
             )
         })
@@ -325,6 +338,16 @@ pub fn build(mut files: Vec<Scanned>, snapshot: &Snapshot, music_dir: &str, now:
             sort_name: reading.map(|r| r.kana.clone()),
             sort_name_source: reading.map(|r| r.source.as_str().to_owned()),
             sort_key: sort_key(&info.title, reading.map(|r| r.kana.as_str())),
+            search_text: search_text(
+                [
+                    info.title.as_str(),
+                    reading.map_or("", |r| r.kana.as_str()),
+                    &info.display_artist,
+                    &albums[track_album[t]].name,
+                ]
+                .into_iter()
+                .chain(readings(&info.artists)),
+            ),
             disc_number: info.disc_number.map(i64::from),
             track_number: info.track_number.map(i64::from),
             year: info.year.map(i64::from),
@@ -410,6 +433,7 @@ fn album_row(
     members: &[usize],
     files: &[Scanned],
     infos: &[TrackInfo],
+    artist_readings: &[&str],
     created_at: i64,
 ) -> AlbumRow {
     let albums = || members.iter().map(|&f| &infos[f].album);
@@ -425,6 +449,15 @@ fn album_row(
             .filter_map(|&f| files[f].tags.album_sort.as_deref()),
     );
     let reading = reading(&name, sort);
+    let text = search_text(
+        [
+            name.as_str(),
+            reading.as_ref().map_or("", |r| r.kana.as_str()),
+            &display_artist,
+        ]
+        .into_iter()
+        .chain(artist_readings.iter().copied()),
+    );
     AlbumRow {
         id: id.to_owned(),
         match_key: key.to_owned(),
@@ -432,6 +465,7 @@ fn album_row(
         sort_name: reading.as_ref().map(|r| r.kana.clone()),
         sort_name_source: reading.as_ref().map(|r| r.source.as_str().to_owned()),
         sort_key: sort_key(&name, reading.as_ref().map(|r| r.kana.as_str())),
+        search_text: text,
         year: members
             .iter()
             .filter_map(|&f| infos[f].year)
@@ -482,6 +516,10 @@ fn artist_rows(infos: &[TrackInfo], keys: &[String], ids: &[String]) -> Vec<Arti
                 sort_name: reading.as_ref().map(|r| r.kana.clone()),
                 sort_name_source: reading.as_ref().map(|r| r.source.as_str().to_owned()),
                 sort_key: sort_key(&name, reading.as_ref().map(|r| r.kana.as_str())),
+                search_text: search_text([
+                    name.as_str(),
+                    reading.as_ref().map_or("", |r| r.kana.as_str()),
+                ]),
                 name,
             }
         })

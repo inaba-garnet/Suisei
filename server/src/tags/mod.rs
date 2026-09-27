@@ -4,6 +4,7 @@
 mod match_key;
 mod raw;
 mod reading;
+mod search_text;
 mod sort_key;
 
 use std::path::Path;
@@ -11,6 +12,7 @@ use std::path::Path;
 pub use match_key::normalize;
 pub use raw::{AudioProps, RawTags, read};
 pub use reading::{Reading, ReadingSource, reading};
+pub use search_text::{search_form, search_text};
 pub use sort_key::{index_heading, sort_key};
 
 pub const UNKNOWN_ARTIST: &str = "[Unknown Artist]";
