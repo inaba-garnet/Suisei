@@ -1,3 +1,4 @@
+mod browse;
 mod empty;
 
 use std::sync::Arc;
@@ -75,7 +76,10 @@ async fn rest(
             subsonic::ok(format, scan_status(&state))
         }
         "getScanStatus" => subsonic::ok(format, scan_status(&state)),
-        _ => match empty::respond(name, &params, &state) {
+        _ => match browse::respond(name, &params, &state)
+            .await
+            .or_else(|| empty::respond(name, &params, &state))
+        {
             Some(Ok(payload)) => subsonic::ok(format, payload),
             Some(Err(err)) => subsonic::error(format, &err),
             None => not_implemented(name, &method, &params, format),
