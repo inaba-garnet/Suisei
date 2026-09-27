@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO playlist (id, name, comment, public, created_at, changed_at)\n             VALUES (?, ?, NULL, FALSE, ?, ?)\n             ON CONFLICT (id) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "59981a4299d7ea06b0db6767f05053459c6cb5087aa2c15c01444218f79b1a5f"
+}

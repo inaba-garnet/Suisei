@@ -7,10 +7,6 @@ use crate::subsonic::{Error, ErrorCode, Params};
 
 /// 実装を予定しているエンドポイント。実装するまで仮の措置（200 と code 0）を返す（docs/verification.md）。
 pub const PENDING: &[&str] = &[
-    "getPlaylist",
-    "createPlaylist",
-    "updatePlaylist",
-    "deletePlaylist",
     "savePlayQueue",
     "getPlayQueueByIndex",
     "savePlayQueueByIndex",

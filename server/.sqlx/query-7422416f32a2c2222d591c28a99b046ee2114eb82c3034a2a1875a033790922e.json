@@ -1,0 +1,112 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT playlist.id AS \"id!\", playlist.name, playlist.comment, playlist.public,\n                      playlist.created_at, playlist.changed_at,\n                      (SELECT COUNT(*) FROM playlist_entry\n                         WHERE playlist_entry.playlist_id = playlist.id) AS \"song_count!: i64\",\n                      (SELECT COALESCE(SUM(file.duration_ms), 0) FROM playlist_entry\n                         JOIN track ON track.id = playlist_entry.track_id\n                         JOIN file ON file.id = track.primary_file_id\n                         WHERE playlist_entry.playlist_id = playlist.id) AS \"duration_ms!: i64\",\n                      (SELECT album.id FROM playlist_entry\n                         JOIN track ON track.id = playlist_entry.track_id\n                         JOIN album ON album.id = track.album_id\n                         WHERE playlist_entry.playlist_id = playlist.id\n                           AND album.cover_path IS NOT NULL\n                         ORDER BY playlist_entry.position LIMIT 1) AS cover_album_id\n               FROM playlist WHERE playlist.id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "playlist",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "playlist",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "name": "comment",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "playlist",
+            "name": "comment"
+          }
+        }
+      },
+      {
+        "name": "public",
+        "ordinal": 3,
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "playlist",
+            "name": "public"
+          }
+        }
+      },
+      {
+        "name": "created_at",
+        "ordinal": 4,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "playlist",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "name": "changed_at",
+        "ordinal": 5,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "playlist",
+            "name": "changed_at"
+          }
+        }
+      },
+      {
+        "name": "song_count!: i64",
+        "ordinal": 6,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "duration_ms!: i64",
+        "ordinal": 7,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "cover_album_id",
+        "ordinal": 8,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "7422416f32a2c2222d591c28a99b046ee2114eb82c3034a2a1875a033790922e"
+}

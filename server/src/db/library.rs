@@ -374,6 +374,17 @@ pub async fn replace(pool: &Pool, library: &Library) -> Result<(), sqlx::Error> 
         .await?;
     }
 
+    // マージで消える曲を、プレイリストの同じ位置のまま残る曲に付け替える
+    for (old_id, new_id) in &library.aliases {
+        sqlx::query!(
+            "UPDATE playlist_entry SET track_id = ? WHERE track_id = ?",
+            new_id,
+            old_id
+        )
+        .execute(&mut *tx)
+        .await?;
+    }
+
     // マージで消える曲、アルバム、アーティストのお気に入りと評価を、残る側へ引き継ぐ。
     // お気に入りの日時は古いほう、評価は残る側を優先する（docs/schema.md）
     for (old_id, new_id) in &library.aliases {

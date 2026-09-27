@@ -414,12 +414,12 @@ fn genres_json(genres: &[String]) -> Value {
 }
 
 /// 秒に丸める。
-fn seconds(ms: i64) -> i64 {
+pub(super) fn seconds(ms: i64) -> i64 {
     (ms + 500) / 1000
 }
 
 /// UNIX 時刻のミリ秒を ISO 8601 にする。
-fn timestamp(ms: i64) -> String {
+pub(super) fn timestamp(ms: i64) -> String {
     let at = UNIX_EPOCH + Duration::from_millis(u64::try_from(ms).unwrap_or(0));
     humantime::format_rfc3339_millis(at).to_string()
 }
