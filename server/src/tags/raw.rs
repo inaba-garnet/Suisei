@@ -6,7 +6,9 @@ use lofty::file::{AudioFile, FileType, TaggedFile, TaggedFileExt};
 use lofty::tag::{Accessor, ItemKey, Tag};
 
 /// タグの値をそのまま持つ。空白だけの値は無いものとして扱う。
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+/// DB に JSON で保存するので、項目を足しても古い JSON を読めるよう、欠けた項目は既定値にする。
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
 pub struct RawTags {
     pub title: Option<String>,
     pub album: Option<String>,

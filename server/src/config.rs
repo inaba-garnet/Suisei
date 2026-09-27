@@ -12,6 +12,10 @@ pub struct Config {
     #[arg(long, env = "SUISEI_DATA_DIR", default_value = "data")]
     pub data_dir: PathBuf,
 
+    /// 音楽フォルダ。一つだけ渡す。
+    #[arg(long, env = "SUISEI_MUSIC_DIR")]
+    pub music_dir: PathBuf,
+
     #[command(flatten)]
     pub credentials: Credentials,
 }

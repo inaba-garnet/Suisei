@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT track_id, position, artist_id FROM track_artist",
+  "describe": {
+    "columns": [
+      {
+        "name": "track_id",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track_artist",
+            "name": "track_id"
+          }
+        }
+      },
+      {
+        "name": "position",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "track_artist",
+            "name": "position"
+          }
+        }
+      },
+      {
+        "name": "artist_id",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track_artist",
+            "name": "artist_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "389d8b46ac339bd98ec673c99c1f074b965c5588b1596558bdb69ec014f8ea0b"
+}

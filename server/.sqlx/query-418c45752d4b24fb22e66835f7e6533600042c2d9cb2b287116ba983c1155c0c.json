@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT album_id, position, artist_id FROM album_artist",
+  "describe": {
+    "columns": [
+      {
+        "name": "album_id",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "album_artist",
+            "name": "album_id"
+          }
+        }
+      },
+      {
+        "name": "position",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "album_artist",
+            "name": "position"
+          }
+        }
+      },
+      {
+        "name": "artist_id",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "album_artist",
+            "name": "artist_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "418c45752d4b24fb22e66835f7e6533600042c2d9cb2b287116ba983c1155c0c"
+}

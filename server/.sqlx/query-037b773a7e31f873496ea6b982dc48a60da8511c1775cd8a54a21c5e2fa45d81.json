@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM track_genre",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "037b773a7e31f873496ea6b982dc48a60da8511c1775cd8a54a21c5e2fa45d81"
+}

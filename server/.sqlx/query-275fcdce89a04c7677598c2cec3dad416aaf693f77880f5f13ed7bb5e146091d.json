@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO id_alias (old_id, new_id) VALUES (?, ?)\n             ON CONFLICT (old_id) DO UPDATE SET new_id = excluded.new_id",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "275fcdce89a04c7677598c2cec3dad416aaf693f77880f5f13ed7bb5e146091d"
+}

@@ -1,5 +1,5 @@
 use clap::Parser;
-use suisei::{AppState, Config, db};
+use suisei::{AppState, Config, db, scan};
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
 
@@ -13,6 +13,8 @@ async fn main() -> std::io::Result<()> {
     let db = db::open(&config.data_dir)
         .await
         .map_err(std::io::Error::other)?;
+    // 定期実行と startScan は #3 の 2 番目の PR で入れる。それまでは起動時に一度だけ走らせる
+    tokio::spawn(startup_scan(db.clone(), config.music_dir.clone()));
     let state = AppState {
         credentials: config.credentials,
         db,
@@ -22,6 +24,23 @@ async fn main() -> std::io::Result<()> {
     axum::serve(listener, suisei::router(state))
         .with_graceful_shutdown(shutdown_signal())
         .await
+}
+
+async fn startup_scan(db: db::Pool, music_dir: std::path::PathBuf) {
+    let started = std::time::Instant::now();
+    match scan::run(&db, &music_dir, scan::Mode::Quick).await {
+        Ok(summary) => tracing::info!(
+            files = summary.files,
+            read = summary.read,
+            failed = summary.failed,
+            tracks = summary.tracks,
+            albums = summary.albums,
+            artists = summary.artists,
+            elapsed_ms = started.elapsed().as_millis(),
+            "scan finished"
+        ),
+        Err(err) => tracing::error!(error = %err, "scan failed"),
+    }
 }
 
 async fn shutdown_signal() {
