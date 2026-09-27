@@ -1,0 +1,81 @@
+{
+  "subsonic-response": {
+    "status": "ok",
+    "version": "1.16.1",
+    "type": "navidrome",
+    "serverVersion": "0.64.0 (1072e9f7)",
+    "openSubsonic": true,
+    "randomSongs": {
+      "song": [
+        {
+          "id": "7ogxeCqiuihQxCutAKoEhj",
+          "parent": "6oq0g9th4iTM8a0y0T88tr",
+          "isDir": false,
+          "title": "We Are Going To Eclecfunk Your Ass",
+          "album": "netBloc Vol. 24: tiuqottigeloot",
+          "artist": "Eclectek",
+          "track": 2,
+          "year": 2009,
+          "genre": "Netlabel",
+          "coverArt": "mf-7ogxeCqiuihQxCutAKoEhj_de1d39e3b5f3cf8c",
+          "size": 4700610,
+          "contentType": "audio/mpeg",
+          "suffix": "mp3",
+          "duration": 190,
+          "bitRate": 192,
+          "path": "Various Artists/netBloc Vol. 24: tiuqottigeloot/02 - We Are Going To Eclecfunk Your Ass.mp3",
+          "playCount": 333,
+          "created": "2025-03-26T22:26:49.26619152Z",
+          "albumId": "6oq0g9th4iTM8a0y0T88tr",
+          "artistId": "4m3ePo7Zkdq9NYy5Kf3UYG",
+          "type": "music",
+          "userRating": 9,
+          "averageRating": 9,
+          "bookmarkPosition": 12000,
+          "played": "2026-09-23T20:31:16.133161583Z",
+          "bpm": 0,
+          "comment": "Courtesy of https://blocsonic.com",
+          "sortName": "we are going to eclecfunk your ass",
+          "mediaType": "song",
+          "musicBrainzId": "",
+          "isrc": [],
+          "genres": [
+            {
+              "name": "Netlabel"
+            }
+          ],
+          "replayGain": {
+            "trackGain": 0,
+            "albumGain": 0,
+            "trackPeak": 1,
+            "albumPeak": 1
+          },
+          "channelCount": 2,
+          "samplingRate": 44100,
+          "bitDepth": 0,
+          "moods": [],
+          "artists": [
+            {
+              "id": "4m3ePo7Zkdq9NYy5Kf3UYG",
+              "name": "Eclectek"
+            }
+          ],
+          "displayArtist": "Eclectek",
+          "albumArtists": [
+            {
+              "id": "63sqASlAfjbGMuLP4JhnZU",
+              "name": "Various Artists"
+            }
+          ],
+          "displayAlbumArtist": "Various Artists",
+          "contributors": [],
+          "displayComposer": "",
+          "explicitStatus": "",
+          "groupings": [],
+          "works": [],
+          "movements": []
+        }
+      ]
+    }
+  }
+}

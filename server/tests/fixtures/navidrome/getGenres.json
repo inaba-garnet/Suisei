@@ -1,0 +1,23 @@
+{
+  "subsonic-response": {
+    "status": "ok",
+    "version": "1.16.1",
+    "type": "navidrome",
+    "serverVersion": "0.64.0 (1072e9f7)",
+    "openSubsonic": true,
+    "genres": {
+      "genre": [
+        {
+          "value": "Electronic",
+          "songCount": 73,
+          "albumCount": 10
+        },
+        {
+          "value": "Rock",
+          "songCount": 28,
+          "albumCount": 6
+        }
+      ]
+    }
+  }
+}

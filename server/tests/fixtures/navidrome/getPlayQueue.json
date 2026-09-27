@@ -1,0 +1,91 @@
+{
+  "subsonic-response": {
+    "status": "ok",
+    "version": "1.16.1",
+    "type": "navidrome",
+    "serverVersion": "0.64.0 (1072e9f7)",
+    "openSubsonic": true,
+    "playQueue": {
+      "entry": [
+        {
+          "id": "7DtfUK5dePUj2w9oTh6LgV",
+          "parent": "3Ss0LvMLYHiAOYlMrwcxtj",
+          "isDir": false,
+          "title": "Balrog Boogie",
+          "album": "The Butcher's Ballroom",
+          "artist": "Diablo Swing Orchestra",
+          "track": 1,
+          "year": 2009,
+          "genre": "Rock",
+          "coverArt": "mf-7DtfUK5dePUj2w9oTh6LgV_a36347d281b468b5",
+          "size": 6451929,
+          "contentType": "audio/mpeg",
+          "suffix": "mp3",
+          "duration": 233,
+          "bitRate": 221,
+          "path": "Diablo Swing Orchestra/The Butcher's Ballroom/01 - Balrog Boogie.mp3",
+          "playCount": 669,
+          "created": "2025-03-26T22:26:40.246577466Z",
+          "albumId": "3Ss0LvMLYHiAOYlMrwcxtj",
+          "artistId": "1HwxFm38Myi4KG5WMEDS2K",
+          "type": "music",
+          "bookmarkPosition": 20000,
+          "played": "2026-09-27T02:32:51.284953326Z",
+          "bpm": 91,
+          "comment": "http://www.jamendo.com cc_standard",
+          "sortName": "balrog boogie",
+          "mediaType": "song",
+          "musicBrainzId": "",
+          "isrc": [],
+          "genres": [
+            {
+              "name": "Rock"
+            }
+          ],
+          "replayGain": {
+            "trackGain": 0,
+            "albumGain": 0,
+            "trackPeak": 1,
+            "albumPeak": 1
+          },
+          "channelCount": 2,
+          "samplingRate": 44100,
+          "bitDepth": 0,
+          "moods": [],
+          "artists": [
+            {
+              "id": "1HwxFm38Myi4KG5WMEDS2K",
+              "name": "Diablo Swing Orchestra"
+            }
+          ],
+          "displayArtist": "Diablo Swing Orchestra",
+          "albumArtists": [
+            {
+              "id": "1HwxFm38Myi4KG5WMEDS2K",
+              "name": "Diablo Swing Orchestra"
+            }
+          ],
+          "displayAlbumArtist": "Diablo Swing Orchestra",
+          "contributors": [
+            {
+              "role": "composer",
+              "artist": {
+                "id": "1HwxFm38Myi4KG5WMEDS2K",
+                "name": "Diablo Swing Orchestra"
+              }
+            }
+          ],
+          "displayComposer": "Diablo Swing Orchestra",
+          "explicitStatus": "",
+          "groupings": [],
+          "works": [],
+          "movements": []
+        }
+      ],
+      "current": "7DtfUK5dePUj2w9oTh6LgV",
+      "username": "demo",
+      "changed": "2026-09-27T02:37:07.47326941Z",
+      "changedBy": "Yuzic"
+    }
+  }
+}

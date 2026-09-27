@@ -1,0 +1,36 @@
+{
+  "subsonic-response": {
+    "status": "ok",
+    "version": "1.16.1",
+    "type": "navidrome",
+    "serverVersion": "0.64.0 (1072e9f7)",
+    "openSubsonic": true,
+    "playlists": {
+      "playlist": [
+        {
+          "id": "4k2QhFRZQBJZ2dBjvEmlRG",
+          "name": "asdf",
+          "songCount": 0,
+          "duration": 0,
+          "public": true,
+          "owner": "demo",
+          "created": "2026-09-25T12:39:16.859654263Z",
+          "changed": "2026-09-25T12:39:16.874497786Z",
+          "readonly": false
+        },
+        {
+          "id": "0NYKm1AySipSUAG3ysi6ap",
+          "name": "Ashlizzlle",
+          "comment": "Jo",
+          "songCount": 11,
+          "duration": 3201,
+          "owner": "demo",
+          "created": "2026-09-20T13:44:29.713302582Z",
+          "changed": "2026-09-22T17:10:41.134436925Z",
+          "coverArt": "pl-0NYKm1AySipSUAG3ysi6ap_7ae07f3d50a9afe6",
+          "readonly": false
+        }
+      ]
+    }
+  }
+}

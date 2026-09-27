@@ -1,0 +1,139 @@
+{
+  "subsonic-response": {
+    "status": "ok",
+    "version": "1.16.1",
+    "type": "navidrome",
+    "serverVersion": "0.64.0 (1072e9f7)",
+    "openSubsonic": true,
+    "shares": {
+      "share": [
+        {
+          "entry": [
+            {
+              "id": "1wg9e3B8bWmiVRZWZBJux3",
+              "parent": "7i6ciuZJca8cG0V2xXwDcC",
+              "isDir": true,
+              "title": "Live at The Casbah - 2005-04-29",
+              "name": "Live at The Casbah - 2005-04-29",
+              "album": "Live at The Casbah - 2005-04-29",
+              "artist": "The New Deal",
+              "year": 2005,
+              "coverArt": "al-1wg9e3B8bWmiVRZWZBJux3_51f5041620034dc3",
+              "duration": 8477,
+              "playCount": 3654,
+              "created": "2025-03-26T22:26:46.937618783Z",
+              "artistId": "7i6ciuZJca8cG0V2xXwDcC",
+              "userRating": 4,
+              "averageRating": 4,
+              "songCount": 22,
+              "played": "2026-09-27T03:19:23.292Z",
+              "bpm": 0,
+              "comment": "",
+              "sortName": "live at the casbah - 2005-04-29",
+              "mediaType": "album",
+              "musicBrainzId": "",
+              "isrc": [],
+              "genres": [],
+              "replayGain": {},
+              "channelCount": 0,
+              "samplingRate": 0,
+              "bitDepth": 0,
+              "moods": [],
+              "artists": [
+                {
+                  "id": "7i6ciuZJca8cG0V2xXwDcC",
+                  "name": "The New Deal"
+                }
+              ],
+              "displayArtist": "The New Deal",
+              "albumArtists": [
+                {
+                  "id": "7i6ciuZJca8cG0V2xXwDcC",
+                  "name": "The New Deal"
+                }
+              ],
+              "displayAlbumArtist": "The New Deal",
+              "contributors": [],
+              "displayComposer": "",
+              "explicitStatus": "",
+              "groupings": [],
+              "works": [],
+              "movements": []
+            }
+          ],
+          "id": "wAHCxbiyuk",
+          "url": "https://demo.navidrome.org/share/wAHCxbiyuk",
+          "description": "SHARE",
+          "username": "demo",
+          "created": "2026-09-25T15:47:49.623710264Z",
+          "expires": "2027-09-25T15:47:49.619448748Z",
+          "lastVisited": "2026-09-26T17:21:41.139372085Z",
+          "visitCount": 2
+        },
+        {
+          "entry": [
+            {
+              "id": "6dGMsiesuYw9lti9yGIGWY",
+              "parent": "63sqASlAfjbGMuLP4JhnZU",
+              "isDir": true,
+              "title": "netBloc Vol. 42: Live, The Universe & Everything",
+              "name": "netBloc Vol. 42: Live, The Universe & Everything",
+              "album": "netBloc Vol. 42: Live, The Universe & Everything",
+              "artist": "Various Artists",
+              "year": 2013,
+              "coverArt": "al-6dGMsiesuYw9lti9yGIGWY_ebbb154f246c04a5",
+              "duration": 2954,
+              "playCount": 8964,
+              "created": "2025-03-26T22:26:49.315688846Z",
+              "artistId": "63sqASlAfjbGMuLP4JhnZU",
+              "userRating": 5,
+              "averageRating": 5,
+              "songCount": 11,
+              "played": "2026-09-27T03:14:23.079Z",
+              "bpm": 0,
+              "comment": "",
+              "sortName": "netbloc vol. 42: live, the universe & everything",
+              "mediaType": "album",
+              "musicBrainzId": "",
+              "isrc": [],
+              "genres": [],
+              "replayGain": {},
+              "channelCount": 0,
+              "samplingRate": 0,
+              "bitDepth": 0,
+              "moods": [],
+              "artists": [
+                {
+                  "id": "63sqASlAfjbGMuLP4JhnZU",
+                  "name": "Various Artists"
+                }
+              ],
+              "displayArtist": "Various Artists",
+              "albumArtists": [
+                {
+                  "id": "63sqASlAfjbGMuLP4JhnZU",
+                  "name": "Various Artists"
+                }
+              ],
+              "displayAlbumArtist": "Various Artists",
+              "contributors": [],
+              "displayComposer": "",
+              "explicitStatus": "",
+              "groupings": [],
+              "works": [],
+              "movements": []
+            }
+          ],
+          "id": "77S4rObArq",
+          "url": "https://demo.navidrome.org/share/77S4rObArq",
+          "description": "netBloc Vol. 42: Live, The ...",
+          "username": "demo",
+          "created": "2026-09-25T09:03:26.602192648Z",
+          "expires": "2027-09-25T09:03:26.598311837Z",
+          "lastVisited": "2026-09-25T14:27:26.471103252Z",
+          "visitCount": 1
+        }
+      ]
+    }
+  }
+}

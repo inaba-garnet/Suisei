@@ -1,0 +1,246 @@
+{
+  "subsonic-response": {
+    "status": "ok",
+    "version": "1.16.1",
+    "type": "navidrome",
+    "serverVersion": "0.64.0 (1072e9f7)",
+    "openSubsonic": true,
+    "starred2": {
+      "artist": [
+        {
+          "id": "35I7K2mWfyoZO65CixLm5M",
+          "name": "Abdominal",
+          "coverArt": "ar-35I7K2mWfyoZO65CixLm5M_a1b84c91dea30d5d",
+          "albumCount": 0,
+          "starred": "2026-08-23T13:25:53.373860316Z",
+          "userRating": 2,
+          "averageRating": 2,
+          "artistImageUrl": "https://demo.navidrome.org/share/img/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFyLTM1STdLMm1XZnlvWk82NUNpeExtNU1fYTFiODRjOTFkZWEzMGQ1ZCIsImlzcyI6Ik5EIn0.zsMHloKEwLSb5VSxDTFA6OEZDkCu1hLAsLQ3EalkAsw?size=600",
+          "musicBrainzId": "",
+          "sortName": "abdominal",
+          "roles": [
+            "artist",
+            "maincredit"
+          ]
+        }
+      ],
+      "album": [
+        {
+          "id": "4ArIoYRbh0CaV7mFckEkXe",
+          "name": "Fairytale",
+          "artist": "Natasha Beller",
+          "artistId": "40opqiyTRvIX5R96ih5pDL",
+          "coverArt": "al-4ArIoYRbh0CaV7mFckEkXe_e468b385c2afebf3",
+          "songCount": 9,
+          "duration": 1841,
+          "playCount": 10430,
+          "created": "2025-03-26T22:26:49.199997383Z",
+          "starred": "2026-09-27T02:29:04.759485355Z",
+          "year": 2018,
+          "genre": "Trip-Hop",
+          "played": "2026-09-27T02:45:11.978Z",
+          "userRating": 4,
+          "averageRating": 4,
+          "genres": [
+            {
+              "name": "Trip-Hop"
+            }
+          ],
+          "musicBrainzId": "",
+          "isCompilation": false,
+          "sortName": "fairytale",
+          "discTitles": [],
+          "originalReleaseDate": {},
+          "releaseDate": {},
+          "releaseTypes": [],
+          "recordLabels": [],
+          "moods": [],
+          "artists": [
+            {
+              "id": "40opqiyTRvIX5R96ih5pDL",
+              "name": "Natasha Beller"
+            }
+          ],
+          "displayArtist": "Natasha Beller",
+          "explicitStatus": "",
+          "version": ""
+        },
+        {
+          "id": "31ryIDcG8ZtWdJl92Rhd5w",
+          "name": "What I Tell Myself",
+          "artist": "Forget the Whale",
+          "artistId": "4We5GCR5qWUG0TLWJqVBDi",
+          "coverArt": "al-31ryIDcG8ZtWdJl92Rhd5w_b6e4eab0c8136564",
+          "songCount": 4,
+          "duration": 1289,
+          "playCount": 767,
+          "created": "2025-03-26T22:26:40.691348231Z",
+          "starred": "2026-09-26T21:13:07.533150522Z",
+          "year": 2016,
+          "genre": "Rock",
+          "played": "2026-09-27T01:30:33.635213313Z",
+          "userRating": 5,
+          "averageRating": 5,
+          "genres": [
+            {
+              "name": "Rock"
+            },
+            {
+              "name": "rnb"
+            }
+          ],
+          "musicBrainzId": "",
+          "isCompilation": false,
+          "sortName": "what i tell myself",
+          "discTitles": [],
+          "originalReleaseDate": {},
+          "releaseDate": {},
+          "releaseTypes": [],
+          "recordLabels": [
+            {
+              "name": "http://www.jamendo.com"
+            }
+          ],
+          "moods": [],
+          "artists": [
+            {
+              "id": "4We5GCR5qWUG0TLWJqVBDi",
+              "name": "Forget the Whale"
+            }
+          ],
+          "displayArtist": "Forget the Whale",
+          "explicitStatus": "",
+          "version": ""
+        }
+      ],
+      "song": [
+        {
+          "id": "5kHpQP0f1nbrHOE1U7LcCo",
+          "parent": "6dGMsiesuYw9lti9yGIGWY",
+          "isDir": false,
+          "title": "Nevado",
+          "album": "netBloc Vol. 42: Live, The Universe & Everything",
+          "artist": "Zhada",
+          "track": 10,
+          "year": 2013,
+          "coverArt": "mf-5kHpQP0f1nbrHOE1U7LcCo_ebbb154f246c04a5",
+          "size": 9623195,
+          "contentType": "audio/mpeg",
+          "suffix": "mp3",
+          "starred": "2026-09-27T03:15:21.633815372Z",
+          "duration": 396,
+          "bitRate": 192,
+          "path": "Various Artists/netBloc Vol. 42: Live, The Universe & Everything/10 - Nevado.mp3",
+          "playCount": 245,
+          "created": "2025-03-26T22:26:49.340227185Z",
+          "albumId": "6dGMsiesuYw9lti9yGIGWY",
+          "artistId": "2mzm1hYaXE3hULchNQjtVh",
+          "type": "music",
+          "userRating": 5,
+          "averageRating": 5,
+          "played": "2026-09-27T03:14:23.079Z",
+          "bpm": 0,
+          "comment": "Courtesy of https://blocsonic.com",
+          "sortName": "nevado",
+          "mediaType": "song",
+          "musicBrainzId": "",
+          "isrc": [],
+          "genres": [],
+          "replayGain": {
+            "trackGain": 0,
+            "albumGain": 0,
+            "trackPeak": 1,
+            "albumPeak": 1
+          },
+          "channelCount": 2,
+          "samplingRate": 44100,
+          "bitDepth": 0,
+          "moods": [],
+          "artists": [
+            {
+              "id": "2mzm1hYaXE3hULchNQjtVh",
+              "name": "Zhada"
+            }
+          ],
+          "displayArtist": "Zhada",
+          "albumArtists": [
+            {
+              "id": "63sqASlAfjbGMuLP4JhnZU",
+              "name": "Various Artists"
+            }
+          ],
+          "displayAlbumArtist": "Various Artists",
+          "contributors": [],
+          "displayComposer": "",
+          "explicitStatus": "",
+          "groupings": [],
+          "works": [],
+          "movements": []
+        },
+        {
+          "id": "42hU0YqcbsvKar6Qbmx9af",
+          "parent": "6dGMsiesuYw9lti9yGIGWY",
+          "isDir": false,
+          "title": "EggShells",
+          "album": "netBloc Vol. 42: Live, The Universe & Everything",
+          "artist": "Dead Poets",
+          "track": 11,
+          "year": 2013,
+          "coverArt": "mf-42hU0YqcbsvKar6Qbmx9af_ebbb154f246c04a5",
+          "size": 4131847,
+          "contentType": "audio/mpeg",
+          "suffix": "mp3",
+          "starred": "2026-09-27T03:13:49.781155749Z",
+          "duration": 167,
+          "bitRate": 192,
+          "path": "Various Artists/netBloc Vol. 42: Live, The Universe & Everything/11 - EggShells.mp3",
+          "playCount": 281,
+          "created": "2025-03-26T22:26:49.342338564Z",
+          "albumId": "6dGMsiesuYw9lti9yGIGWY",
+          "artistId": "5YmjdUAubz4SJkrwrj2HLF",
+          "type": "music",
+          "userRating": 5,
+          "averageRating": 5,
+          "played": "2026-09-25T22:40:27.036433204Z",
+          "bpm": 0,
+          "comment": "Courtesy of https://blocsonic.com",
+          "sortName": "eggshells",
+          "mediaType": "song",
+          "musicBrainzId": "",
+          "isrc": [],
+          "genres": [],
+          "replayGain": {
+            "trackGain": 0,
+            "albumGain": 0,
+            "trackPeak": 1,
+            "albumPeak": 1
+          },
+          "channelCount": 2,
+          "samplingRate": 44100,
+          "bitDepth": 0,
+          "moods": [],
+          "artists": [
+            {
+              "id": "5YmjdUAubz4SJkrwrj2HLF",
+              "name": "Dead Poets"
+            }
+          ],
+          "displayArtist": "Dead Poets",
+          "albumArtists": [
+            {
+              "id": "63sqASlAfjbGMuLP4JhnZU",
+              "name": "Various Artists"
+            }
+          ],
+          "displayAlbumArtist": "Various Artists",
+          "contributors": [],
+          "displayComposer": "",
+          "explicitStatus": "",
+          "groupings": [],
+          "works": [],
+          "movements": []
+        }
+      ]
+    }
+  }
+}
