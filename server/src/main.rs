@@ -1,5 +1,5 @@
 use clap::Parser;
-use suisei::{AppState, Config};
+use suisei::{AppState, Config, db};
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
 
@@ -10,9 +10,16 @@ async fn main() -> std::io::Result<()> {
         .init();
 
     let config = Config::parse();
+    let db = db::open(&config.data_dir)
+        .await
+        .map_err(std::io::Error::other)?;
+    let state = AppState {
+        credentials: config.credentials,
+        db,
+    };
     let listener = TcpListener::bind(config.listen).await?;
     tracing::info!(addr = %config.listen, "listening");
-    axum::serve(listener, suisei::router(AppState::from(config)))
+    axum::serve(listener, suisei::router(state))
         .with_graceful_shutdown(shutdown_signal())
         .await
 }
