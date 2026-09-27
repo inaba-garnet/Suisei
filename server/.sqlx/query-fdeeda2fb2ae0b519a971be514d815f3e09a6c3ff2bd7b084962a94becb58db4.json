@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT album.id AS \"id!\", album.name, album.display_artist, album.sort_name,\n                      album.year, album.created_at, album.compilation,\n                      album.cover_path IS NOT NULL AS \"has_cover!: bool\",\n                      (SELECT COUNT(*) FROM track WHERE track.album_id = album.id)\n                        AS \"song_count!: i64\",\n                      (SELECT COALESCE(SUM(file.duration_ms), 0) FROM track\n                         JOIN file ON file.id = track.primary_file_id\n                         WHERE track.album_id = album.id) AS \"duration_ms!: i64\",\n                      (SELECT COUNT(*) FROM play_history\n                         JOIN track ON track.id = play_history.track_id\n                         WHERE track.album_id = album.id) AS \"play_count!: i64\",\n                      (SELECT MAX(play_history.played_at) FROM play_history\n                         JOIN track ON track.id = play_history.track_id\n                         WHERE track.album_id = album.id) AS \"last_played: i64\"\n               FROM album ORDER BY (SELECT artist.sort_key FROM album_artist\n                             JOIN artist ON artist.id = album_artist.artist_id\n                           WHERE album_artist.album_id = album.id AND album_artist.position = 0),\n                          album.sort_key, album.id\n                 LIMIT ? OFFSET ?",
+  "query": "SELECT album.id AS \"id!\", album.name, album.display_artist, album.sort_name,\n                      album.year, album.created_at, album.compilation,\n                      album.cover_path IS NOT NULL AS \"has_cover!: bool\",\n                      album.starred_at, album.rating,\n                      (SELECT COUNT(*) FROM track WHERE track.album_id = album.id)\n                        AS \"song_count!: i64\",\n                      (SELECT COALESCE(SUM(file.duration_ms), 0) FROM track\n                         JOIN file ON file.id = track.primary_file_id\n                         WHERE track.album_id = album.id) AS \"duration_ms!: i64\",\n                      (SELECT COUNT(*) FROM play_history\n                         JOIN track ON track.id = play_history.track_id\n                         WHERE track.album_id = album.id) AS \"play_count!: i64\",\n                      (SELECT MAX(play_history.played_at) FROM play_history\n                         JOIN track ON track.id = play_history.track_id\n                         WHERE track.album_id = album.id) AS \"last_played: i64\"\n               FROM album WHERE album.id IN (\n                     SELECT track.album_id FROM track\n                       JOIN track_genre ON track_genre.track_id = track.id\n                     WHERE track_genre.genre = ?)\n                 ORDER BY album.sort_key, album.id LIMIT ? OFFSET ?",
   "describe": {
     "columns": [
       {
@@ -87,32 +87,54 @@
         "origin": "Expression"
       },
       {
-        "name": "song_count!: i64",
+        "name": "starred_at",
         "ordinal": 8,
         "type_info": "Integer",
-        "origin": "Expression"
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "starred_at"
+          }
+        }
       },
       {
-        "name": "duration_ms!: i64",
+        "name": "rating",
         "ordinal": 9,
         "type_info": "Integer",
-        "origin": "Expression"
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "rating"
+          }
+        }
       },
       {
-        "name": "play_count!: i64",
+        "name": "song_count!: i64",
         "ordinal": 10,
         "type_info": "Integer",
         "origin": "Expression"
       },
       {
-        "name": "last_played: i64",
+        "name": "duration_ms!: i64",
         "ordinal": 11,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "play_count!: i64",
+        "ordinal": 12,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "last_played: i64",
+        "ordinal": 13,
         "type_info": "Integer",
         "origin": "Expression"
       }
     ],
     "parameters": {
-      "Right": 2
+      "Right": 3
     },
     "nullable": [
       true,
@@ -123,11 +145,13 @@
       false,
       false,
       false,
+      true,
+      true,
       false,
       false,
       false,
       true
     ]
   },
-  "hash": "020ea5e8439678139dc96bd73756df14aeaef17738f9c92c5be6772abf34d7a5"
+  "hash": "fdeeda2fb2ae0b519a971be514d815f3e09a6c3ff2bd7b084962a94becb58db4"
 }

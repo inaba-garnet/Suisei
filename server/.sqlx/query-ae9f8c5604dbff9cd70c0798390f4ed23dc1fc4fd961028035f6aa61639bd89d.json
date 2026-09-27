@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!\", name, sort_name FROM artist WHERE id = ?",
+  "query": "SELECT id AS \"id!\", name, sort_name, starred_at, rating FROM artist WHERE id = ?",
   "describe": {
     "columns": [
       {
@@ -35,6 +35,28 @@
             "name": "sort_name"
           }
         }
+      },
+      {
+        "name": "starred_at",
+        "ordinal": 3,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "starred_at"
+          }
+        }
+      },
+      {
+        "name": "rating",
+        "ordinal": 4,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "rating"
+          }
+        }
       }
     ],
     "parameters": {
@@ -43,8 +65,10 @@
     "nullable": [
       true,
       false,
+      true,
+      true,
       true
     ]
   },
-  "hash": "2471379b0e7dacb4ec06ff944eb8f2ba7db1bbeed5405b5963efc112453f8b51"
+  "hash": "ae9f8c5604dbff9cd70c0798390f4ed23dc1fc4fd961028035f6aa61639bd89d"
 }

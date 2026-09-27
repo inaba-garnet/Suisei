@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT starred_at, rating FROM track WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "starred_at",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "starred_at"
+          }
+        }
+      },
+      {
+        "name": "rating",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "rating"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      true
+    ]
+  },
+  "hash": "1d5005cfe0656a64ba742fd6d91750f2cb80212269ec0228cf130a958fdeb707"
+}

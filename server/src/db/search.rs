@@ -3,18 +3,10 @@
 //! 今は `search_text` 列への `LIKE` の部分一致で、全行を順に見る。
 //! 語の数が決まらないので、ここだけは実行時に SQL を組み立て、コンパイル時の照合は使わない。
 
-use sqlx::{FromRow, QueryBuilder, Sqlite};
+use sqlx::{QueryBuilder, Sqlite};
 
 use super::Pool;
-
-#[derive(Debug, Clone, PartialEq, Eq, FromRow)]
-pub struct ArtistHit {
-    pub id: String,
-    pub name: String,
-    pub sort_name: Option<String>,
-    /// アルバムアーティストのアルバムと、曲で参加しているアルバムの数（getArtist と同じ）
-    pub album_count: i64,
-}
+use super::browse::ArtistSummary;
 
 /// 名前か読みにすべての語を含むアーティスト。曲にだけ参加しているアーティストも含める。
 pub async fn artists(
@@ -22,7 +14,7 @@ pub async fn artists(
     words: &[String],
     count: i64,
     offset: i64,
-) -> Result<Vec<ArtistHit>, sqlx::Error> {
+) -> Result<Vec<ArtistSummary>, sqlx::Error> {
     let mut query = QueryBuilder::<Sqlite>::new(
         "SELECT artist.id, artist.name, artist.sort_name,
                 (SELECT COUNT(*) FROM (
@@ -30,7 +22,8 @@ pub async fn artists(
                     UNION
                     SELECT track.album_id FROM track
                       JOIN track_artist ON track_artist.track_id = track.id
-                      WHERE track_artist.artist_id = artist.id)) AS album_count
+                      WHERE track_artist.artist_id = artist.id)) AS album_count,
+                artist.starred_at, artist.rating
          FROM artist",
     );
     push_filter(&mut query, "artist", words);

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT artist.id AS \"id!\", artist.name, artist.sort_name, artist.sort_key,\n                  COUNT(DISTINCT album_artist.album_id) AS \"album_count!: i64\"\n           FROM artist JOIN album_artist ON album_artist.artist_id = artist.id\n           GROUP BY artist.id\n           ORDER BY artist.sort_key, artist.id",
+  "query": "SELECT artist.id AS \"id!\", artist.name, artist.sort_name, artist.sort_key,\n                  COUNT(DISTINCT album_artist.album_id) AS \"album_count!: i64\",\n                  artist.starred_at, artist.rating\n           FROM artist JOIN album_artist ON album_artist.artist_id = artist.id\n           GROUP BY artist.id\n           ORDER BY artist.sort_key, artist.id",
   "describe": {
     "columns": [
       {
@@ -52,6 +52,28 @@
         "ordinal": 4,
         "type_info": "Integer",
         "origin": "Expression"
+      },
+      {
+        "name": "starred_at",
+        "ordinal": 5,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "starred_at"
+          }
+        }
+      },
+      {
+        "name": "rating",
+        "ordinal": 6,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "rating"
+          }
+        }
       }
     ],
     "parameters": {
@@ -62,8 +84,10 @@
       false,
       true,
       false,
-      false
+      false,
+      true,
+      true
     ]
   },
-  "hash": "a0f424bfeac54421f4dde694c2f620fb51ab2f5a58619fc268346c0f11875fc4"
+  "hash": "e72f6528cef87df99cfcb065ba58660b0c7054c4cb67ea1bd909f7c91094f292"
 }

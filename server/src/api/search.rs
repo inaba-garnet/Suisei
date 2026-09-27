@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use serde_json::{Map, Value, json};
 
-use super::browse::{album_json, db_error, songs_json};
+use super::browse::{album_json, artist_summary_json, db_error, songs_json};
 use super::{AppState, payload};
 use crate::db::{browse, search};
 use crate::subsonic::{Error, ErrorCode, Params};
@@ -36,16 +36,7 @@ pub async fn search3(params: &Params, state: &AppState) -> Result<Map<String, Va
         let hits = search::artists(&state.db, &words, count, offset)
             .await
             .map_err(db_error)?;
-        let artists: Vec<Value> = hits
-            .into_iter()
-            .map(|a| {
-                let mut artist = json!({ "id": a.id, "name": a.name, "albumCount": a.album_count });
-                if let Some(sort_name) = a.sort_name {
-                    artist["sortName"] = json!(sort_name);
-                }
-                artist
-            })
-            .collect();
+        let artists: Vec<Value> = hits.iter().map(artist_summary_json).collect();
         insert(&mut result, "artist", artists);
     }
 

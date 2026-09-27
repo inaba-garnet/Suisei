@@ -1,3 +1,4 @@
+mod annotation;
 mod browse;
 mod empty;
 mod history;
@@ -96,6 +97,10 @@ async fn rest(
         "scrobble" => reply(format, history::scrobble(&params, &state).await),
         "getNowPlaying" => reply(format, history::now_playing(&state).await),
         "getTopSongs" => reply(format, history::top_songs(&params, &state).await),
+        "star" => reply(format, annotation::star(&params, &state).await),
+        "unstar" => reply(format, annotation::unstar(&params, &state).await),
+        "setRating" => reply(format, annotation::set_rating(&params, &state).await),
+        "getStarred2" => reply(format, annotation::starred2(&state).await),
         _ => match browse::respond(name, &params, &state)
             .await
             .or_else(|| empty::respond(name, &params, &state))

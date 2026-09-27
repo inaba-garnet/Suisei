@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE track SET\n                 starred_at = CASE WHEN starred_at IS NULL OR starred_at > ? THEN ?\n                                   ELSE starred_at END,\n                 rating = COALESCE(rating, ?)\n             WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "7e876efe1680a659b86f86d3c323ef762bb20fe93a9d8c003b91f9b3d3901706"
+}

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT album.id AS \"id!\", album.name, album.display_artist, album.sort_name,\n                      album.year, album.created_at, album.compilation,\n                      album.cover_path IS NOT NULL AS \"has_cover!: bool\",\n                      (SELECT COUNT(*) FROM track WHERE track.album_id = album.id)\n                        AS \"song_count!: i64\",\n                      (SELECT COALESCE(SUM(file.duration_ms), 0) FROM track\n                         JOIN file ON file.id = track.primary_file_id\n                         WHERE track.album_id = album.id) AS \"duration_ms!: i64\",\n                      (SELECT COUNT(*) FROM play_history\n                         JOIN track ON track.id = play_history.track_id\n                         WHERE track.album_id = album.id) AS \"play_count!: i64\",\n                      (SELECT MAX(play_history.played_at) FROM play_history\n                         JOIN track ON track.id = play_history.track_id\n                         WHERE track.album_id = album.id) AS \"last_played: i64\"\n               FROM album WHERE album.id = ?",
+  "query": "SELECT album.id AS \"id!\", album.name, album.display_artist, album.sort_name,\n                      album.year, album.created_at, album.compilation,\n                      album.cover_path IS NOT NULL AS \"has_cover!: bool\",\n                      album.starred_at, album.rating,\n                      (SELECT COUNT(*) FROM track WHERE track.album_id = album.id)\n                        AS \"song_count!: i64\",\n                      (SELECT COALESCE(SUM(file.duration_ms), 0) FROM track\n                         JOIN file ON file.id = track.primary_file_id\n                         WHERE track.album_id = album.id) AS \"duration_ms!: i64\",\n                      (SELECT COUNT(*) FROM play_history\n                         JOIN track ON track.id = play_history.track_id\n                         WHERE track.album_id = album.id) AS \"play_count!: i64\",\n                      (SELECT MAX(play_history.played_at) FROM play_history\n                         JOIN track ON track.id = play_history.track_id\n                         WHERE track.album_id = album.id) AS \"last_played: i64\"\n               FROM album WHERE album.id = ?",
   "describe": {
     "columns": [
       {
@@ -87,26 +87,48 @@
         "origin": "Expression"
       },
       {
-        "name": "song_count!: i64",
+        "name": "starred_at",
         "ordinal": 8,
         "type_info": "Integer",
-        "origin": "Expression"
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "starred_at"
+          }
+        }
       },
       {
-        "name": "duration_ms!: i64",
+        "name": "rating",
         "ordinal": 9,
         "type_info": "Integer",
-        "origin": "Expression"
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "rating"
+          }
+        }
       },
       {
-        "name": "play_count!: i64",
+        "name": "song_count!: i64",
         "ordinal": 10,
         "type_info": "Integer",
         "origin": "Expression"
       },
       {
-        "name": "last_played: i64",
+        "name": "duration_ms!: i64",
         "ordinal": 11,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "play_count!: i64",
+        "ordinal": 12,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "last_played: i64",
+        "ordinal": 13,
         "type_info": "Integer",
         "origin": "Expression"
       }
@@ -123,11 +145,13 @@
       false,
       false,
       false,
+      true,
+      true,
       false,
       false,
       false,
       true
     ]
   },
-  "hash": "c38d8e08267e2cda0c065fc0c3d9cdedb4be02eafe5904b1c77fd764ee04d3e4"
+  "hash": "045a25cf9d685a1d537153fca754cbf3b85ce927dd1c601e8f6fff7c4510d754"
 }

@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use super::Pool;
+use super::{Connection, Pool};
 
 /// 音楽フォルダは一つだけ持つ。
 pub const MUSIC_FOLDER_ID: i64 = 1;
@@ -374,6 +374,12 @@ pub async fn replace(pool: &Pool, library: &Library) -> Result<(), sqlx::Error> 
         .await?;
     }
 
+    // マージで消える曲、アルバム、アーティストのお気に入りと評価を、残る側へ引き継ぐ。
+    // お気に入りの日時は古いほう、評価は残る側を優先する（docs/schema.md）
+    for (old_id, new_id) in &library.aliases {
+        carry_annotation(&mut tx, old_id, new_id).await?;
+    }
+
     // 参照がなくなった行を消す。file と track_artist などは入れ直したので、残っているのは使われない行
     sqlx::query!("DELETE FROM track WHERE id NOT IN (SELECT track_id FROM file)")
         .execute(&mut *tx)
@@ -416,4 +422,68 @@ pub async fn replace(pool: &Pool, library: &Library) -> Result<(), sqlx::Error> 
     .await?;
 
     tx.commit().await
+}
+
+/// 消える行のお気に入りと評価を、残る行へ引き継ぐ。ID は種類をまたいで一意なので、三つの表を順に試す。
+async fn carry_annotation(
+    tx: &mut Connection,
+    old_id: &str,
+    new_id: &str,
+) -> Result<(), sqlx::Error> {
+    // 残る側にお気に入りがなければ消える側の日時を、両方にあれば古いほうを採る
+    if let Some(old) = sqlx::query!("SELECT starred_at, rating FROM track WHERE id = ?", old_id)
+        .fetch_optional(&mut *tx)
+        .await?
+    {
+        sqlx::query!(
+            "UPDATE track SET
+                 starred_at = CASE WHEN starred_at IS NULL OR starred_at > ? THEN ?
+                                   ELSE starred_at END,
+                 rating = COALESCE(rating, ?)
+             WHERE id = ?",
+            old.starred_at,
+            old.starred_at,
+            old.rating,
+            new_id
+        )
+        .execute(&mut *tx)
+        .await?;
+    }
+    if let Some(old) = sqlx::query!("SELECT starred_at, rating FROM album WHERE id = ?", old_id)
+        .fetch_optional(&mut *tx)
+        .await?
+    {
+        sqlx::query!(
+            "UPDATE album SET
+                 starred_at = CASE WHEN starred_at IS NULL OR starred_at > ? THEN ?
+                                   ELSE starred_at END,
+                 rating = COALESCE(rating, ?)
+             WHERE id = ?",
+            old.starred_at,
+            old.starred_at,
+            old.rating,
+            new_id
+        )
+        .execute(&mut *tx)
+        .await?;
+    }
+    if let Some(old) = sqlx::query!("SELECT starred_at, rating FROM artist WHERE id = ?", old_id)
+        .fetch_optional(&mut *tx)
+        .await?
+    {
+        sqlx::query!(
+            "UPDATE artist SET
+                 starred_at = CASE WHEN starred_at IS NULL OR starred_at > ? THEN ?
+                                   ELSE starred_at END,
+                 rating = COALESCE(rating, ?)
+             WHERE id = ?",
+            old.starred_at,
+            old.starred_at,
+            old.rating,
+            new_id
+        )
+        .execute(&mut *tx)
+        .await?;
+    }
+    Ok(())
 }
