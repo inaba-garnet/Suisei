@@ -13,13 +13,15 @@ use tower::ServiceExt;
 const ENVELOPE: [&str; 5] = ["status", "version", "type", "serverVersion", "openSubsonic"];
 
 async fn suisei(endpoint: &str, query: &str) -> Map<String, Value> {
+    let db = suisei::db::open_in_memory().await.unwrap();
     let app = suisei::router(AppState {
         credentials: Credentials {
             user: "inaba".into(),
             password: "sesame".into(),
             api_key: None,
         },
-        db: suisei::db::open_in_memory().await.unwrap(),
+        db: db.clone(),
+        scanner: suisei::scan::Scanner::new(db, "/nonexistent".into()),
     });
     let uri = format!("/rest/{endpoint}?u=inaba&p=sesame&f=json{query}");
     let res = app

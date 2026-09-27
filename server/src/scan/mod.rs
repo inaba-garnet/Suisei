@@ -1,10 +1,13 @@
 //! 音楽フォルダを走査し、ライブラリを組み立て直す（docs/schema.md の「スキャン」）。
 
 mod build;
+mod scanner;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use walkdir::WalkDir;
@@ -14,6 +17,7 @@ use crate::db::library::{self, FileRow, Snapshot};
 use crate::tags::{self, RawTags};
 
 use build::Scanned;
+pub use scanner::{Scanner, Status};
 
 /// 読む拡張子。lofty が読める音声に限る
 const AUDIO_EXTENSIONS: &[&str] = &[
@@ -31,6 +35,8 @@ pub enum Mode {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Summary {
     pub files: usize,
+    /// 音声を含むディレクトリ
+    pub folders: usize,
     /// タグを読んだファイル
     pub read: usize,
     /// 読めなかったファイル
@@ -71,10 +77,20 @@ impl From<sqlx::Error> for Error {
 }
 
 pub async fn run(pool: &Pool, music_dir: &Path, mode: Mode) -> Result<Summary, Error> {
+    run_with_progress(pool, music_dir, mode, Arc::default()).await
+}
+
+/// `progress` に、見つけた音声の数を数えながらスキャンする。
+async fn run_with_progress(
+    pool: &Pool,
+    music_dir: &Path,
+    mode: Mode,
+    progress: Arc<AtomicUsize>,
+) -> Result<Summary, Error> {
     let snapshot = library::snapshot(pool).await?;
     let music_dir = music_dir.to_owned();
     let (library, summary) = tokio::task::spawn_blocking(move || {
-        let (files, mut summary) = collect(&music_dir, &snapshot, mode)?;
+        let (files, mut summary) = collect(&music_dir, &snapshot, mode, &progress)?;
         if files.is_empty() && !snapshot.files.is_empty() {
             return Err(Error::Empty);
         }
@@ -85,6 +101,12 @@ pub async fn run(pool: &Pool, music_dir: &Path, mode: Mode) -> Result<Summary, E
             unix_millis(SystemTime::now()),
         );
         summary.files = library.files.len();
+        summary.folders = library
+            .files
+            .iter()
+            .map(|f| f.path.rsplit_once('/').map_or("", |(dir, _)| dir))
+            .collect::<HashSet<_>>()
+            .len();
         summary.tracks = library.tracks.len();
         summary.albums = library.albums.len();
         summary.artists = library.artists.len();
@@ -101,6 +123,7 @@ fn collect(
     music_dir: &Path,
     snapshot: &Snapshot,
     mode: Mode,
+    progress: &AtomicUsize,
 ) -> Result<(Vec<Scanned>, Summary), Error> {
     std::fs::read_dir(music_dir).map_err(Error::Folder)?;
     let stored: HashMap<&str, &FileRow> = snapshot
@@ -110,7 +133,7 @@ fn collect(
         .collect();
     let mut summary = Summary::default();
     let mut files = Vec::new();
-    let mut seen = std::collections::HashSet::new();
+    let mut seen = HashSet::new();
     // 読めなかったディレクトリ。その下にあった行は、消さずに残す
     let mut unreadable_dirs: Vec<PathBuf> = Vec::new();
 
@@ -131,6 +154,7 @@ fn collect(
         if !entry.file_type().is_file() || !is_audio(entry.path()) {
             continue;
         }
+        progress.fetch_add(1, Ordering::Relaxed);
         let Some(rel) = relative(music_dir, entry.path()) else {
             tracing::warn!(path = %entry.path().display(), "UTF-8 でないパスは扱わない");
             continue;

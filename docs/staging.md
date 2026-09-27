@@ -8,7 +8,7 @@
 | --- | --- |
 | `/home/sprite/suisei/suisei` | musl の静的バイナリ |
 | `/home/sprite/suisei/run.sh` | サービスが起動するスクリプト。`env` を読み、ログを `suisei.log` にも追記する |
-| `/home/sprite/suisei/env` | 環境変数（権限 600）。`SUISEI_USER`、`SUISEI_PASSWORD`、`SUISEI_LISTEN=0.0.0.0:8080`、`SUISEI_DATA_DIR=/home/sprite/suisei/data`、`RUST_LOG=info`、`NO_COLOR=1` |
+| `/home/sprite/suisei/env` | 環境変数（権限 600）。`SUISEI_USER`、`SUISEI_PASSWORD`、`SUISEI_LISTEN=0.0.0.0:8080`、`SUISEI_DATA_DIR=/home/sprite/suisei/data`、`SUISEI_MUSIC_DIR=/home/sprite/suisei-fixtures/music`、`RUST_LOG=info`、`NO_COLOR=1` |
 | `/home/sprite/suisei/suisei.log` | 再起動で消えないログ |
 
 認証情報はサービス定義に載せず、`env` に置く。サービス定義は組織のトークンがあれば API で読めるため。

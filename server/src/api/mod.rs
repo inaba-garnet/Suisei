@@ -12,12 +12,14 @@ use serde_json::{Map, Value, json};
 
 use crate::Credentials;
 use crate::db::Pool;
+use crate::scan::{self, Scanner};
 use crate::subsonic::{self, Error, ErrorCode, Format, Params};
 
 #[derive(Debug, Clone)]
 pub struct AppState {
     pub credentials: Credentials,
     pub db: Pool,
+    pub scanner: Arc<Scanner>,
 }
 
 pub fn router(state: AppState) -> Router {
@@ -62,6 +64,17 @@ async fn rest(
         "ping" => subsonic::ok(format, Map::new()),
         "getLicense" => subsonic::ok(format, payload(json!({ "license": { "valid": true } }))),
         "getOpenSubsonicExtensions" => subsonic::ok(format, extensions(&state)),
+        "startScan" => {
+            // Navidrome と同じく、fullScan=true ならすべてのファイルを読み直す
+            let mode = if params.get("fullScan") == Some("true") {
+                scan::Mode::Full
+            } else {
+                scan::Mode::Quick
+            };
+            state.scanner.start(mode);
+            subsonic::ok(format, scan_status(&state))
+        }
+        "getScanStatus" => subsonic::ok(format, scan_status(&state)),
         _ => match empty::respond(name, &params, &state) {
             Some(Ok(payload)) => subsonic::ok(format, payload),
             Some(Err(err)) => subsonic::error(format, &err),
@@ -114,6 +127,20 @@ fn extensions(state: &AppState) -> Map<String, Value> {
         list.push(json!({ "name": "apiKeyAuthentication", "versions": [1] }));
     }
     payload(json!({ "openSubsonicExtensions": list }))
+}
+
+/// Subsonic の scanning と count に、Navidrome と同じ folderCount と lastScan を足す。
+fn scan_status(state: &AppState) -> Map<String, Value> {
+    let status = state.scanner.status();
+    let mut scan_status = json!({
+        "scanning": status.scanning,
+        "count": status.count,
+        "folderCount": status.folder_count,
+    });
+    if let Some(at) = status.last_scan {
+        scan_status["lastScan"] = json!(humantime::format_rfc3339_millis(at).to_string());
+    }
+    payload(json!({ "scanStatus": scan_status }))
 }
 
 pub(super) fn payload(value: Value) -> Map<String, Value> {
