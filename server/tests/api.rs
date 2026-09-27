@@ -67,11 +67,60 @@ async fn unimplemented_endpoint_requires_auth() {
 }
 
 #[tokio::test]
-async fn unimplemented_endpoint_returns_generic_error() {
-    let res = get_json(&format!("/rest/getPodcasts.view?{AUTH}&f=json")).await;
+async fn pending_endpoint_returns_generic_error() {
+    let res = get_json(&format!("/rest/scrobble.view?{AUTH}&f=json&id=tr-00000000")).await;
     assert_eq!(res["status"], "failed");
     assert_eq!(res["error"]["code"], 0);
-    assert_eq!(res["error"]["message"], "not implemented: getPodcasts");
+    assert_eq!(res["error"]["message"], "not implemented: scrobble");
+}
+
+#[tokio::test]
+async fn unsupported_list_is_empty() {
+    let res = get_json(&format!("/rest/getPodcasts?{AUTH}&f=json")).await;
+    assert_eq!(res["status"], "ok");
+    assert_eq!(res["podcasts"], serde_json::json!({}));
+}
+
+#[tokio::test]
+async fn unsupported_action_is_501() {
+    let (status, _) = get(&format!("/rest/createShare?{AUTH}&f=json&id=tr-00000000")).await;
+    assert_eq!(status, StatusCode::NOT_IMPLEMENTED);
+}
+
+#[tokio::test]
+async fn unknown_endpoint_is_404() {
+    let (status, _) = get(&format!("/rest/getNothing?{AUTH}&f=json")).await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+}
+
+/// Symfonium は失敗すると削除を再送し続けるので、成功を返す。
+#[tokio::test]
+async fn delete_bookmark_succeeds() {
+    let res = get_json(&format!(
+        "/rest/deleteBookmark?{AUTH}&f=json&id=tr-00000000"
+    ))
+    .await;
+    assert_eq!(res["status"], "ok");
+    let res = get_json(&format!("/rest/deleteBookmark?{AUTH}&f=json")).await;
+    assert_eq!(res["error"]["code"], 10);
+}
+
+#[tokio::test]
+async fn external_info_is_empty() {
+    let res = get_json(&format!(
+        "/rest/getArtistInfo2?{AUTH}&f=json&id=ar-00000000"
+    ))
+    .await;
+    assert_eq!(res["status"], "ok");
+    assert_eq!(res["artistInfo2"], serde_json::json!({}));
+    let res = get_json(&format!("/rest/getTopSongs?{AUTH}&f=json")).await;
+    assert_eq!(res["error"]["code"], 10);
+}
+
+#[tokio::test]
+async fn users_lists_the_only_user() {
+    let res = get_json(&format!("/rest/getUsers?{AUTH}&f=json")).await;
+    assert_eq!(res["users"]["user"][0]["username"], "inaba");
 }
 
 #[tokio::test]

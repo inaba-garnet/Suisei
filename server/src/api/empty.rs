@@ -26,20 +26,17 @@ pub fn respond(
         "search2" => json!({ "searchResult2": {} }),
         "getStarred" => json!({ "starred": {} }),
         "getStarred2" => json!({ "starred2": {} }),
-        "getBookmarks" => json!({ "bookmarks": {} }),
         "getPlaylists" => json!({ "playlists": {} }),
-        "getShares" => json!({ "shares": {} }),
-        "getInternetRadioStations" => json!({ "internetRadioStations": {} }),
         "getNowPlaying" => json!({ "nowPlaying": {} }),
         // 保存した再生キューがなければ、中身のない応答を返す（OpenSubsonic の仕様）。
         "getPlayQueue" => json!({}),
         "getUser" => return Some(user(params, state)),
+        "getUsers" => json!({ "users": { "user": [user_entry(state)] } }),
         _ => return None,
     };
     Some(Ok(payload(value)))
 }
 
-/// 利用者は一人なので、その一人にすべての権限を与える。
 fn user(params: &Params, state: &AppState) -> Result<Map<String, Value>, Error> {
     let username = &state.credentials.user;
     let requested = params.get("username").ok_or_else(|| {
@@ -51,8 +48,13 @@ fn user(params: &Params, state: &AppState) -> Result<Map<String, Value>, Error> 
     if requested != username {
         return Err(Error::new(ErrorCode::NotFound, "user not found"));
     }
-    Ok(payload(json!({ "user": {
-        "username": username,
+    Ok(payload(json!({ "user": user_entry(state) })))
+}
+
+/// 利用者は一人なので、その一人にすべての権限を与える。
+fn user_entry(state: &AppState) -> Value {
+    json!({
+        "username": state.credentials.user,
         "scrobblingEnabled": true,
         "adminRole": true,
         "settingsRole": true,
@@ -67,5 +69,5 @@ fn user(params: &Params, state: &AppState) -> Result<Map<String, Value>, Error> 
         "shareRole": false,
         "videoConversionRole": false,
         "folder": [MUSIC_FOLDER_ID],
-    }})))
+    })
 }
