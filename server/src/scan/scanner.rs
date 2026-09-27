@@ -1,6 +1,6 @@
 //! スキャンを一度に一つだけ走らせ、`getScanStatus` に返す状態を持つ。
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime};
@@ -78,6 +78,10 @@ impl Scanner {
             }
             tokio::time::sleep(interval).await;
         }
+    }
+
+    pub fn music_dir(&self) -> &Path {
+        &self.music_dir
     }
 
     pub fn status(&self) -> Status {

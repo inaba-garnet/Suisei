@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT file.path, file.content_type FROM track\n           JOIN file ON file.id = track.primary_file_id\n         WHERE track.id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "path",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "path"
+          }
+        }
+      },
+      {
+        "name": "content_type",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "content_type"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "e98f199e068c0e11fde4801aaaf21fc2539bcaa0c3ce4d9fae54ddea2403393e"
+}
