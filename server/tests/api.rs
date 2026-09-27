@@ -65,10 +65,10 @@ async fn unimplemented_endpoint_requires_auth() {
 
 #[tokio::test]
 async fn unimplemented_endpoint_returns_generic_error() {
-    let res = get_json(&format!("/rest/getArtists.view?{AUTH}&f=json")).await;
+    let res = get_json(&format!("/rest/getPodcasts.view?{AUTH}&f=json")).await;
     assert_eq!(res["status"], "failed");
     assert_eq!(res["error"]["code"], 0);
-    assert_eq!(res["error"]["message"], "not implemented: getArtists");
+    assert_eq!(res["error"]["message"], "not implemented: getPodcasts");
 }
 
 #[tokio::test]

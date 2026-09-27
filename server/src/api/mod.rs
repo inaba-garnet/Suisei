@@ -1,3 +1,5 @@
+mod empty;
+
 use std::sync::Arc;
 
 use axum::Router;
@@ -57,7 +59,11 @@ async fn rest(
         "ping" => subsonic::ok(format, Map::new()),
         "getLicense" => subsonic::ok(format, payload(json!({ "license": { "valid": true } }))),
         "getOpenSubsonicExtensions" => subsonic::ok(format, extensions(&state)),
-        _ => not_implemented(name, &method, &params, format),
+        _ => match empty::respond(name, &params, &state) {
+            Some(Ok(payload)) => subsonic::ok(format, payload),
+            Some(Err(err)) => subsonic::error(format, &err),
+            None => not_implemented(name, &method, &params, format),
+        },
     }
 }
 
@@ -87,7 +93,7 @@ fn extensions(state: &AppState) -> Map<String, Value> {
     payload(json!({ "openSubsonicExtensions": list }))
 }
 
-fn payload(value: Value) -> Map<String, Value> {
+pub(super) fn payload(value: Value) -> Map<String, Value> {
     match value {
         Value::Object(map) => map,
         _ => unreachable!("payload must be an object"),

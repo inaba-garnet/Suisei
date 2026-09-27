@@ -1,0 +1,77 @@
+//! ライブラリを実装するまでの、空のライブラリとしての応答。
+//! エラーを返すと Symfonium が同期を中止するので、正しい形の空の応答で同期を先に進め、呼ばれる流れを記録する。
+//! 形は Navidrome の応答（`tests/fixtures/navidrome/`）に合わせる。本実装ができたものから置き換える。
+
+use serde_json::{Map, Value, json};
+
+use super::{AppState, payload};
+use crate::subsonic::{Error, ErrorCode, Params};
+
+/// 唯一の音楽フォルダの ID。
+pub const MUSIC_FOLDER_ID: u32 = 1;
+
+/// 空応答を持たないエンドポイントには `None` を返す。
+pub fn respond(
+    name: &str,
+    params: &Params,
+    state: &AppState,
+) -> Option<Result<Map<String, Value>, Error>> {
+    let value = match name {
+        "getMusicFolders" => json!({ "musicFolders": {
+            "musicFolder": [{ "id": MUSIC_FOLDER_ID, "name": "Music" }],
+        }}),
+        "getArtists" => json!({ "artists": { "ignoredArticles": "", "lastModified": 0 } }),
+        "getIndexes" => json!({ "indexes": { "ignoredArticles": "", "lastModified": 0 } }),
+        "getAlbumList" => json!({ "albumList": {} }),
+        "getAlbumList2" => json!({ "albumList2": {} }),
+        "getRandomSongs" => json!({ "randomSongs": {} }),
+        "getSongsByGenre" => json!({ "songsByGenre": {} }),
+        "getGenres" => json!({ "genres": {} }),
+        "search2" => json!({ "searchResult2": {} }),
+        "search3" => json!({ "searchResult3": {} }),
+        "getStarred" => json!({ "starred": {} }),
+        "getStarred2" => json!({ "starred2": {} }),
+        "getBookmarks" => json!({ "bookmarks": {} }),
+        "getPlaylists" => json!({ "playlists": {} }),
+        "getShares" => json!({ "shares": {} }),
+        "getInternetRadioStations" => json!({ "internetRadioStations": {} }),
+        "getNowPlaying" => json!({ "nowPlaying": {} }),
+        "getScanStatus" => json!({ "scanStatus": { "scanning": false, "count": 0 } }),
+        // 保存した再生キューがなければ、中身のない応答を返す（OpenSubsonic の仕様）。
+        "getPlayQueue" => json!({}),
+        "getUser" => return Some(user(params, state)),
+        _ => return None,
+    };
+    Some(Ok(payload(value)))
+}
+
+/// 利用者は一人なので、その一人にすべての権限を与える。
+fn user(params: &Params, state: &AppState) -> Result<Map<String, Value>, Error> {
+    let username = &state.credentials.user;
+    let requested = params.get("username").ok_or_else(|| {
+        Error::new(
+            ErrorCode::MissingParameter,
+            "required parameter is missing: username",
+        )
+    })?;
+    if requested != username {
+        return Err(Error::new(ErrorCode::NotFound, "user not found"));
+    }
+    Ok(payload(json!({ "user": {
+        "username": username,
+        "scrobblingEnabled": true,
+        "adminRole": true,
+        "settingsRole": true,
+        "downloadRole": true,
+        "uploadRole": false,
+        "playlistRole": true,
+        "coverArtRole": true,
+        "commentRole": false,
+        "podcastRole": false,
+        "streamRole": true,
+        "jukeboxRole": false,
+        "shareRole": false,
+        "videoConversionRole": false,
+        "folder": [MUSIC_FOLDER_ID],
+    }})))
+}
