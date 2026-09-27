@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT album.id AS \"id!\", album.name, album.display_artist, album.sort_name,\n                      album.year, album.created_at, album.compilation,\n                      (SELECT COUNT(*) FROM track WHERE track.album_id = album.id)\n                        AS \"song_count!: i64\",\n                      (SELECT COALESCE(SUM(file.duration_ms), 0) FROM track\n                         JOIN file ON file.id = track.primary_file_id\n                         WHERE track.album_id = album.id) AS \"duration_ms!: i64\"\n               FROM album ORDER BY RANDOM() LIMIT ? OFFSET ?",
+  "query": "SELECT album.id AS \"id!\", album.name, album.display_artist, album.sort_name,\n                      album.year, album.created_at, album.compilation,\n                      album.cover_path IS NOT NULL AS \"has_cover!: bool\",\n                      (SELECT COUNT(*) FROM track WHERE track.album_id = album.id)\n                        AS \"song_count!: i64\",\n                      (SELECT COALESCE(SUM(file.duration_ms), 0) FROM track\n                         JOIN file ON file.id = track.primary_file_id\n                         WHERE track.album_id = album.id) AS \"duration_ms!: i64\"\n               FROM album WHERE album.year BETWEEN ? AND ?\n                 ORDER BY album.year DESC, album.sort_key, album.id LIMIT ? OFFSET ?",
   "describe": {
     "columns": [
       {
@@ -81,20 +81,26 @@
         }
       },
       {
-        "name": "song_count!: i64",
+        "name": "has_cover!: bool",
         "ordinal": 7,
         "type_info": "Integer",
         "origin": "Expression"
       },
       {
-        "name": "duration_ms!: i64",
+        "name": "song_count!: i64",
         "ordinal": 8,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "duration_ms!: i64",
+        "ordinal": 9,
         "type_info": "Integer",
         "origin": "Expression"
       }
     ],
     "parameters": {
-      "Right": 2
+      "Right": 4
     },
     "nullable": [
       true,
@@ -105,8 +111,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "c0f12da56d8085d58d6c346f9243dd13bdaf8b6329ab093ff1d73af7d6ed418d"
+  "hash": "0ccf24aac84f0fd74ecab1507979b296b3a5adab4a13791e69171596b0647c28"
 }

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT track.id AS \"id!\", track.album_id, track.title, track.display_artist,\n                  track.sort_name, track.disc_number, track.track_number, track.year,\n                  track.created_at, album.name AS album_name,\n                  album.display_artist AS album_display_artist, file.path, file.size,\n                  file.suffix, file.content_type, file.duration_ms, file.bit_rate,\n                  file.sample_rate, file.channels, file.bit_depth\n           FROM track\n             JOIN album ON album.id = track.album_id\n             JOIN file ON file.id = track.primary_file_id\n           WHERE track.id = ?",
+  "query": "SELECT track.id AS \"id!\", track.album_id, track.title, track.display_artist,\n                  track.sort_name, track.disc_number, track.track_number, track.year,\n                  track.created_at, album.name AS album_name,\n                  album.display_artist AS album_display_artist,\n                  album.cover_path IS NOT NULL AS \"album_has_cover!: bool\", file.path, file.size,\n                  file.suffix, file.content_type, file.duration_ms, file.bit_rate,\n                  file.sample_rate, file.channels, file.bit_depth\n           FROM track\n             JOIN album ON album.id = track.album_id\n             JOIN file ON file.id = track.primary_file_id\n           WHERE track.id = ?",
   "describe": {
     "columns": [
       {
@@ -125,8 +125,14 @@
         }
       },
       {
-        "name": "path",
+        "name": "album_has_cover!: bool",
         "ordinal": 11,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "path",
+        "ordinal": 12,
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -137,7 +143,7 @@
       },
       {
         "name": "size",
-        "ordinal": 12,
+        "ordinal": 13,
         "type_info": "Integer",
         "origin": {
           "Table": {
@@ -148,7 +154,7 @@
       },
       {
         "name": "suffix",
-        "ordinal": 13,
+        "ordinal": 14,
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -159,7 +165,7 @@
       },
       {
         "name": "content_type",
-        "ordinal": 14,
+        "ordinal": 15,
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -170,7 +176,7 @@
       },
       {
         "name": "duration_ms",
-        "ordinal": 15,
+        "ordinal": 16,
         "type_info": "Integer",
         "origin": {
           "Table": {
@@ -181,7 +187,7 @@
       },
       {
         "name": "bit_rate",
-        "ordinal": 16,
+        "ordinal": 17,
         "type_info": "Integer",
         "origin": {
           "Table": {
@@ -192,7 +198,7 @@
       },
       {
         "name": "sample_rate",
-        "ordinal": 17,
+        "ordinal": 18,
         "type_info": "Integer",
         "origin": {
           "Table": {
@@ -203,7 +209,7 @@
       },
       {
         "name": "channels",
-        "ordinal": 18,
+        "ordinal": 19,
         "type_info": "Integer",
         "origin": {
           "Table": {
@@ -214,7 +220,7 @@
       },
       {
         "name": "bit_depth",
-        "ordinal": 19,
+        "ordinal": 20,
         "type_info": "Integer",
         "origin": {
           "Table": {
@@ -244,11 +250,12 @@
       false,
       false,
       false,
+      false,
       true,
       true,
       true,
       true
     ]
   },
-  "hash": "b40d27f0b3777106355baa1223720be41b526d4e7863134731e15656db28fe1b"
+  "hash": "2298fd3b08db50f5e2e96b67f514b9f62a77769e130f9533eed520c8c5f904b2"
 }

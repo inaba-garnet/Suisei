@@ -70,6 +70,10 @@ async fn rest(
                 Err(err) => subsonic::error(format, &err),
             }
         }
+        "getCoverArt" => match media::cover_art(&method, &headers, &params, &state).await {
+            Ok(response) => response,
+            Err(err) => subsonic::error(format, &err),
+        },
         "ping" => subsonic::ok(format, Map::new()),
         "getLicense" => subsonic::ok(format, payload(json!({ "license": { "valid": true } }))),
         "getOpenSubsonicExtensions" => subsonic::ok(format, extensions(&state)),

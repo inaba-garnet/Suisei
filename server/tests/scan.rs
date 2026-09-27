@@ -305,3 +305,20 @@ async fn scan_endpoints() {
     assert!(after["lastScan"].as_str().unwrap().ends_with('Z'));
     assert_eq!(lib.count("track").await, 2);
 }
+
+#[tokio::test]
+async fn stored_tags_of_old_version_are_read_again() {
+    let lib = Library::new().await;
+    lib.put("full.flac", "a/01.flac");
+    lib.put("id3v1.mp3", "b/01.mp3");
+    lib.scan().await;
+
+    // 版を持つ前の形で保存したタグは、変わっていないファイルでも読み直す
+    sqlx::query("UPDATE file SET tags = '{\"title\":\"old\"}' WHERE path = 'a/01.flac'")
+        .execute(&lib.pool)
+        .await
+        .unwrap();
+    let summary = lib.scan().await;
+    assert_eq!(summary.read, 1);
+    assert_eq!(lib.scan().await.read, 0);
+}

@@ -8,9 +8,11 @@ ffmpeg で 1 秒の無音を作り、mutagen でタグを書く。
 """
 
 import pathlib
+import struct
 import subprocess
+import zlib
 
-from mutagen.flac import FLAC
+from mutagen.flac import FLAC, Picture
 from mutagen.id3 import (
     ID3,
     TALB,
@@ -96,6 +98,42 @@ def flac_empty() -> None:
     silence(path, ["-c:a", "flac"])
     f = FLAC(path)
     f.delete()
+    f.save()
+
+
+def make_png() -> bytes:
+    """1x1 の不透明な白の PNG。埋め込みとフォルダの画像のテストに使う。"""
+
+    def chunk(kind: bytes, body: bytes) -> bytes:
+        crc = zlib.crc32(kind + body) & 0xFFFFFFFF
+        return struct.pack(">I", len(body)) + kind + body + struct.pack(">I", crc)
+
+    header = struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0)
+    pixels = zlib.compress(b"\x00\xff\xff\xff")
+    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header) + chunk(b"IDAT", pixels) + chunk(b"IEND", b"")
+
+
+PNG = make_png()
+
+
+def png() -> None:
+    (OUT / "cover.png").write_bytes(PNG)
+
+
+def flac_picture() -> None:
+    path = OUT / "picture.flac"
+    silence(path, ["-c:a", "flac"])
+    f = FLAC(path)
+    f.delete()
+    f["TITLE"] = "画像つき"
+    f["ALBUM"] = "画像のアルバム"
+    picture = Picture()
+    picture.type = 3  # 表紙
+    picture.mime = "image/png"
+    picture.width = picture.height = 1
+    picture.depth = 24
+    picture.data = PNG
+    f.add_picture(picture)
     f.save()
 
 
@@ -188,3 +226,5 @@ if __name__ == "__main__":
     mp3_full("full-v23.mp3", 3)
     mp3_id3v1()
     m4a_full()
+    flac_picture()
+    png()
