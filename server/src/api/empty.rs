@@ -20,8 +20,6 @@ pub fn respond(
         "getMusicFolders" => json!({ "musicFolders": {
             "musicFolder": [{ "id": MUSIC_FOLDER_ID, "name": "Music" }],
         }}),
-        "getArtists" => json!({ "artists": { "ignoredArticles": "", "lastModified": 0 } }),
-        "getIndexes" => json!({ "indexes": { "ignoredArticles": "", "lastModified": 0 } }),
         "getAlbumList" => json!({ "albumList": {} }),
         "getAlbumList2" => json!({ "albumList2": {} }),
         "getRandomSongs" => json!({ "randomSongs": {} }),

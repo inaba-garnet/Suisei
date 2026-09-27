@@ -4,12 +4,14 @@
 mod match_key;
 mod raw;
 mod reading;
+mod sort_key;
 
 use std::path::Path;
 
 pub use match_key::normalize;
 pub use raw::{AudioProps, RawTags, read};
 pub use reading::{Reading, ReadingSource, reading};
+pub use sort_key::{index_heading, sort_key};
 
 pub const UNKNOWN_ARTIST: &str = "[Unknown Artist]";
 pub const UNKNOWN_ALBUM: &str = "[Unknown Album]";

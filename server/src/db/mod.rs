@@ -1,5 +1,6 @@
 //! DB 層。クエリはこのモジュールの中に閉じ込める（docs/server.md）。
 
+pub mod browse;
 mod id;
 pub mod library;
 

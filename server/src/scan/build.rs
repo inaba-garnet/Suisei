@@ -8,7 +8,7 @@ use crate::db::library::{
     AlbumRow, ArtistRow, CreditRow, FileRow, GenreRow, Library, Snapshot, TrackRow,
 };
 use crate::db::{IdKind, new_id};
-use crate::tags::{Credit, RawTags, TrackInfo, reading};
+use crate::tags::{Credit, RawTags, TrackInfo, reading, sort_key};
 
 /// スキャンで見つけたファイル。
 #[derive(Debug, Clone)]
@@ -319,6 +319,7 @@ pub fn build(mut files: Vec<Scanned>, snapshot: &Snapshot, music_dir: &str, now:
             display_artist: info.display_artist.clone(),
             sort_name: reading.map(|r| r.kana.clone()),
             sort_name_source: reading.map(|r| r.source.as_str().to_owned()),
+            sort_key: sort_key(&info.title, reading.map(|r| r.kana.as_str())),
             disc_number: info.disc_number.map(i64::from),
             track_number: info.track_number.map(i64::from),
             year: info.year.map(i64::from),
@@ -419,6 +420,7 @@ fn album_row(
         display_artist,
         sort_name: reading.as_ref().map(|r| r.kana.clone()),
         sort_name_source: reading.as_ref().map(|r| r.source.as_str().to_owned()),
+        sort_key: sort_key(&name, reading.as_ref().map(|r| r.kana.as_str())),
         year: members
             .iter()
             .filter_map(|&f| infos[f].year)
@@ -467,6 +469,7 @@ fn artist_rows(infos: &[TrackInfo], keys: &[String], ids: &[String]) -> Vec<Arti
                 match_key: key.clone(),
                 sort_name: reading.as_ref().map(|r| r.kana.clone()),
                 sort_name_source: reading.as_ref().map(|r| r.source.as_str().to_owned()),
+                sort_key: sort_key(&name, reading.as_ref().map(|r| r.kana.as_str())),
                 name,
             }
         })
