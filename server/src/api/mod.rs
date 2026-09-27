@@ -2,6 +2,7 @@ mod browse;
 mod empty;
 mod media;
 mod search;
+mod unsupported;
 
 use std::sync::Arc;
 
@@ -9,7 +10,7 @@ use axum::Router;
 use axum::extract::{Path, State};
 use axum::http::header::USER_AGENT;
 use axum::http::{HeaderMap, Method, StatusCode, Uri};
-use axum::response::Response;
+use axum::response::{IntoResponse, Response};
 use axum::routing::{any, get};
 use serde_json::{Map, Value, json};
 
@@ -91,18 +92,25 @@ async fn rest(
         _ => match browse::respond(name, &params, &state)
             .await
             .or_else(|| empty::respond(name, &params, &state))
+            .or_else(|| unsupported::respond(name, &params))
         {
             Some(Ok(payload)) => subsonic::ok(format, payload),
             Some(Err(err)) => subsonic::error(format, &err),
-            None => not_implemented(name, &method, &params, format),
+            None if unsupported::PENDING.contains(&name) => pending(name, &method, &params, format),
+            None if unsupported::NOT_IMPLEMENTED.contains(&name) => {
+                (StatusCode::NOT_IMPLEMENTED, "not implemented").into_response()
+            }
+            None => {
+                tracing::warn!(%method, endpoint = name, "unknown endpoint");
+                StatusCode::NOT_FOUND.into_response()
+            }
         },
     }
 }
 
-/// クライアントの解析中だけの仮の措置。HTTP のエラーではクライアントの同期が止まるおそれがあるので、
-/// 200 と Subsonic のエラーを返し、呼ばれたことを warn で残す。
-/// MVP の範囲を決めたら恒常的な応答に戻す（https://github.com/inaba-garnet/Suisei/issues/5）。
-fn not_implemented(name: &str, method: &Method, params: &Params, format: Format) -> Response {
+/// 実装を予定しているエンドポイントの、実装するまでの仮の措置（docs/verification.md）。
+/// HTTP のエラーではクライアントの同期が止まるおそれがあるので、200 と Subsonic のエラーを返し、呼ばれたことを warn で残す。
+fn pending(name: &str, method: &Method, params: &Params, format: Format) -> Response {
     tracing::warn!(%method, endpoint = name, params = %params.masked(), "not implemented");
     subsonic::error(
         format,
