@@ -6,7 +6,7 @@ use std::time::{Duration, UNIX_EPOCH};
 use serde_json::{Map, Value, json};
 
 use super::{AppState, payload};
-use crate::db::browse::{self, Album, ArtistEntry, Credit, Song};
+use crate::db::browse::{self, Album, AlbumOrder, ArtistEntry, Credit, Song};
 use crate::subsonic::{Error, ErrorCode, Params};
 use crate::tags::index_heading;
 
@@ -22,6 +22,8 @@ pub async fn respond(
         "getArtist" => artist(params, state).await,
         "getAlbum" => album(params, state).await,
         "getSong" => song(params, state).await,
+        "getAlbumList2" => album_list(params, state).await,
+        "getGenres" => genres(state).await,
         _ => return None,
     };
     Some(result)
@@ -153,6 +155,80 @@ async fn song(params: &Params, state: &AppState) -> Result<Map<String, Value>, E
     let album_id = song.album_id.clone();
     let mut songs = songs_json(state, &album_id, &[song]).await?;
     Ok(payload(json!({ "song": songs.remove(0) })))
+}
+
+/// Subsonic の `size` の既定値と上限。
+const LIST_SIZE_DEFAULT: i64 = 10;
+const LIST_SIZE_MAX: i64 = 500;
+
+async fn album_list(params: &Params, state: &AppState) -> Result<Map<String, Value>, Error> {
+    let kind = params.get("type").ok_or_else(|| {
+        Error::new(
+            ErrorCode::MissingParameter,
+            "required parameter is missing: type",
+        )
+    })?;
+    let number = |key: &str| params.get(key).and_then(|v| v.parse::<i64>().ok());
+    let required = |key: &str| {
+        number(key).ok_or_else(|| {
+            Error::new(
+                ErrorCode::MissingParameter,
+                format!("required parameter is missing: {key}"),
+            )
+        })
+    };
+    let order = match kind {
+        "newest" => AlbumOrder::Newest,
+        "alphabeticalByName" => AlbumOrder::ByName,
+        "alphabeticalByArtist" => AlbumOrder::ByArtist,
+        "random" => AlbumOrder::Random,
+        "byYear" => AlbumOrder::ByYear {
+            from: required("fromYear")?,
+            to: required("toYear")?,
+        },
+        "byGenre" => AlbumOrder::ByGenre(
+            params
+                .get("genre")
+                .ok_or_else(|| {
+                    Error::new(
+                        ErrorCode::MissingParameter,
+                        "required parameter is missing: genre",
+                    )
+                })?
+                .to_owned(),
+        ),
+        // 再生履歴、評価、お気に入りを持つまでは空の一覧を返す。エラーだとクライアントのホーム画面が止まるおそれがある
+        "recent" | "frequent" | "highest" | "starred" => {
+            return Ok(payload(json!({ "albumList2": { "album": [] } })));
+        }
+        _ => {
+            return Err(Error::new(
+                ErrorCode::Generic,
+                format!("unknown type: {kind}"),
+            ));
+        }
+    };
+    let size = number("size")
+        .unwrap_or(LIST_SIZE_DEFAULT)
+        .clamp(0, LIST_SIZE_MAX);
+    let offset = number("offset").unwrap_or(0).max(0);
+    let albums = browse::album_list(&state.db, &order, size, offset)
+        .await
+        .map_err(db_error)?;
+    let mut list = Vec::with_capacity(albums.len());
+    for album in &albums {
+        list.push(album_json(state, album).await?);
+    }
+    Ok(payload(json!({ "albumList2": { "album": list } })))
+}
+
+async fn genres(state: &AppState) -> Result<Map<String, Value>, Error> {
+    let genres = browse::genres(&state.db).await.map_err(db_error)?;
+    let list: Vec<Value> = genres
+        .iter()
+        .map(|g| json!({ "value": g.name, "songCount": g.song_count, "albumCount": g.album_count }))
+        .collect();
+    Ok(payload(json!({ "genres": { "genre": list } })))
 }
 
 /// AlbumID3。カバーアート、再生回数、評価は、まだ持っていないので返さない。
