@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE track SET starred_at = COALESCE(starred_at, ?) WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "279e2456f0036f8b09bd86f2ad3f7386f8fc385d47a0b6e78433351faad07660"
+}

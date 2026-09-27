@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT starred_at, rating FROM artist WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "starred_at",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "starred_at"
+          }
+        }
+      },
+      {
+        "name": "rating",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "rating"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      true
+    ]
+  },
+  "hash": "6962a3cf4ad11a1715769c58a955be26d97bbd48444ff5ae1031bcad15c00116"
+}

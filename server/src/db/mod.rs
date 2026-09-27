@@ -1,5 +1,6 @@
 //! DB 層。クエリはこのモジュールの中に閉じ込める（docs/server.md）。
 
+pub mod annotation;
 pub mod browse;
 pub mod history;
 mod id;
@@ -14,6 +15,7 @@ pub use id::{IdKind, new_id};
 
 /// PostgreSQL に移るときは、この型と接続の設定を差し替える。
 pub type Pool = sqlx::SqlitePool;
+pub type Connection = sqlx::SqliteConnection;
 
 const DB_FILE: &str = "suisei.db";
 

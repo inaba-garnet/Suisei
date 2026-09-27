@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE artist SET\n                 starred_at = CASE WHEN starred_at IS NULL OR starred_at > ? THEN ?\n                                   ELSE starred_at END,\n                 rating = COALESCE(rating, ?)\n             WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "de6c10c73286d1fab63f424ee9e4ead9f58e0ebf7d40792a0dfec3b3ec9eed06"
+}

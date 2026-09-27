@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT starred_at, rating FROM album WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "starred_at",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "starred_at"
+          }
+        }
+      },
+      {
+        "name": "rating",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "rating"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      true
+    ]
+  },
+  "hash": "e102db6a3f194fe7baaba725625193faddaa43961b9d2061dd60b75360b9e7bb"
+}

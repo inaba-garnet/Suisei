@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE artist SET starred_at = NULL WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "7fdf8a0300c2220c24e474c7b2a90ffb3a6289db5d7545ad64ed202d6abc0916"
+}

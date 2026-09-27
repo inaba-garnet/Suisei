@@ -1,0 +1,157 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT album.id AS \"id!\", album.name, album.display_artist, album.sort_name,\n                      album.year, album.created_at, album.compilation,\n                      album.cover_path IS NOT NULL AS \"has_cover!: bool\",\n                      album.starred_at, album.rating,\n                      (SELECT COUNT(*) FROM track WHERE track.album_id = album.id)\n                        AS \"song_count!: i64\",\n                      (SELECT COALESCE(SUM(file.duration_ms), 0) FROM track\n                         JOIN file ON file.id = track.primary_file_id\n                         WHERE track.album_id = album.id) AS \"duration_ms!: i64\",\n                      (SELECT COUNT(*) FROM play_history\n                         JOIN track ON track.id = play_history.track_id\n                         WHERE track.album_id = album.id) AS \"play_count!: i64\",\n                      (SELECT MAX(play_history.played_at) FROM play_history\n                         JOIN track ON track.id = play_history.track_id\n                         WHERE track.album_id = album.id) AS \"last_played: i64\"\n               FROM album ORDER BY (SELECT artist.sort_key FROM album_artist\n                             JOIN artist ON artist.id = album_artist.artist_id\n                           WHERE album_artist.album_id = album.id AND album_artist.position = 0),\n                          album.sort_key, album.id\n                 LIMIT ? OFFSET ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "name": "display_artist",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "display_artist"
+          }
+        }
+      },
+      {
+        "name": "sort_name",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "sort_name"
+          }
+        }
+      },
+      {
+        "name": "year",
+        "ordinal": 4,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "year"
+          }
+        }
+      },
+      {
+        "name": "created_at",
+        "ordinal": 5,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "name": "compilation",
+        "ordinal": 6,
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "compilation"
+          }
+        }
+      },
+      {
+        "name": "has_cover!: bool",
+        "ordinal": 7,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "starred_at",
+        "ordinal": 8,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "starred_at"
+          }
+        }
+      },
+      {
+        "name": "rating",
+        "ordinal": 9,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "rating"
+          }
+        }
+      },
+      {
+        "name": "song_count!: i64",
+        "ordinal": 10,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "duration_ms!: i64",
+        "ordinal": 11,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "play_count!: i64",
+        "ordinal": 12,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "last_played: i64",
+        "ordinal": 13,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "3cd35bef71627779428e9a86394b5308c36b4ed357e753d4fbf32bf4f1d34def"
+}

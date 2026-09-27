@@ -1,0 +1,81 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT artist.id AS \"id!\", artist.name, artist.sort_name,\n                  (SELECT COUNT(*) FROM (\n                      SELECT album_id FROM album_artist WHERE artist_id = artist.id\n                      UNION\n                      SELECT track.album_id FROM track\n                        JOIN track_artist ON track_artist.track_id = track.id\n                        WHERE track_artist.artist_id = artist.id)) AS \"album_count!: i64\",\n                  artist.starred_at, artist.rating\n           FROM artist WHERE artist.starred_at IS NOT NULL\n           ORDER BY artist.starred_at DESC, artist.id",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "name": "sort_name",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "sort_name"
+          }
+        }
+      },
+      {
+        "name": "album_count!: i64",
+        "ordinal": 3,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "starred_at",
+        "ordinal": 4,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "starred_at"
+          }
+        }
+      },
+      {
+        "name": "rating",
+        "ordinal": 5,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "rating"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "bcb4e03313610c3910bed9b4091f3186d162a1e8b734c28e049fc61e6e5acafe"
+}

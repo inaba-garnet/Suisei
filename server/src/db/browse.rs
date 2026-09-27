@@ -9,6 +9,8 @@ pub struct ArtistEntry {
     pub sort_name: Option<String>,
     pub sort_key: String,
     pub album_count: i64,
+    pub starred_at: Option<i64>,
+    pub rating: Option<i64>,
 }
 
 /// アルバムアーティストになっているアーティストを、並べ替えキーの順に返す。
@@ -17,7 +19,8 @@ pub async fn album_artists(pool: &Pool) -> Result<Vec<ArtistEntry>, sqlx::Error>
     sqlx::query_as!(
         ArtistEntry,
         r#"SELECT artist.id AS "id!", artist.name, artist.sort_name, artist.sort_key,
-                  COUNT(DISTINCT album_artist.album_id) AS "album_count!: i64"
+                  COUNT(DISTINCT album_artist.album_id) AS "album_count!: i64",
+                  artist.starred_at, artist.rating
            FROM artist JOIN album_artist ON album_artist.artist_id = artist.id
            GROUP BY artist.id
            ORDER BY artist.sort_key, artist.id"#
@@ -39,12 +42,26 @@ pub struct Artist {
     pub id: String,
     pub name: String,
     pub sort_name: Option<String>,
+    pub starred_at: Option<i64>,
+    pub rating: Option<i64>,
+}
+
+/// 検索とお気に入りの一覧に出すアーティスト。
+#[derive(Debug, Clone, PartialEq, Eq, sqlx::FromRow)]
+pub struct ArtistSummary {
+    pub id: String,
+    pub name: String,
+    pub sort_name: Option<String>,
+    /// アルバムアーティストのアルバムと、曲で参加しているアルバムの数（getArtist と同じ）
+    pub album_count: i64,
+    pub starred_at: Option<i64>,
+    pub rating: Option<i64>,
 }
 
 pub async fn artist(pool: &Pool, id: &str) -> Result<Option<Artist>, sqlx::Error> {
     sqlx::query_as!(
         Artist,
-        r#"SELECT id AS "id!", name, sort_name FROM artist WHERE id = ?"#,
+        r#"SELECT id AS "id!", name, sort_name, starred_at, rating FROM artist WHERE id = ?"#,
         id
     )
     .fetch_optional(pool)
@@ -68,6 +85,8 @@ pub struct Album {
     pub play_count: i64,
     /// 属する曲を最後に再生した時刻
     pub last_played: Option<i64>,
+    pub starred_at: Option<i64>,
+    pub rating: Option<i64>,
 }
 
 /// アルバムと、曲数と長さの合計を読む。`$tail` に絞り込みと並び順を書く。
@@ -79,6 +98,7 @@ macro_rules! albums {
             r#"SELECT album.id AS "id!", album.name, album.display_artist, album.sort_name,
                       album.year, album.created_at, album.compilation,
                       album.cover_path IS NOT NULL AS "has_cover!: bool",
+                      album.starred_at, album.rating,
                       (SELECT COUNT(*) FROM track WHERE track.album_id = album.id)
                         AS "song_count!: i64",
                       (SELECT COALESCE(SUM(file.duration_ms), 0) FROM track
@@ -137,6 +157,10 @@ pub enum AlbumOrder {
     Recent,
     /// 再生回数の多い順。再生したことのないアルバムは含めない
     Frequent,
+    /// お気に入りにした新しい順。お気に入りでないアルバムは含めない
+    Starred,
+    /// 評価の高い順、同じなら再生回数の多い順。評価のないアルバムは含めない
+    Highest,
 }
 
 pub async fn album_list(
@@ -246,6 +270,31 @@ pub async fn album_list(
                              JOIN track ON track.id = play_history.track_id
                            WHERE track.album_id = album.id) DESC,
                           (SELECT MAX(play_history.played_at) FROM play_history
+                             JOIN track ON track.id = play_history.track_id
+                           WHERE track.album_id = album.id) DESC,
+                          album.sort_key, album.id
+                 LIMIT ? OFFSET ?",
+                size,
+                offset
+            )
+            .fetch_all(pool)
+            .await
+        }
+        AlbumOrder::Starred => {
+            albums!(
+                "WHERE album.starred_at IS NOT NULL
+                 ORDER BY album.starred_at DESC, album.sort_key, album.id LIMIT ? OFFSET ?",
+                size,
+                offset
+            )
+            .fetch_all(pool)
+            .await
+        }
+        AlbumOrder::Highest => {
+            albums!(
+                "WHERE album.rating IS NOT NULL
+                 ORDER BY album.rating DESC,
+                          (SELECT COUNT(*) FROM play_history
                              JOIN track ON track.id = play_history.track_id
                            WHERE track.album_id = album.id) DESC,
                           album.sort_key, album.id
@@ -379,6 +428,8 @@ pub struct Song {
     pub play_count: i64,
     /// 最後に再生した時刻
     pub last_played: Option<i64>,
+    pub starred_at: Option<i64>,
+    pub rating: Option<i64>,
 }
 
 /// ディスク番号、トラック番号、並べ替えキーの順。
@@ -387,7 +438,7 @@ pub async fn songs_of_album(pool: &Pool, album_id: &str) -> Result<Vec<Song>, sq
         Song,
         r#"SELECT track.id AS "id!", track.album_id, track.title, track.display_artist,
                   track.sort_name, track.disc_number, track.track_number, track.year,
-                  track.created_at, album.name AS album_name,
+                  track.created_at, track.starred_at, track.rating, album.name AS album_name,
                   album.display_artist AS album_display_artist,
                   album.cover_path IS NOT NULL AS "album_has_cover!: bool", file.path, file.size,
                   file.suffix, file.content_type, file.duration_ms, file.bit_rate,
@@ -413,7 +464,7 @@ pub async fn song(pool: &Pool, id: &str) -> Result<Option<Song>, sqlx::Error> {
         Song,
         r#"SELECT track.id AS "id!", track.album_id, track.title, track.display_artist,
                   track.sort_name, track.disc_number, track.track_number, track.year,
-                  track.created_at, album.name AS album_name,
+                  track.created_at, track.starred_at, track.rating, album.name AS album_name,
                   album.display_artist AS album_display_artist,
                   album.cover_path IS NOT NULL AS "album_has_cover!: bool", file.path, file.size,
                   file.suffix, file.content_type, file.duration_ms, file.bit_rate,

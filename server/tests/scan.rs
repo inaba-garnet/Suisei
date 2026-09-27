@@ -240,6 +240,43 @@ async fn merged_track_keeps_play_history() {
     assert_eq!(played, [(kept.clone(), 1), (kept, 2)]);
 }
 
+/// マージで消える曲のお気に入りは古い日時を、評価は残る曲の値を優先して引き継ぐ。
+#[tokio::test]
+async fn merged_track_carries_star_and_rating() {
+    let lib = Library::new().await;
+    lib.put("full.flac", "a/01.flac");
+    lib.put("full.flac", "a/02.flac");
+    lib.put("full.flac", "a/03.flac");
+    lib.set_title("a/02.flac", "別の曲");
+    lib.set_title("a/03.flac", "三つ目");
+    lib.scan().await;
+    let kept = lib.track_id("a/01.flac").await;
+    for (rel, starred_at, rating) in [
+        ("a/01.flac", Some(5), Some(2)),
+        ("a/02.flac", Some(3), Some(4)),
+        ("a/03.flac", None, Some(1)),
+    ] {
+        sqlx::query("UPDATE track SET starred_at = ?, rating = ? WHERE id = ?")
+            .bind(starred_at)
+            .bind(rating)
+            .bind(lib.track_id(rel).await)
+            .execute(&lib.pool)
+            .await
+            .unwrap();
+    }
+
+    lib.set_title("a/02.flac", "テスト曲");
+    lib.set_title("a/03.flac", "テスト曲");
+    lib.scan().await;
+    let (starred_at, rating): (Option<i64>, Option<i64>) =
+        sqlx::query_as("SELECT starred_at, rating FROM track WHERE id = ?")
+            .bind(&kept)
+            .fetch_one(&lib.pool)
+            .await
+            .unwrap();
+    assert_eq!((starred_at, rating), (Some(3), Some(2)));
+}
+
 #[tokio::test]
 async fn deleted_file_removes_play_history() {
     let lib = Library::new().await;

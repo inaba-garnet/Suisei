@@ -6,7 +6,7 @@ use std::time::{Duration, UNIX_EPOCH};
 use serde_json::{Map, Value, json};
 
 use super::{AppState, payload};
-use crate::db::browse::{self, Album, AlbumOrder, ArtistEntry, Credit, Song};
+use crate::db::browse::{self, Album, AlbumOrder, ArtistEntry, ArtistSummary, Credit, Song};
 use crate::subsonic::{Error, ErrorCode, Params};
 use crate::tags::index_heading;
 
@@ -57,6 +57,7 @@ async fn artists(state: &AppState) -> Result<Map<String, Value>, Error> {
         if let Some(sort_name) = &a.sort_name {
             artist["sortName"] = json!(sort_name);
         }
+        annotate(&mut artist, a.starred_at, a.rating);
         artist
     });
     Ok(payload(json!({ "artists": {
@@ -77,7 +78,11 @@ async fn indexes(params: &Params, state: &AppState) -> Result<Map<String, Value>
     let mut indexes = json!({ "ignoredArticles": "", "lastModified": last_modified });
     if !unchanged {
         let entries = browse::album_artists(&state.db).await.map_err(db_error)?;
-        indexes["index"] = json!(group(&entries, |a| json!({ "id": a.id, "name": a.name })));
+        indexes["index"] = json!(group(&entries, |a| {
+            let mut artist = json!({ "id": a.id, "name": a.name });
+            annotate(&mut artist, a.starred_at, a.rating);
+            artist
+        }));
     }
     Ok(payload(json!({ "indexes": indexes })))
 }
@@ -130,6 +135,7 @@ async fn artist(params: &Params, state: &AppState) -> Result<Map<String, Value>,
     if let Some(sort_name) = artist.sort_name {
         value["sortName"] = json!(sort_name);
     }
+    annotate(&mut value, artist.starred_at, artist.rating);
     Ok(payload(json!({ "artist": value })))
 }
 
@@ -200,10 +206,8 @@ async fn album_list(params: &Params, state: &AppState) -> Result<Map<String, Val
         ),
         "recent" => AlbumOrder::Recent,
         "frequent" => AlbumOrder::Frequent,
-        // 評価とお気に入りを持つまでは空の一覧を返す。エラーだとクライアントのホーム画面が止まるおそれがある
-        "highest" | "starred" => {
-            return Ok(payload(json!({ "albumList2": { "album": [] } })));
-        }
+        "starred" => AlbumOrder::Starred,
+        "highest" => AlbumOrder::Highest,
         _ => {
             return Err(Error::new(
                 ErrorCode::Generic,
@@ -234,7 +238,7 @@ async fn genres(state: &AppState) -> Result<Map<String, Value>, Error> {
     Ok(payload(json!({ "genres": { "genre": list } })))
 }
 
-/// AlbumID3。評価は、まだ持っていないので返さない。
+/// AlbumID3。
 pub(super) async fn album_json(state: &AppState, album: &Album) -> Result<Value, Error> {
     let artists = browse::credits_of_album(&state.db, &album.id)
         .await
@@ -268,6 +272,7 @@ pub(super) async fn album_json(state: &AppState, album: &Album) -> Result<Value,
     if let Some(at) = album.last_played {
         value["played"] = json!(timestamp(at));
     }
+    annotate(&mut value, album.starred_at, album.rating);
     if let Some(genre) = genres.first() {
         value["genre"] = json!(genre);
     }
@@ -363,6 +368,7 @@ fn song_json(
     if let Some(at) = song.last_played {
         value["played"] = json!(timestamp(at));
     }
+    annotate(&mut value, song.starred_at, song.rating);
     // 曲ごとの画像は扱わず、アルバムの画像を使う
     if song.album_has_cover {
         value["coverArt"] = json!(song.album_id);
@@ -374,6 +380,26 @@ fn song_json(
         value["sortName"] = json!(sort_name);
     }
     value
+}
+
+/// 検索とお気に入りの一覧に出す ArtistID3。
+pub(super) fn artist_summary_json(a: &ArtistSummary) -> Value {
+    let mut artist = json!({ "id": a.id, "name": a.name, "albumCount": a.album_count });
+    if let Some(sort_name) = &a.sort_name {
+        artist["sortName"] = json!(sort_name);
+    }
+    annotate(&mut artist, a.starred_at, a.rating);
+    artist
+}
+
+/// お気に入りの日時と評価は、値があるときだけ付ける。
+fn annotate(value: &mut Value, starred_at: Option<i64>, rating: Option<i64>) {
+    if let Some(at) = starred_at {
+        value["starred"] = json!(timestamp(at));
+    }
+    if let Some(rating) = rating {
+        value["userRating"] = json!(rating);
+    }
 }
 
 fn artists_json(credits: &[Credit]) -> Value {

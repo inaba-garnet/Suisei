@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT track.id AS \"id!\", track.album_id, track.title, track.display_artist,\n                  track.sort_name, track.disc_number, track.track_number, track.year,\n                  track.created_at, album.name AS album_name,\n                  album.display_artist AS album_display_artist,\n                  album.cover_path IS NOT NULL AS \"album_has_cover!: bool\", file.path, file.size,\n                  file.suffix, file.content_type, file.duration_ms, file.bit_rate,\n                  file.sample_rate, file.channels, file.bit_depth,\n                  (SELECT COUNT(*) FROM play_history WHERE play_history.track_id = track.id)\n                    AS \"play_count!: i64\",\n                  (SELECT MAX(played_at) FROM play_history WHERE play_history.track_id = track.id)\n                    AS \"last_played: i64\"\n           FROM track\n             JOIN album ON album.id = track.album_id\n             JOIN file ON file.id = track.primary_file_id\n           WHERE track.album_id = ?\n           ORDER BY track.disc_number IS NULL, track.disc_number,\n                    track.track_number IS NULL, track.track_number, track.sort_key, track.id",
+  "query": "SELECT track.id AS \"id!\", track.album_id, track.title, track.display_artist,\n                  track.sort_name, track.disc_number, track.track_number, track.year,\n                  track.created_at, track.starred_at, track.rating, album.name AS album_name,\n                  album.display_artist AS album_display_artist,\n                  album.cover_path IS NOT NULL AS \"album_has_cover!: bool\", file.path, file.size,\n                  file.suffix, file.content_type, file.duration_ms, file.bit_rate,\n                  file.sample_rate, file.channels, file.bit_depth,\n                  (SELECT COUNT(*) FROM play_history WHERE play_history.track_id = track.id)\n                    AS \"play_count!: i64\",\n                  (SELECT MAX(played_at) FROM play_history WHERE play_history.track_id = track.id)\n                    AS \"last_played: i64\"\n           FROM track\n             JOIN album ON album.id = track.album_id\n             JOIN file ON file.id = track.primary_file_id\n           WHERE track.album_id = ?\n           ORDER BY track.disc_number IS NULL, track.disc_number,\n                    track.track_number IS NULL, track.track_number, track.sort_key, track.id",
   "describe": {
     "columns": [
       {
@@ -103,8 +103,30 @@
         }
       },
       {
-        "name": "album_name",
+        "name": "starred_at",
         "ordinal": 9,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "starred_at"
+          }
+        }
+      },
+      {
+        "name": "rating",
+        "ordinal": 10,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "rating"
+          }
+        }
+      },
+      {
+        "name": "album_name",
+        "ordinal": 11,
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -115,7 +137,7 @@
       },
       {
         "name": "album_display_artist",
-        "ordinal": 10,
+        "ordinal": 12,
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -126,13 +148,13 @@
       },
       {
         "name": "album_has_cover!: bool",
-        "ordinal": 11,
+        "ordinal": 13,
         "type_info": "Integer",
         "origin": "Expression"
       },
       {
         "name": "path",
-        "ordinal": 12,
+        "ordinal": 14,
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -143,7 +165,7 @@
       },
       {
         "name": "size",
-        "ordinal": 13,
+        "ordinal": 15,
         "type_info": "Integer",
         "origin": {
           "Table": {
@@ -154,7 +176,7 @@
       },
       {
         "name": "suffix",
-        "ordinal": 14,
+        "ordinal": 16,
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -165,7 +187,7 @@
       },
       {
         "name": "content_type",
-        "ordinal": 15,
+        "ordinal": 17,
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -176,7 +198,7 @@
       },
       {
         "name": "duration_ms",
-        "ordinal": 16,
+        "ordinal": 18,
         "type_info": "Integer",
         "origin": {
           "Table": {
@@ -187,7 +209,7 @@
       },
       {
         "name": "bit_rate",
-        "ordinal": 17,
+        "ordinal": 19,
         "type_info": "Integer",
         "origin": {
           "Table": {
@@ -198,7 +220,7 @@
       },
       {
         "name": "sample_rate",
-        "ordinal": 18,
+        "ordinal": 20,
         "type_info": "Integer",
         "origin": {
           "Table": {
@@ -209,7 +231,7 @@
       },
       {
         "name": "channels",
-        "ordinal": 19,
+        "ordinal": 21,
         "type_info": "Integer",
         "origin": {
           "Table": {
@@ -220,7 +242,7 @@
       },
       {
         "name": "bit_depth",
-        "ordinal": 20,
+        "ordinal": 22,
         "type_info": "Integer",
         "origin": {
           "Table": {
@@ -231,13 +253,13 @@
       },
       {
         "name": "play_count!: i64",
-        "ordinal": 21,
+        "ordinal": 23,
         "type_info": "Integer",
         "origin": "Expression"
       },
       {
         "name": "last_played: i64",
-        "ordinal": 22,
+        "ordinal": 24,
         "type_info": "Integer",
         "origin": "Expression"
       }
@@ -255,6 +277,8 @@
       true,
       true,
       false,
+      true,
+      true,
       false,
       false,
       false,
@@ -271,5 +295,5 @@
       true
     ]
   },
-  "hash": "6871386c8c24a0d090b5a30f1a2e3c0422a9dc6960274409cfa325aa999ebeef"
+  "hash": "a0cd526044da5b7ac99e28d0e4450ff2fa2e111e55f0bb1e8004cc790389fe93"
 }
