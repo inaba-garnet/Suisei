@@ -1,0 +1,112 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT album.id AS \"id!\", album.name, album.display_artist, album.sort_name,\n                      album.year, album.created_at, album.compilation,\n                      (SELECT COUNT(*) FROM track WHERE track.album_id = album.id)\n                        AS \"song_count!: i64\",\n                      (SELECT COALESCE(SUM(file.duration_ms), 0) FROM track\n                         JOIN file ON file.id = track.primary_file_id\n                         WHERE track.album_id = album.id) AS \"duration_ms!: i64\"\n               FROM album WHERE album.year BETWEEN ? AND ?\n                 ORDER BY album.year DESC, album.sort_key, album.id LIMIT ? OFFSET ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "name": "display_artist",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "display_artist"
+          }
+        }
+      },
+      {
+        "name": "sort_name",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "sort_name"
+          }
+        }
+      },
+      {
+        "name": "year",
+        "ordinal": 4,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "year"
+          }
+        }
+      },
+      {
+        "name": "created_at",
+        "ordinal": 5,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "name": "compilation",
+        "ordinal": 6,
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "compilation"
+          }
+        }
+      },
+      {
+        "name": "song_count!: i64",
+        "ordinal": 7,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "duration_ms!: i64",
+        "ordinal": 8,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e92993dbb0dd5a09084ab8983a3178c9be48cede589b4fb8716fc799e0673495"
+}

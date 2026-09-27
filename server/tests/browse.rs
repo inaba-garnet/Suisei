@@ -34,6 +34,7 @@ struct Song<'a> {
     disc: Option<u32>,
     track: Option<u32>,
     genre: Option<&'a str>,
+    year: Option<u32>,
 }
 
 /// タグのない FLAC にタグを書いて並べ、スキャンしてからサーバーを作る。
@@ -58,6 +59,9 @@ async fn server(songs: &[Song<'_>]) -> Server {
         }
         if let Some(genre) = song.genre {
             tag.set_genre(genre.to_owned());
+        }
+        if let Some(year) = song.year {
+            tag.insert_text(ItemKey::RecordingDate, year.to_string());
         }
         tag.set_album(song.album.to_owned());
         tag.insert_text(ItemKey::AlbumArtist, song.album_artist.to_owned());
@@ -126,6 +130,7 @@ fn song<'a>(path: &'a str, album_artist: &'a str, album: &'a str) -> Song<'a> {
         disc: None,
         track: None,
         genre: None,
+        year: None,
     }
 }
 
@@ -335,6 +340,121 @@ async fn shapes_match_navidrome() {
         ("getSong", song),
     ] {
         let ours = payload(server.raw(endpoint, &format!("&id={id}")).await);
+        let theirs = navidrome(endpoint);
+        assert_subset(endpoint, &Value::Object(ours), &Value::Object(theirs));
+    }
+}
+
+fn names(albums: &Value) -> Vec<&str> {
+    albums
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|a| a["name"].as_str().unwrap())
+        .collect()
+}
+
+async fn album_list_server() -> Server {
+    server(&[
+        Song {
+            genre: Some("Rock"),
+            year: Some(2010),
+            ..song("b.flac", "ClariS", "b")
+        },
+        Song {
+            genre: Some("Pop"),
+            year: Some(2020),
+            ..song("a.flac", "やなぎなぎ", "a")
+        },
+        Song {
+            genre: Some("Rock"),
+            year: Some(2015),
+            ..song("c.flac", "4U", "c")
+        },
+    ])
+    .await
+}
+
+#[tokio::test]
+async fn album_list_orders() {
+    let server = album_list_server().await;
+    let list = |query: &'static str| {
+        let server = &server;
+        async move {
+            let res = server.get("getAlbumList2", query).await;
+            names(&res["albumList2"]["album"])
+                .into_iter()
+                .map(str::to_owned)
+                .collect::<Vec<_>>()
+        }
+    };
+
+    assert_eq!(
+        list("&type=alphabeticalByName&size=10").await,
+        ["a", "b", "c"]
+    );
+    assert_eq!(
+        list("&type=alphabeticalByArtist&size=10").await,
+        ["c", "b", "a"]
+    );
+    assert_eq!(
+        list("&type=byYear&fromYear=2011&toYear=2020").await,
+        ["c", "a"]
+    );
+    // fromYear の方が大きければ新しい年から
+    assert_eq!(
+        list("&type=byYear&fromYear=2020&toYear=2011").await,
+        ["a", "c"]
+    );
+    assert_eq!(list("&type=byGenre&genre=Rock").await, ["b", "c"]);
+    assert_eq!(
+        list("&type=alphabeticalByName&size=1&offset=1").await,
+        ["b"]
+    );
+    assert_eq!(list("&type=random").await.len(), 3);
+    // 再生履歴やお気に入りを持つまでは空
+    assert!(list("&type=recent").await.is_empty());
+    assert!(list("&type=starred").await.is_empty());
+
+    sqlx::query("UPDATE album SET created_at = created_at + 1000 WHERE name = 'c'")
+        .execute(&server.db)
+        .await
+        .unwrap();
+    assert_eq!(list("&type=newest").await, ["c", "a", "b"]);
+}
+
+#[tokio::test]
+async fn album_list_errors() {
+    let server = album_list_server().await;
+    let res = server.raw("getAlbumList2", "").await;
+    assert_eq!(res["subsonic-response"]["error"]["code"], 10);
+    let res = server.raw("getAlbumList2", "&type=byYear").await;
+    assert_eq!(res["subsonic-response"]["error"]["code"], 10);
+    let res = server.raw("getAlbumList2", "&type=unknown").await;
+    assert_eq!(res["subsonic-response"]["error"]["code"], 0);
+}
+
+#[tokio::test]
+async fn genres_count_songs_and_albums() {
+    let server = album_list_server().await;
+    let res = server.get("getGenres", "").await;
+    assert_eq!(
+        res["genres"]["genre"],
+        serde_json::json!([
+            { "value": "Pop", "songCount": 1, "albumCount": 1 },
+            { "value": "Rock", "songCount": 2, "albumCount": 2 },
+        ])
+    );
+}
+
+#[tokio::test]
+async fn list_shapes_match_navidrome() {
+    let server = album_list_server().await;
+    for (endpoint, query) in [
+        ("getAlbumList2", "&type=alphabeticalByName"),
+        ("getGenres", ""),
+    ] {
+        let ours = payload(server.raw(endpoint, query).await);
         let theirs = navidrome(endpoint);
         assert_subset(endpoint, &Value::Object(ours), &Value::Object(theirs));
     }

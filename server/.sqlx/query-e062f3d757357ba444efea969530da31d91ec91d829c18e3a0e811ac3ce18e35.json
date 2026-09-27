@@ -1,0 +1,40 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT track_genre.genre AS \"name!\",\n                  COUNT(DISTINCT track_genre.track_id) AS \"song_count!: i64\",\n                  COUNT(DISTINCT track.album_id) AS \"album_count!: i64\"\n           FROM track_genre JOIN track ON track.id = track_genre.track_id\n           GROUP BY track_genre.genre\n           ORDER BY track_genre.genre",
+  "describe": {
+    "columns": [
+      {
+        "name": "name!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track_genre",
+            "name": "genre"
+          }
+        }
+      },
+      {
+        "name": "song_count!: i64",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "album_count!: i64",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e062f3d757357ba444efea969530da31d91ec91d829c18e3a0e811ac3ce18e35"
+}

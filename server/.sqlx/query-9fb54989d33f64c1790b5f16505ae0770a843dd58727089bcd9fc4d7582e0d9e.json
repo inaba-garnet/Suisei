@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT album.id AS \"id!\", album.name, album.display_artist, album.sort_name, album.year,\n                  album.created_at, album.compilation,\n                  (SELECT COUNT(*) FROM track WHERE track.album_id = album.id) AS \"song_count!: i64\",\n                  (SELECT COALESCE(SUM(file.duration_ms), 0) FROM track\n                     JOIN file ON file.id = track.primary_file_id\n                     WHERE track.album_id = album.id) AS \"duration_ms!: i64\"\n           FROM album WHERE album.id = ?",
+  "query": "SELECT album.id AS \"id!\", album.name, album.display_artist, album.sort_name,\n                      album.year, album.created_at, album.compilation,\n                      (SELECT COUNT(*) FROM track WHERE track.album_id = album.id)\n                        AS \"song_count!: i64\",\n                      (SELECT COALESCE(SUM(file.duration_ms), 0) FROM track\n                         JOIN file ON file.id = track.primary_file_id\n                         WHERE track.album_id = album.id) AS \"duration_ms!: i64\"\n               FROM album ORDER BY (SELECT artist.sort_key FROM album_artist\n                             JOIN artist ON artist.id = album_artist.artist_id\n                           WHERE album_artist.album_id = album.id AND album_artist.position = 0),\n                          album.sort_key, album.id\n                 LIMIT ? OFFSET ?",
   "describe": {
     "columns": [
       {
@@ -94,7 +94,7 @@
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 2
     },
     "nullable": [
       true,
@@ -108,5 +108,5 @@
       false
     ]
   },
-  "hash": "0480662268bcf46323b790619d6cfe23ebb4c0c06eb6d4bca9c98a9228aad5c9"
+  "hash": "9fb54989d33f64c1790b5f16505ae0770a843dd58727089bcd9fc4d7582e0d9e"
 }

@@ -49,10 +49,28 @@ pub fn assert_subset(path: &str, ours: &Value, theirs: &Value) {
             }
         }
         (Value::Array(ours), Value::Array(theirs)) => {
-            if let (Some(ours), Some(theirs)) = (ours.first(), theirs.first()) {
-                assert_subset(&format!("{path}[]"), ours, theirs);
+            // 要素によって省かれる項目があるので、Navidrome 側は全要素の項目を合わせて比べる
+            if let (Some(ours), Some(theirs)) = (ours.first(), merged(theirs)) {
+                assert_subset(&format!("{path}[]"), ours, &theirs);
             }
         }
         _ => {}
     }
+}
+
+/// 配列の要素を一つにまとめる。オブジェクトなら項目を合わせ、先に現れた値を残す。
+fn merged(values: &[Value]) -> Option<Value> {
+    let first = values.first()?;
+    let Value::Object(_) = first else {
+        return Some(first.clone());
+    };
+    let mut all = Map::new();
+    for value in values {
+        if let Value::Object(object) = value {
+            for (key, v) in object {
+                all.entry(key.clone()).or_insert_with(|| v.clone());
+            }
+        }
+    }
+    Some(Value::Object(all))
 }

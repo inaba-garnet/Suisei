@@ -65,24 +65,35 @@ pub struct Album {
     pub duration_ms: i64,
 }
 
+/// アルバムと、曲数と長さの合計を読む。`$tail` に絞り込みと並び順を書く。
+/// sqlx のマクロは文字列リテラルの `+` をつなげて照合するので、共通の部分をここにまとめる。
+macro_rules! albums {
+    ($tail:literal $(, $arg:expr)* $(,)?) => {
+        sqlx::query_as!(
+            Album,
+            r#"SELECT album.id AS "id!", album.name, album.display_artist, album.sort_name,
+                      album.year, album.created_at, album.compilation,
+                      (SELECT COUNT(*) FROM track WHERE track.album_id = album.id)
+                        AS "song_count!: i64",
+                      (SELECT COALESCE(SUM(file.duration_ms), 0) FROM track
+                         JOIN file ON file.id = track.primary_file_id
+                         WHERE track.album_id = album.id) AS "duration_ms!: i64"
+               FROM album "# + $tail
+            $(, $arg)*
+        )
+    };
+}
+
 /// アルバムアーティストのアルバムに、曲で参加しているアルバムを足す。年の古い順、同じ年なら並べ替えキーの順。
 pub async fn albums_of_artist(pool: &Pool, artist_id: &str) -> Result<Vec<Album>, sqlx::Error> {
-    sqlx::query_as!(
-        Album,
-        r#"SELECT album.id AS "id!", album.name, album.display_artist, album.sort_name, album.year,
-                  album.created_at, album.compilation,
-                  (SELECT COUNT(*) FROM track WHERE track.album_id = album.id) AS "song_count!: i64",
-                  (SELECT COALESCE(SUM(file.duration_ms), 0) FROM track
-                     JOIN file ON file.id = track.primary_file_id
-                     WHERE track.album_id = album.id) AS "duration_ms!: i64"
-           FROM album
-           WHERE album.id IN (
-               SELECT album_id FROM album_artist WHERE artist_id = ?
-               UNION
-               SELECT track.album_id FROM track
-                 JOIN track_artist ON track_artist.track_id = track.id
-                 WHERE track_artist.artist_id = ?)
-           ORDER BY album.year IS NULL, album.year, album.sort_key, album.id"#,
+    albums!(
+        "WHERE album.id IN (
+             SELECT album_id FROM album_artist WHERE artist_id = ?
+             UNION
+             SELECT track.album_id FROM track
+               JOIN track_artist ON track_artist.track_id = track.id
+               WHERE track_artist.artist_id = ?)
+         ORDER BY album.year IS NULL, album.year, album.sort_key, album.id",
         artist_id,
         artist_id
     )
@@ -91,18 +102,130 @@ pub async fn albums_of_artist(pool: &Pool, artist_id: &str) -> Result<Vec<Album>
 }
 
 pub async fn album(pool: &Pool, id: &str) -> Result<Option<Album>, sqlx::Error> {
+    albums!("WHERE album.id = ?", id).fetch_optional(pool).await
+}
+
+/// `getAlbumList2` の並べ方。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AlbumOrder {
+    /// 初回検出の新しい順
+    Newest,
+    /// アルバムの並べ替えキーの順
+    ByName,
+    /// 先頭のアルバムアーティストの並べ替えキー、アルバムの並べ替えキーの順
+    ByArtist,
+    Random,
+    /// 年の範囲。`from` の方が大きければ新しい年から並べる
+    ByYear {
+        from: i64,
+        to: i64,
+    },
+    ByGenre(String),
+}
+
+pub async fn album_list(
+    pool: &Pool,
+    order: &AlbumOrder,
+    size: i64,
+    offset: i64,
+) -> Result<Vec<Album>, sqlx::Error> {
+    match order {
+        AlbumOrder::Newest => {
+            albums!(
+                "ORDER BY album.created_at DESC, album.sort_key, album.id LIMIT ? OFFSET ?",
+                size,
+                offset
+            )
+            .fetch_all(pool)
+            .await
+        }
+        AlbumOrder::ByName => {
+            albums!(
+                "ORDER BY album.sort_key, album.id LIMIT ? OFFSET ?",
+                size,
+                offset
+            )
+            .fetch_all(pool)
+            .await
+        }
+        AlbumOrder::ByArtist => {
+            albums!(
+                "ORDER BY (SELECT artist.sort_key FROM album_artist
+                             JOIN artist ON artist.id = album_artist.artist_id
+                           WHERE album_artist.album_id = album.id AND album_artist.position = 0),
+                          album.sort_key, album.id
+                 LIMIT ? OFFSET ?",
+                size,
+                offset
+            )
+            .fetch_all(pool)
+            .await
+        }
+        AlbumOrder::Random => {
+            albums!("ORDER BY RANDOM() LIMIT ? OFFSET ?", size, offset)
+                .fetch_all(pool)
+                .await
+        }
+        AlbumOrder::ByYear { from, to } if from <= to => {
+            albums!(
+                "WHERE album.year BETWEEN ? AND ?
+                 ORDER BY album.year, album.sort_key, album.id LIMIT ? OFFSET ?",
+                from,
+                to,
+                size,
+                offset
+            )
+            .fetch_all(pool)
+            .await
+        }
+        AlbumOrder::ByYear { from, to } => {
+            albums!(
+                "WHERE album.year BETWEEN ? AND ?
+                 ORDER BY album.year DESC, album.sort_key, album.id LIMIT ? OFFSET ?",
+                to,
+                from,
+                size,
+                offset
+            )
+            .fetch_all(pool)
+            .await
+        }
+        AlbumOrder::ByGenre(genre) => {
+            albums!(
+                "WHERE album.id IN (
+                     SELECT track.album_id FROM track
+                       JOIN track_genre ON track_genre.track_id = track.id
+                     WHERE track_genre.genre = ?)
+                 ORDER BY album.sort_key, album.id LIMIT ? OFFSET ?",
+                genre,
+                size,
+                offset
+            )
+            .fetch_all(pool)
+            .await
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Genre {
+    pub name: String,
+    pub song_count: i64,
+    pub album_count: i64,
+}
+
+/// ジャンルごとの曲数とアルバム数を、ジャンル名の順に返す。
+pub async fn genres(pool: &Pool) -> Result<Vec<Genre>, sqlx::Error> {
     sqlx::query_as!(
-        Album,
-        r#"SELECT album.id AS "id!", album.name, album.display_artist, album.sort_name, album.year,
-                  album.created_at, album.compilation,
-                  (SELECT COUNT(*) FROM track WHERE track.album_id = album.id) AS "song_count!: i64",
-                  (SELECT COALESCE(SUM(file.duration_ms), 0) FROM track
-                     JOIN file ON file.id = track.primary_file_id
-                     WHERE track.album_id = album.id) AS "duration_ms!: i64"
-           FROM album WHERE album.id = ?"#,
-        id
+        Genre,
+        r#"SELECT track_genre.genre AS "name!",
+                  COUNT(DISTINCT track_genre.track_id) AS "song_count!: i64",
+                  COUNT(DISTINCT track.album_id) AS "album_count!: i64"
+           FROM track_genre JOIN track ON track.id = track_genre.track_id
+           GROUP BY track_genre.genre
+           ORDER BY track_genre.genre"#
     )
-    .fetch_optional(pool)
+    .fetch_all(pool)
     .await
 }
 
