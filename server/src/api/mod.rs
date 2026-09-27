@@ -1,5 +1,6 @@
 mod browse;
 mod empty;
+mod media;
 mod search;
 
 use std::sync::Arc;
@@ -63,6 +64,12 @@ async fn rest(
     }
 
     match name {
+        "stream" | "download" => {
+            match media::stream(&method, &headers, &params, &state, name == "download").await {
+                Ok(response) => response,
+                Err(err) => subsonic::error(format, &err),
+            }
+        }
         "ping" => subsonic::ok(format, Map::new()),
         "getLicense" => subsonic::ok(format, payload(json!({ "license": { "valid": true } }))),
         "getOpenSubsonicExtensions" => subsonic::ok(format, extensions(&state)),

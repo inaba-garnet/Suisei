@@ -365,3 +365,23 @@ pub async fn song(pool: &Pool, id: &str) -> Result<Option<Song>, sqlx::Error> {
     .fetch_optional(pool)
     .await
 }
+
+/// 曲の配信ファイル。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StreamFile {
+    /// 音楽フォルダからの相対パス
+    pub path: String,
+    pub content_type: String,
+}
+
+pub async fn stream_file(pool: &Pool, track_id: &str) -> Result<Option<StreamFile>, sqlx::Error> {
+    sqlx::query_as!(
+        StreamFile,
+        "SELECT file.path, file.content_type FROM track
+           JOIN file ON file.id = track.primary_file_id
+         WHERE track.id = ?",
+        track_id
+    )
+    .fetch_optional(pool)
+    .await
+}

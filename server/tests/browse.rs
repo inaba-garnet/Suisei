@@ -19,7 +19,7 @@ mod common;
 use common::{assert_subset, navidrome, payload};
 
 struct Server {
-    _dir: TempDir,
+    dir: TempDir,
     app: axum::Router,
     db: suisei::db::Pool,
 }
@@ -86,7 +86,7 @@ async fn server(songs: &[Song<'_>]) -> Server {
         db: db.clone(),
         scanner: Arc::clone(&scanner),
     });
-    Server { _dir: dir, app, db }
+    Server { dir, app, db }
 }
 
 impl Server {
@@ -100,6 +100,30 @@ impl Server {
             .unwrap();
         let body = res.into_body().collect().await.unwrap().to_bytes();
         serde_json::from_slice(&body).unwrap()
+    }
+
+    /// 本文をそのまま返す。`range` を渡すと Range ヘッダを付ける。
+    async fn bytes(
+        &self,
+        endpoint: &str,
+        query: &str,
+        range: Option<&str>,
+    ) -> (axum::http::StatusCode, axum::http::HeaderMap, Vec<u8>) {
+        let uri = format!("/rest/{endpoint}?u=inaba&p=sesame&f=json{query}");
+        let mut request = Request::get(uri);
+        if let Some(range) = range {
+            request = request.header("range", range);
+        }
+        let res = self
+            .app
+            .clone()
+            .oneshot(request.body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        let status = res.status();
+        let headers = res.headers().clone();
+        let body = res.into_body().collect().await.unwrap().to_bytes();
+        (status, headers, body.to_vec())
     }
 
     async fn get(&self, endpoint: &str, query: &str) -> Value {
@@ -575,4 +599,61 @@ async fn search_shapes_match_navidrome() {
     );
     assert_subset("album", &result["album"], &albums["albumList2"]["album"]);
     assert_subset("song", &result["song"], &songs["searchResult3"]["song"]);
+}
+
+#[tokio::test]
+async fn stream_returns_the_file() {
+    let server = server(&[track("a/1-01.flac", "a", 1, 1)]).await;
+    let id = server.id("track", "title", "a").await;
+    let original = std::fs::read(server.dir.path().join("a/1-01.flac")).unwrap();
+
+    // トランスコードはしないので、maxBitRate と format は無視して元のファイルを返す
+    let (status, headers, body) = server
+        .bytes(
+            "stream",
+            &format!("&id={id}&maxBitRate=128&format=mp3"),
+            None,
+        )
+        .await;
+    assert_eq!(status, 200);
+    assert_eq!(headers["content-type"], "audio/flac");
+    assert_eq!(body, original);
+
+    // シークのための部分取得
+    let (status, headers, body) = server
+        .bytes("stream", &format!("&id={id}"), Some("bytes=4-9"))
+        .await;
+    assert_eq!(status, 206);
+    assert_eq!(
+        headers["content-range"],
+        format!("bytes 4-9/{}", original.len()).as_str()
+    );
+    assert_eq!(body, original[4..10]);
+}
+
+#[tokio::test]
+async fn download_names_the_file() {
+    let server = server(&[track("a/1-01 曲.flac", "a", 1, 1)]).await;
+    let id = server.id("track", "title", "a").await;
+    let (status, headers, _) = server.bytes("download", &format!("&id={id}"), None).await;
+    assert_eq!(status, 200);
+    assert_eq!(
+        headers["content-disposition"],
+        "attachment; filename*=UTF-8''1-01%20%E6%9B%B2.flac"
+    );
+}
+
+#[tokio::test]
+async fn stream_errors() {
+    let server = server(&[track("a/1-01.flac", "a", 1, 1)]).await;
+    let res = server.raw("stream", "&id=tr-00000000").await;
+    assert_eq!(res["subsonic-response"]["error"]["code"], 70);
+    let res = server.raw("stream", "").await;
+    assert_eq!(res["subsonic-response"]["error"]["code"], 10);
+
+    // スキャンの後にファイルが消えた
+    let id = server.id("track", "title", "a").await;
+    std::fs::remove_file(server.dir.path().join("a/1-01.flac")).unwrap();
+    let res = server.raw("stream", &format!("&id={id}")).await;
+    assert_eq!(res["subsonic-response"]["error"]["code"], 70);
 }
