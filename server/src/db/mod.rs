@@ -5,6 +5,7 @@ pub mod browse;
 pub mod history;
 mod id;
 pub mod library;
+pub mod playlist;
 pub mod search;
 
 use std::path::Path;

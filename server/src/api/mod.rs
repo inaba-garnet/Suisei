@@ -3,6 +3,7 @@ mod browse;
 mod empty;
 mod history;
 mod media;
+mod playlist;
 mod search;
 mod unsupported;
 
@@ -101,6 +102,11 @@ async fn rest(
         "unstar" => reply(format, annotation::unstar(&params, &state).await),
         "setRating" => reply(format, annotation::set_rating(&params, &state).await),
         "getStarred2" => reply(format, annotation::starred2(&state).await),
+        "getPlaylists" => reply(format, playlist::list(&state).await),
+        "getPlaylist" => reply(format, playlist::get(&params, &state).await),
+        "createPlaylist" => reply(format, playlist::create(&params, &state).await),
+        "updatePlaylist" => reply(format, playlist::update(&params, &state).await),
+        "deletePlaylist" => reply(format, playlist::delete(&params, &state).await),
         _ => match browse::respond(name, &params, &state)
             .await
             .or_else(|| empty::respond(name, &params, &state))

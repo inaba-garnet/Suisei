@@ -277,6 +277,45 @@ async fn merged_track_carries_star_and_rating() {
     assert_eq!((starred_at, rating), (Some(3), Some(2)));
 }
 
+/// マージで消える曲は、プレイリストの同じ位置のまま残る曲に付け替える。消えた曲は並びから除く。
+#[tokio::test]
+async fn playlist_follows_merge_and_deletion() {
+    let lib = Library::new().await;
+    lib.put("full.flac", "a/01.flac");
+    lib.put("full.flac", "a/02.flac");
+    lib.put("id3v1.mp3", "b/01.mp3");
+    lib.set_title("a/02.flac", "別の曲");
+    lib.scan().await;
+    let kept = lib.track_id("a/01.flac").await;
+    let merged = lib.track_id("a/02.flac").await;
+    let deleted = lib.track_id("b/01.mp3").await;
+    sqlx::query(
+        "INSERT INTO playlist (id, name, public, created_at, changed_at)
+         VALUES ('pl-00000000', 'p', FALSE, 0, 0)",
+    )
+    .execute(&lib.pool)
+    .await
+    .unwrap();
+    for (position, id) in [&merged, &deleted, &kept].into_iter().enumerate() {
+        sqlx::query("INSERT INTO playlist_entry (playlist_id, position, track_id) VALUES ('pl-00000000', ?, ?)")
+            .bind(position as i64)
+            .bind(id)
+            .execute(&lib.pool)
+            .await
+            .unwrap();
+    }
+
+    lib.set_title("a/02.flac", "テスト曲");
+    std::fs::remove_file(lib.path("b/01.mp3")).unwrap();
+    lib.scan().await;
+    let entries: Vec<(i64, String)> =
+        sqlx::query_as("SELECT position, track_id FROM playlist_entry ORDER BY position")
+            .fetch_all(&lib.pool)
+            .await
+            .unwrap();
+    assert_eq!(entries, [(0, kept.clone()), (2, kept)]);
+}
+
 #[tokio::test]
 async fn deleted_file_removes_play_history() {
     let lib = Library::new().await;

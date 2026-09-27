@@ -69,10 +69,13 @@ async fn unimplemented_endpoint_requires_auth() {
 
 #[tokio::test]
 async fn pending_endpoint_returns_generic_error() {
-    let res = get_json(&format!("/rest/createPlaylist.view?{AUTH}&f=json&name=x")).await;
+    let res = get_json(&format!(
+        "/rest/savePlayQueue.view?{AUTH}&f=json&id=tr-00000000"
+    ))
+    .await;
     assert_eq!(res["status"], "failed");
     assert_eq!(res["error"]["code"], 0);
-    assert_eq!(res["error"]["message"], "not implemented: createPlaylist");
+    assert_eq!(res["error"]["message"], "not implemented: savePlayQueue");
 }
 
 #[tokio::test]

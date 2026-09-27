@@ -5,6 +5,7 @@ pub enum IdKind {
     Album,
     Track,
     File,
+    Playlist,
 }
 
 impl IdKind {
@@ -14,6 +15,7 @@ impl IdKind {
             Self::Album => "al",
             Self::Track => "tr",
             Self::File => "fi",
+            Self::Playlist => "pl",
         }
     }
 }
