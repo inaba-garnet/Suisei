@@ -8,7 +8,7 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use walkdir::WalkDir;
 
@@ -44,6 +44,20 @@ pub struct Summary {
     pub tracks: usize,
     pub albums: usize,
     pub artists: usize,
+    /// 段階ごとの所要時間（ミリ秒）。遅くなったとき、どの段階で時間を使ったかを見分けるため
+    pub timings: Timings,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Timings {
+    /// DB から前回の状態を読む
+    pub load_ms: u64,
+    /// 走査とタグの読み取り
+    pub collect_ms: u64,
+    /// 曲、アルバム、アーティストの組み立て
+    pub build_ms: u64,
+    /// DB への書き込み
+    pub write_ms: u64,
 }
 
 #[derive(Debug)]
@@ -87,13 +101,18 @@ async fn run_with_progress(
     mode: Mode,
     progress: Arc<AtomicUsize>,
 ) -> Result<Summary, Error> {
+    let started = Instant::now();
     let snapshot = library::snapshot(pool).await?;
+    let load_ms = elapsed_ms(started);
     let music_dir = music_dir.to_owned();
-    let (library, summary) = tokio::task::spawn_blocking(move || {
+    let (library, mut summary) = tokio::task::spawn_blocking(move || {
+        let started = Instant::now();
         let (files, mut summary) = collect(&music_dir, &snapshot, mode, &progress)?;
+        summary.timings.collect_ms = elapsed_ms(started);
         if files.is_empty() && !snapshot.files.is_empty() {
             return Err(Error::Empty);
         }
+        let started = Instant::now();
         let library = build::build(
             files,
             &snapshot,
@@ -110,12 +129,20 @@ async fn run_with_progress(
         summary.tracks = library.tracks.len();
         summary.albums = library.albums.len();
         summary.artists = library.artists.len();
+        summary.timings.build_ms = elapsed_ms(started);
         Ok((library, summary))
     })
     .await
     .expect("スキャンのタスクが panic した")?;
+    let started = Instant::now();
     library::replace(pool, &library).await?;
+    summary.timings.load_ms = load_ms;
+    summary.timings.write_ms = elapsed_ms(started);
     Ok(summary)
+}
+
+fn elapsed_ms(started: Instant) -> u64 {
+    u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX)
 }
 
 /// 音楽フォルダを走査し、変わったファイルだけタグを読む。
