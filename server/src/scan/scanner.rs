@@ -123,6 +123,10 @@ impl Scanner {
                     albums = summary.albums,
                     artists = summary.artists,
                     elapsed_ms = started.elapsed().as_millis(),
+                    load_ms = summary.timings.load_ms,
+                    collect_ms = summary.timings.collect_ms,
+                    build_ms = summary.timings.build_ms,
+                    write_ms = summary.timings.write_ms,
                     "scan finished"
                 );
                 *self.last.lock().expect("状態のロックが壊れた") = Some(Finished {
