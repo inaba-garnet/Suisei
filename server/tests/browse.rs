@@ -984,3 +984,80 @@ async fn search_shows_starred_artist() {
     assert!(hit["starred"].is_string());
     assert_eq!(hit["userRating"], 2);
 }
+
+/// 作成、取得、更新、置き換え、削除を順に行う。
+#[tokio::test]
+async fn playlist_lifecycle() {
+    let server = album_list_server().await;
+    let a = server.id("track", "title", "a").await;
+    let b = server.id("track", "title", "b").await;
+    let c = server.id("track", "title", "c").await;
+
+    // 同じ曲は何度でも入り、知らない曲は飛ばす
+    let query = format!("&name=mix&songId={a}&songId={b}&songId={a}&songId=tr-00000000");
+    let res = server.get("createPlaylist", &query).await;
+    let playlist = &res["playlist"];
+    let id = playlist["id"].as_str().unwrap().to_owned();
+    assert!(id.starts_with("pl-"));
+    assert_eq!(playlist["name"], "mix");
+    assert_eq!(playlist["owner"], "inaba");
+    assert_eq!(playlist["songCount"], 3);
+    assert_eq!(playlist["readonly"], false);
+    assert_eq!(titles(&playlist["entry"]), ["a", "b", "a"]);
+
+    let res = server.get("getPlaylists", "").await;
+    assert_eq!(res["playlists"]["playlist"][0]["id"], id.as_str());
+
+    // 0 始まりの位置で消してから、末尾に足す
+    let query = format!(
+        "&playlistId={id}&name=renamed&comment=memo&public=true\
+         &songIndexToRemove=0&songIndexToRemove=2&songIdToAdd={c}"
+    );
+    server.get("updatePlaylist", &query).await;
+    let res = server.get("getPlaylist", &format!("&id={id}")).await;
+    assert_eq!(res["playlist"]["name"], "renamed");
+    assert_eq!(res["playlist"]["comment"], "memo");
+    assert_eq!(res["playlist"]["public"], true);
+    assert_eq!(titles(&res["playlist"]["entry"]), ["b", "c"]);
+
+    // playlistId を付けた createPlaylist は曲を置き換える
+    let query = format!("&playlistId={id}&songId={c}");
+    let res = server.get("createPlaylist", &query).await;
+    assert_eq!(titles(&res["playlist"]["entry"]), ["c"]);
+    assert_eq!(res["playlist"]["name"], "renamed");
+
+    server.get("deletePlaylist", &format!("&id={id}")).await;
+    let res = server.get("getPlaylists", "").await;
+    assert_eq!(res["playlists"], serde_json::json!({}));
+    let res = server.raw("getPlaylist", &format!("&id={id}")).await;
+    assert_eq!(res["subsonic-response"]["error"]["code"], 70);
+}
+
+#[tokio::test]
+async fn playlist_errors() {
+    let server = album_list_server().await;
+    let res = server.raw("createPlaylist", "").await;
+    assert_eq!(res["subsonic-response"]["error"]["code"], 10);
+    let res = server.raw("updatePlaylist", "&name=x").await;
+    assert_eq!(res["subsonic-response"]["error"]["code"], 10);
+    let res = server
+        .raw("updatePlaylist", "&playlistId=pl-00000000&name=x")
+        .await;
+    assert_eq!(res["subsonic-response"]["error"]["code"], 70);
+    let res = server.raw("deletePlaylist", "&id=pl-00000000").await;
+    assert_eq!(res["subsonic-response"]["error"]["code"], 70);
+}
+
+/// カバーアートは、画像のある最初の曲のアルバム。
+#[tokio::test]
+async fn playlist_cover_is_first_album_with_image() {
+    let server = cover_server().await;
+    let none = server.id("album", "name", "none").await;
+    let embedded = server.id("album", "name", "embedded").await;
+    let first = server.id("track", "album_id", &none).await;
+    let second = server.id("track", "album_id", &embedded).await;
+
+    let query = format!("&name=p&songId={first}&songId={second}");
+    let res = server.get("createPlaylist", &query).await;
+    assert_eq!(res["playlist"]["coverArt"], embedded.as_str());
+}
