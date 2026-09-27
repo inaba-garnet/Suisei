@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id AS \"album_id!\", cover_path FROM album WHERE id = ?\n           UNION ALL\n           SELECT album.id, album.cover_path FROM track JOIN album ON album.id = track.album_id\n           WHERE track.id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "album_id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "cover_path",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "cover_path"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true,
+      true
+    ]
+  },
+  "hash": "86009e041a4bbf780ab6089e4ae95e4cecfb9403cb251aec94cc0f785a408cd8"
+}

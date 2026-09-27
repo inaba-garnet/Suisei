@@ -20,6 +20,8 @@ use common::{assert_subset, navidrome, payload};
 
 struct Server {
     dir: TempDir,
+    /// 縮小したカバーアートの置き場所。サーバーが使う間は消さない
+    _cache: TempDir,
     app: axum::Router,
     db: suisei::db::Pool,
 }
@@ -81,6 +83,7 @@ async fn start(dir: TempDir) -> Server {
     let scanner = Scanner::new(db.clone(), dir.path().to_owned());
     assert!(scanner.start(Mode::Quick));
     scanner.wait().await;
+    let cache = tempfile::tempdir().unwrap();
     let app = suisei::router(AppState {
         credentials: Credentials {
             user: "inaba".into(),
@@ -90,8 +93,14 @@ async fn start(dir: TempDir) -> Server {
         db: db.clone(),
         scanner: Arc::clone(&scanner),
         now_playing: Default::default(),
+        cache_dir: cache.path().to_owned(),
     });
-    Server { dir, app, db }
+    Server {
+        dir,
+        _cache: cache,
+        app,
+        db,
+    }
 }
 
 impl Server {
