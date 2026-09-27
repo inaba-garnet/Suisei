@@ -91,7 +91,13 @@ async fn form_post() {
 }
 
 #[tokio::test]
-async fn outside_rest_is_not_found() {
+async fn root_is_reachable() {
     let (status, _) = get("/").await;
+    assert_eq!(status, StatusCode::OK);
+}
+
+#[tokio::test]
+async fn outside_rest_is_not_found() {
+    let (status, _) = get("/server/xml.server.php").await;
     assert_eq!(status, StatusCode::NOT_FOUND);
 }
