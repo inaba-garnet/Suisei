@@ -23,6 +23,9 @@ exec > >(tee -a /home/sprite/suisei/suisei.log) 2>&1
 exec /home/sprite/suisei/suisei
 ```
 
+## ffmpeg
+トランスコードに使う ffmpeg は apt で入れた（`sudo apt-get install -y ffmpeg`）。`/usr/bin/ffmpeg` にあるので、`SUISEI_FFMPEG` は設定しない。
+
 ## デプロイ
 1. `server/` で `cargo build --release --target x86_64-unknown-linux-musl` を実行する。musl のターゲットと `musl-tools` が要る。
 2. `PUT /fs/write?path=/home/sprite/suisei/suisei.new&workingDir=/home/sprite&mode=0755` でバイナリを送る。
