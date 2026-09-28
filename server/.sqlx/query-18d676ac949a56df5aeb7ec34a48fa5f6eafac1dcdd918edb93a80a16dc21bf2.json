@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT track.id AS \"id!\" FROM track WHERE track.title = ?\n                   ORDER BY track.sort_key, track.id\n                   LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "18d676ac949a56df5aeb7ec34a48fa5f6eafac1dcdd918edb93a80a16dc21bf2"
+}

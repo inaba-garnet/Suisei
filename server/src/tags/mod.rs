@@ -1,6 +1,7 @@
 //! タグを内部のモデルに変換する。DB には依存しない。
 //! ファイルをまたぐ集計（表示名や読みの多数決）はスキャンで行う。
 
+pub mod lyrics;
 mod match_key;
 mod raw;
 mod reading;

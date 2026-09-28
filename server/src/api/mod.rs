@@ -3,6 +3,7 @@ mod browse;
 mod cover;
 mod empty;
 mod history;
+mod lyrics;
 mod media;
 mod playlist;
 mod search;
@@ -111,6 +112,8 @@ async fn rest(
         "createPlaylist" => reply(format, playlist::create(&params, &state).await),
         "updatePlaylist" => reply(format, playlist::update(&params, &state).await),
         "deletePlaylist" => reply(format, playlist::delete(&params, &state).await),
+        "getLyricsBySongId" => reply(format, lyrics::by_song_id(&params, &state).await),
+        "getLyrics" => reply(format, lyrics::by_name(&params, &state).await),
         _ => match browse::respond(name, &params, &state)
             .await
             .or_else(|| empty::respond(name, &params, &state))
@@ -175,7 +178,10 @@ fn user_agent(headers: &HeaderMap) -> &str {
 }
 
 fn extensions(state: &AppState) -> Map<String, Value> {
-    let mut list = vec![json!({ "name": "formPost", "versions": [1] })];
+    let mut list = vec![
+        json!({ "name": "formPost", "versions": [1] }),
+        json!({ "name": "songLyrics", "versions": [1] }),
+    ];
     if state.credentials.api_key.is_some() {
         list.push(json!({ "name": "apiKeyAuthentication", "versions": [1] }));
     }

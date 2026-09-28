@@ -483,6 +483,48 @@ pub async fn song(pool: &Pool, id: &str) -> Result<Option<Song>, sqlx::Error> {
     .await
 }
 
+/// 曲名とアーティスト名で曲を一つ引く。アーティスト名は表示用の名前か、曲のアーティストの一人と一致すればよい。
+/// 引数が NULL かどうかで条件を変える書き方は PostgreSQL で型が決まらないので、問い合わせを分ける。
+pub async fn song_by_name(
+    pool: &Pool,
+    artist: Option<&str>,
+    title: &str,
+) -> Result<Option<Song>, sqlx::Error> {
+    let id = match artist {
+        Some(artist) => {
+            sqlx::query_scalar!(
+                r#"SELECT track.id AS "id!" FROM track
+                   WHERE track.title = ?
+                     AND (track.display_artist = ? OR EXISTS (
+                         SELECT 1 FROM track_artist
+                           JOIN artist ON artist.id = track_artist.artist_id
+                         WHERE track_artist.track_id = track.id AND artist.name = ?))
+                   ORDER BY track.sort_key, track.id
+                   LIMIT 1"#,
+                title,
+                artist,
+                artist
+            )
+            .fetch_optional(pool)
+            .await?
+        }
+        None => {
+            sqlx::query_scalar!(
+                r#"SELECT track.id AS "id!" FROM track WHERE track.title = ?
+                   ORDER BY track.sort_key, track.id
+                   LIMIT 1"#,
+                title
+            )
+            .fetch_optional(pool)
+            .await?
+        }
+    };
+    match id {
+        Some(id) => song(pool, &id).await,
+        None => Ok(None),
+    }
+}
+
 /// 曲の配信ファイル。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StreamFile {
