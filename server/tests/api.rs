@@ -133,6 +133,7 @@ async fn extensions_without_auth() {
     let res = get_json("/rest/getOpenSubsonicExtensions?f=json").await;
     assert_eq!(res["status"], "ok");
     assert_eq!(res["openSubsonicExtensions"][0]["name"], "formPost");
+    assert_eq!(res["openSubsonicExtensions"][1]["name"], "songLyrics");
 }
 
 #[tokio::test]

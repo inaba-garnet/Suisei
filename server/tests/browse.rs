@@ -1261,3 +1261,132 @@ async fn cover_art_is_not_resized_into_larger_file() {
     assert_eq!(cached.len(), 1);
     assert!(cached[0].ends_with(".png"));
 }
+
+/// 音声と同じ名前の `.lrc`（時刻付き）と、FLAC に埋め込んだ歌詞（時刻なし）を置く。
+async fn lyrics_server() -> Server {
+    let dir = tempfile::tempdir().unwrap();
+    place(
+        &dir,
+        &[("notag.flac", "a/1.flac"), ("notag.flac", "a/2.flac")],
+    );
+    for (rel, title) in [("a/1.flac", "歌う曲"), ("a/2.flac", "歌詞のない曲")] {
+        let path = dir.path().join(rel);
+        let mut file = lofty::read_from_path(&path).unwrap();
+        let mut tag = Tag::new(file.primary_tag_type());
+        tag.set_title(title.to_owned());
+        tag.set_artist("歌手".to_owned());
+        tag.set_album("a".to_owned());
+        if rel == "a/1.flac" {
+            tag.insert_text(ItemKey::Lyrics, "\n一番\n\n二番\n".to_owned());
+        }
+        file.insert_tag(tag);
+        file.save_to_path(&path, WriteOptions::default()).unwrap();
+    }
+    std::fs::write(
+        dir.path().join("a/1.lrc"),
+        "\u{feff}[ti:歌う曲]\r\n[00:01.50]はじまり\r\n[00:03.00]おわり\r\n",
+    )
+    .unwrap();
+    start(dir).await
+}
+
+#[tokio::test]
+async fn lyrics_by_song_id() {
+    let server = lyrics_server().await;
+    let id = server.id("track", "title", "歌う曲").await;
+    let res = server.get("getLyricsBySongId", &format!("&id={id}")).await;
+    let list = res["lyricsList"]["structuredLyrics"].as_array().unwrap();
+    assert_eq!(list.len(), 2);
+
+    // 時刻付きを先に並べる
+    assert_eq!(list[0]["synced"], true);
+    assert_eq!(list[0]["lang"], "und");
+    assert_eq!(list[0]["displayTitle"], "歌う曲");
+    assert_eq!(list[0]["line"][0]["start"], 1500);
+    assert_eq!(list[0]["line"][1]["value"], "おわり");
+
+    assert_eq!(list[1]["synced"], false);
+    let lines: Vec<&str> = list[1]["line"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|l| l["value"].as_str().unwrap())
+        .collect();
+    assert_eq!(lines, ["一番", "", "二番"]);
+    assert!(list[1]["line"][0].get("start").is_none());
+
+    let id = server.id("track", "title", "歌詞のない曲").await;
+    let res = server.get("getLyricsBySongId", &format!("&id={id}")).await;
+    assert_eq!(res["lyricsList"], serde_json::json!({}));
+    let res = server.raw("getLyricsBySongId", "&id=tr-00000000").await;
+    assert_eq!(res["subsonic-response"]["error"]["code"], 70);
+}
+
+/// v1 の getLyrics は、時刻なしの本文を一つ返す。
+#[tokio::test]
+async fn lyrics_by_name() {
+    let server = lyrics_server().await;
+    let res = server
+        .get(
+            "getLyrics",
+            "&artist=%E6%AD%8C%E6%89%8B&title=%E6%AD%8C%E3%81%86%E6%9B%B2",
+        )
+        .await;
+    assert_eq!(res["lyrics"]["title"], "歌う曲");
+    assert_eq!(res["lyrics"]["artist"], "歌手");
+    assert_eq!(res["lyrics"]["value"], "一番\n\n二番");
+
+    let res = server
+        .get("getLyrics", "&artist=x&title=%E6%AD%8C%E3%81%86%E6%9B%B2")
+        .await;
+    assert_eq!(res["lyrics"], serde_json::json!({}));
+}
+
+/// MP3 は USLT（時刻なし）と SYLT（時刻付き）を ID3v2 から読む。
+#[tokio::test]
+async fn lyrics_from_id3v2() {
+    use lofty::TextEncoding;
+    use lofty::id3::v2::{
+        BinaryFrame, Frame, FrameId, Id3v2Tag, SyncTextContentType, SynchronizedTextFrame,
+        TimestampFormat, UnsynchronizedTextFrame,
+    };
+    use lofty::tag::TagExt;
+
+    let dir = tempfile::tempdir().unwrap();
+    place(&dir, &[("full.mp3", "a/1.mp3")]);
+    let mut tag = Id3v2Tag::new();
+    tag.set_title("エムピースリー".to_owned());
+    tag.insert(Frame::UnsynchronizedText(UnsynchronizedTextFrame::new(
+        TextEncoding::UTF8,
+        *b"jpn",
+        "",
+        "埋め込み",
+    )));
+    let sylt = SynchronizedTextFrame::new(
+        TextEncoding::UTF8,
+        *b"eng",
+        TimestampFormat::MS,
+        SyncTextContentType::Lyrics,
+        None,
+        vec![(1000, "one".to_owned()), (2000, "two".to_owned())],
+    )
+    .as_bytes(WriteOptions::default())
+    .unwrap();
+    tag.insert(Frame::Binary(BinaryFrame::new(
+        FrameId::Valid("SYLT".into()),
+        sylt,
+    )));
+    tag.save_to_path(dir.path().join("a/1.mp3"), WriteOptions::default())
+        .unwrap();
+    let server = start(dir).await;
+
+    let id = server.id("track", "title", "エムピースリー").await;
+    let res = server.get("getLyricsBySongId", &format!("&id={id}")).await;
+    let list = &res["lyricsList"]["structuredLyrics"];
+    assert_eq!(list[0]["synced"], true);
+    assert_eq!(list[0]["lang"], "eng");
+    assert_eq!(list[0]["line"][1]["start"], 2000);
+    assert_eq!(list[1]["synced"], false);
+    assert_eq!(list[1]["lang"], "jpn");
+    assert_eq!(list[1]["line"][0]["value"], "埋め込み");
+}
