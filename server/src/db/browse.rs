@@ -531,12 +531,19 @@ pub struct StreamFile {
     /// 音楽フォルダからの相対パス
     pub path: String,
     pub content_type: String,
+    pub suffix: String,
+    /// kbps
+    pub bit_rate: Option<i64>,
+    pub lossless: bool,
+    pub duration_ms: i64,
 }
 
 pub async fn stream_file(pool: &Pool, track_id: &str) -> Result<Option<StreamFile>, sqlx::Error> {
     sqlx::query_as!(
         StreamFile,
-        "SELECT file.path, file.content_type FROM track
+        "SELECT file.path, file.content_type, file.suffix, file.bit_rate, file.lossless,
+                file.duration_ms
+         FROM track
            JOIN file ON file.id = track.primary_file_id
          WHERE track.id = ?",
         track_id

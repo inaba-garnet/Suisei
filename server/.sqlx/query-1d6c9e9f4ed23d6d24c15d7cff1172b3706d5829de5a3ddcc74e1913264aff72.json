@@ -1,0 +1,86 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT file.path, file.content_type, file.suffix, file.bit_rate, file.lossless,\n                file.duration_ms\n         FROM track\n           JOIN file ON file.id = track.primary_file_id\n         WHERE track.id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "path",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "path"
+          }
+        }
+      },
+      {
+        "name": "content_type",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "content_type"
+          }
+        }
+      },
+      {
+        "name": "suffix",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "suffix"
+          }
+        }
+      },
+      {
+        "name": "bit_rate",
+        "ordinal": 3,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "bit_rate"
+          }
+        }
+      },
+      {
+        "name": "lossless",
+        "ordinal": 4,
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "lossless"
+          }
+        }
+      },
+      {
+        "name": "duration_ms",
+        "ordinal": 5,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "duration_ms"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "1d6c9e9f4ed23d6d24c15d7cff1172b3706d5829de5a3ddcc74e1913264aff72"
+}

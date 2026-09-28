@@ -19,6 +19,7 @@ async fn app() -> axum::Router {
         scanner: suisei::scan::Scanner::new(db, "/nonexistent".into()),
         now_playing: Default::default(),
         cache_dir: "/nonexistent".into(),
+        ffmpeg: "ffmpeg".into(),
     })
 }
 
@@ -134,6 +135,7 @@ async fn extensions_without_auth() {
     assert_eq!(res["status"], "ok");
     assert_eq!(res["openSubsonicExtensions"][0]["name"], "formPost");
     assert_eq!(res["openSubsonicExtensions"][1]["name"], "songLyrics");
+    assert_eq!(res["openSubsonicExtensions"][2]["name"], "transcodeOffset");
 }
 
 #[tokio::test]

@@ -21,6 +21,10 @@ pub struct Config {
     #[arg(long, env = "SUISEI_SCAN_INTERVAL", default_value = "1h", value_parser = humantime::parse_duration)]
     pub scan_interval: Duration,
 
+    /// トランスコードに使う ffmpeg。見つからなければ元のファイルを返す。
+    #[arg(long, env = "SUISEI_FFMPEG", default_value = "ffmpeg")]
+    pub ffmpeg: PathBuf,
+
     #[command(flatten)]
     pub credentials: Credentials,
 }

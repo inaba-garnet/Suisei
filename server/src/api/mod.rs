@@ -7,6 +7,7 @@ mod lyrics;
 mod media;
 mod playlist;
 mod search;
+mod transcode;
 mod unsupported;
 
 use std::path::PathBuf;
@@ -35,6 +36,8 @@ pub struct AppState {
     pub now_playing: Arc<NowPlaying>,
     /// 作り直せるデータの置き場所。データの置き場所の下の `cache/`（docs/server.md）
     pub cache_dir: PathBuf,
+    /// トランスコードに使う ffmpeg（docs/server.md）
+    pub ffmpeg: PathBuf,
 }
 
 pub fn router(state: AppState) -> Router {
@@ -181,6 +184,7 @@ fn extensions(state: &AppState) -> Map<String, Value> {
     let mut list = vec![
         json!({ "name": "formPost", "versions": [1] }),
         json!({ "name": "songLyrics", "versions": [1] }),
+        json!({ "name": "transcodeOffset", "versions": [1] }),
     ];
     if state.credentials.api_key.is_some() {
         list.push(json!({ "name": "apiKeyAuthentication", "versions": [1] }));

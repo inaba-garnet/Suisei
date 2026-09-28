@@ -399,6 +399,7 @@ async fn scan_endpoints() {
         scanner: scanner.clone(),
         now_playing: Default::default(),
         cache_dir: "/nonexistent".into(),
+        ffmpeg: "ffmpeg".into(),
     });
     let status = |endpoint: &'static str| {
         let app = app.clone();

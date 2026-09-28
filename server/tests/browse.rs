@@ -79,7 +79,12 @@ async fn server(songs: &[Song<'_>]) -> Server {
 }
 
 /// 並べ終えたディレクトリをスキャンして、サーバーを作る。
+/// ffmpeg は、テストを動かす環境にあるかどうかで結果が変わらないよう、ない場所を指す。
 async fn start(dir: TempDir) -> Server {
+    start_with_ffmpeg(dir, "/nonexistent/ffmpeg".into()).await
+}
+
+async fn start_with_ffmpeg(dir: TempDir, ffmpeg: std::path::PathBuf) -> Server {
     let db = suisei::db::open_in_memory().await.unwrap();
     let scanner = Scanner::new(db.clone(), dir.path().to_owned());
     assert!(scanner.start(Mode::Quick));
@@ -95,6 +100,7 @@ async fn start(dir: TempDir) -> Server {
         scanner: Arc::clone(&scanner),
         now_playing: Default::default(),
         cache_dir: cache.path().to_owned(),
+        ffmpeg,
     });
     Server {
         dir,
@@ -622,14 +628,7 @@ async fn stream_returns_the_file() {
     let id = server.id("track", "title", "a").await;
     let original = std::fs::read(server.dir.path().join("a/1-01.flac")).unwrap();
 
-    // トランスコードはしないので、maxBitRate と format は無視して元のファイルを返す
-    let (status, headers, body) = server
-        .bytes(
-            "stream",
-            &format!("&id={id}&maxBitRate=128&format=mp3"),
-            None,
-        )
-        .await;
+    let (status, headers, body) = server.bytes("stream", &format!("&id={id}"), None).await;
     assert_eq!(status, 200);
     assert_eq!(headers["content-type"], "audio/flac");
     assert_eq!(body, original);
@@ -1389,4 +1388,134 @@ async fn lyrics_from_id3v2() {
     assert_eq!(list[1]["synced"], false);
     assert_eq!(list[1]["lang"], "jpn");
     assert_eq!(list[1]["line"][0]["value"], "埋め込み");
+}
+
+/// ffmpeg の代わりに、引数を `<スクリプト>.args` に書き、決まった本文を出すスクリプト。
+fn fake_ffmpeg(dir: &TempDir) -> std::path::PathBuf {
+    use std::os::unix::fs::PermissionsExt;
+    let path = dir.path().join("ffmpeg");
+    std::fs::write(
+        &path,
+        "#!/bin/sh\necho \"$@\" > \"$0.args\"\nprintf CONVERTED\n",
+    )
+    .unwrap();
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    path
+}
+
+struct Transcoding {
+    server: Server,
+    tools: TempDir,
+    id: String,
+}
+
+impl Transcoding {
+    async fn new() -> Self {
+        let tools = tempfile::tempdir().unwrap();
+        let ffmpeg = fake_ffmpeg(&tools);
+        let dir = tempfile::tempdir().unwrap();
+        place(&dir, &[("full.flac", "a/1.flac")]);
+        let server = start_with_ffmpeg(dir, ffmpeg).await;
+        let id = server.id("track", "title", "テスト曲").await;
+        // 試験用の FLAC は 1 秒の無音で 1 kbps しかないので、実際の FLAC に近い値にする
+        sqlx::query("UPDATE file SET bit_rate = 900")
+            .execute(&server.db)
+            .await
+            .unwrap();
+        Self { server, tools, id }
+    }
+
+    async fn stream(&self, query: &str) -> (axum::http::HeaderMap, Vec<u8>) {
+        let (status, headers, body) = self
+            .server
+            .bytes("stream", &format!("&id={}{query}", self.id), None)
+            .await;
+        assert_eq!(status, 200);
+        (headers, body)
+    }
+
+    /// ffmpeg に渡した引数。起動していなければ None。
+    fn args(&self) -> Option<String> {
+        std::fs::read_to_string(self.tools.path().join("ffmpeg.args")).ok()
+    }
+}
+
+#[tokio::test]
+async fn stream_without_arguments_is_original() {
+    let t = Transcoding::new().await;
+    let original = std::fs::read(fixture("full.flac")).unwrap();
+    for query in ["", "&format=raw&maxBitRate=128", "&format=aac"] {
+        let (headers, body) = t.stream(query).await;
+        assert_eq!(headers["content-type"], "audio/flac", "{query}");
+        assert_eq!(body, original, "{query}");
+    }
+    assert_eq!(t.args(), None);
+}
+
+/// maxBitRate がなく形式の指定があれば 320 kbps にする。
+#[tokio::test]
+async fn stream_with_format_is_transcoded() {
+    let t = Transcoding::new().await;
+    let (headers, body) = t.stream("&format=mp3").await;
+    assert_eq!(headers["content-type"], "audio/mpeg");
+    assert_eq!(headers["accept-ranges"], "none");
+    assert_eq!(body, b"CONVERTED");
+    let args = t.args().unwrap();
+    assert!(
+        args.contains("-c:a libmp3lame -f mp3 -b:a 320k pipe:1"),
+        "{args}"
+    );
+    assert!(args.contains("a/1.flac"), "{args}");
+
+    let (headers, _) = t.stream("&format=opus").await;
+    assert_eq!(headers["content-type"], "audio/ogg");
+    assert!(t.args().unwrap().contains("-c:a libopus -f ogg -b:a 320k"));
+}
+
+#[tokio::test]
+async fn stream_with_limit_is_mp3() {
+    let t = Transcoding::new().await;
+    let (headers, _) = t.stream("&maxBitRate=128").await;
+    assert_eq!(headers["content-type"], "audio/mpeg");
+    assert!(t.args().unwrap().contains("-b:a 128k"));
+}
+
+/// timeOffset から変換し、見積もった長さを付ける。
+#[tokio::test]
+async fn transcoded_stream_starts_at_offset() {
+    let t = Transcoding::new().await;
+    let (headers, _) = t
+        .stream("&format=mp3&timeOffset=0.5&estimateContentLength=true")
+        .await;
+    let args = t.args().unwrap();
+    assert!(args.contains("-ss 0.500 -i"), "{args}");
+    // 残り 0.5 秒 × 320 kbps
+    assert_eq!(headers["content-length"], "20000");
+}
+
+#[tokio::test]
+async fn download_is_never_transcoded() {
+    let t = Transcoding::new().await;
+    let (status, headers, _) = t
+        .server
+        .bytes("download", &format!("&id={}&format=mp3", t.id), None)
+        .await;
+    assert_eq!(status, 200);
+    assert_eq!(headers["content-type"], "audio/flac");
+    assert_eq!(t.args(), None);
+}
+
+/// ffmpeg がなければ、元のファイルを返す。
+#[tokio::test]
+async fn stream_without_ffmpeg_is_original() {
+    let dir = tempfile::tempdir().unwrap();
+    place(&dir, &[("full.flac", "a/1.flac")]);
+    let server = start_with_ffmpeg(dir, "/nonexistent/ffmpeg".into()).await;
+    let id = server.id("track", "title", "テスト曲").await;
+    let (status, headers, body) = server
+        .bytes("stream", &format!("&id={id}&format=mp3"), None)
+        .await;
+    assert_eq!(status, 200);
+    assert_eq!(headers["content-type"], "audio/flac");
+    assert_eq!(body, std::fs::read(fixture("full.flac")).unwrap());
 }
