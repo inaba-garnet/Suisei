@@ -21,6 +21,7 @@ async fn main() -> std::io::Result<()> {
         scanner,
         now_playing: Default::default(),
         cache_dir: config.data_dir.join("cache"),
+        ffmpeg: config.ffmpeg,
     };
     let listener = TcpListener::bind(config.listen).await?;
     tracing::info!(addr = %config.listen, "listening");

@@ -19,6 +19,7 @@ async fn app() -> axum::Router {
         scanner: suisei::scan::Scanner::new(db, "/nonexistent".into()),
         now_playing: Default::default(),
         cache_dir: "/nonexistent".into(),
+        ffmpeg: "ffmpeg".into(),
     })
 }
 

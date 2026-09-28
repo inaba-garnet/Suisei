@@ -95,6 +95,7 @@ async fn start(dir: TempDir) -> Server {
         scanner: Arc::clone(&scanner),
         now_playing: Default::default(),
         cache_dir: cache.path().to_owned(),
+        ffmpeg: "ffmpeg".into(),
     });
     Server {
         dir,

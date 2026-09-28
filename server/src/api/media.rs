@@ -11,13 +11,13 @@ use lofty::picture::PictureType;
 use tower_http::services::ServeFile;
 
 use super::browse::db_error;
-use super::{AppState, cover};
+use super::{AppState, cover, transcode};
 use crate::db::browse;
 use crate::subsonic::{Error, ErrorCode, Params};
 
-/// 曲の配信ファイルを返す。`download` なら保存用に `Content-Disposition` を付ける。
-/// トランスコードはまだしないので、`maxBitRate` と `format` は無視して元のファイルを返す。
-/// Range、HEAD、Last-Modified は tower-http の ServeFile に任せる。
+/// 曲の配信ファイルを返す。`download` なら変換せず、保存用に `Content-Disposition` を付ける。
+/// `format` と `maxBitRate` に応じて変換する（docs/schema.md の「配信ファイル」）。
+/// 元のファイルの Range、HEAD、Last-Modified は tower-http の ServeFile に任せる。
 pub async fn stream(
     method: &Method,
     headers: &HeaderMap,
@@ -41,6 +41,27 @@ pub async fn stream(
     let path = resolve(state.scanner.music_dir(), &file.path)
         .filter(|p| p.is_file())
         .ok_or_else(|| Error::new(ErrorCode::NotFound, "file not found"))?;
+    if !download {
+        let source = transcode::Source {
+            suffix: &file.suffix,
+            bit_rate: file.bit_rate,
+            lossless: file.lossless,
+        };
+        let max_bit_rate = params.get("maxBitRate").and_then(|b| b.parse().ok());
+        if let Some(plan) = transcode::plan(params.get("format"), max_bit_rate, &source) {
+            let offset = params
+                .get("timeOffset")
+                .and_then(|o| o.parse::<f64>().ok())
+                .filter(|o| o.is_finite() && *o > 0.0);
+            let estimate =
+                (params.get("estimateContentLength") == Some("true")).then_some(file.duration_ms);
+            if let Some(response) =
+                transcode::stream(&state.ffmpeg, &path, plan, method, offset, estimate)
+            {
+                return Ok(response);
+            }
+        }
+    }
     let mime = file
         .content_type
         .parse()
