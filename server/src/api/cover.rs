@@ -19,6 +19,12 @@ const JPEG_QUALITY: u8 = 85;
 static RESIZING: LazyLock<Semaphore> =
     LazyLock::new(|| Semaphore::new(std::thread::available_parallelism().map_or(1, |n| n.get())));
 
+/// `size` のないときの上限。`size` を付けないクライアントにも、数 MB の元画像を送らないため。
+pub const DEFAULT_SIZE: u32 = 1024;
+
+/// キャッシュに置くファイルの拡張子。縮小した JPEG のほか、縮小で容量が増えるときは元の画像を置く。
+const CACHED_EXTENSIONS: [&str; 4] = ["jpg", "png", "webp", "gif"];
+
 /// 縮小した画像のパスを返す。元の画像が `size` 以下のときと、縮小できなかったときは None で、
 /// 呼び出し側は元の画像を返す。
 pub async fn resized(
@@ -36,44 +42,48 @@ pub async fn resized(
         .as_millis();
     // 元のファイルの更新日時をキーに含め、画像を差し替えたら作り直す
     let prefix = format!("{album_id}-{size}-");
-    let cached = dir.join(format!("{prefix}{mtime}.jpg"));
-    if cached.is_file() {
+    let stem = format!("{prefix}{mtime}");
+    if let Some(cached) = find_cached(&dir, &stem) {
         return Some(cached);
     }
 
     let _permit = RESIZING.acquire().await.ok()?;
     // 待っている間に、同じ画像を求めた別のリクエストが作っていることがある
-    if cached.is_file() {
+    if let Some(cached) = find_cached(&dir, &stem) {
         return Some(cached);
     }
     let source = source.to_owned();
-    let target = cached.clone();
     let result = tokio::task::spawn_blocking(move || {
-        let Some(jpeg) = resize(&source, size)? else {
-            return Ok(false);
+        let Some((bytes, extension)) = resize(&source, size)? else {
+            return Ok(None);
         };
         std::fs::create_dir_all(&dir)?;
+        let target = dir.join(format!("{stem}.{extension}"));
         // 書きかけのファイルを返さないよう、別名で書いてから置き換える
-        let tmp = target.with_extension("tmp");
-        std::fs::write(&tmp, jpeg)?;
+        let tmp = dir.join(format!("{stem}.tmp"));
+        std::fs::write(&tmp, bytes)?;
         std::fs::rename(&tmp, &target)?;
         remove_stale(&dir, &prefix, &target);
-        Ok::<_, std::io::Error>(true)
+        Ok::<_, std::io::Error>(Some(target))
     })
     .await
     .expect("画像を縮小するタスクが panic した");
-    match result {
-        Ok(true) => Some(cached),
-        Ok(false) => None,
-        Err(err) => {
-            tracing::warn!(album_id, size, error = %err, "cannot resize cover art");
-            None
-        }
-    }
+    result.unwrap_or_else(|err| {
+        tracing::warn!(album_id, size, error = %err, "cannot resize cover art");
+        None
+    })
+}
+
+fn find_cached(dir: &Path, stem: &str) -> Option<PathBuf> {
+    CACHED_EXTENSIONS
+        .iter()
+        .map(|ext| dir.join(format!("{stem}.{ext}")))
+        .find(|path| path.is_file())
 }
 
 /// 元の画像を読んで縮小し、JPEG にする。元の画像が `size` 以下なら None。
-fn resize(source: &Path, size: u32) -> std::io::Result<Option<Vec<u8>>> {
+/// 縮小した JPEG が元より大きければ、元の画像をそのまま返す。返す値は中身と拡張子。
+fn resize(source: &Path, size: u32) -> std::io::Result<Option<(Vec<u8>, &'static str)>> {
     let bytes = if is_image(source) {
         std::fs::read(source)?
     } else {
@@ -82,6 +92,11 @@ fn resize(source: &Path, size: u32) -> std::io::Result<Option<Vec<u8>>> {
             .ok_or_else(|| std::io::Error::other("no embedded picture"))?
     };
     let reader = ImageReader::new(Cursor::new(&bytes)).with_guessed_format()?;
+    let extension = reader
+        .format()
+        .and_then(|f| f.extensions_str().first().copied())
+        .filter(|ext| CACHED_EXTENSIONS.contains(ext))
+        .ok_or_else(|| std::io::Error::other("unknown image format"))?;
     // 大きさはヘッダだけで分かるので、拡大になるなら全体を読まずに済ませる
     let (width, height) = reader.into_dimensions().map_err(std::io::Error::other)?;
     if width.max(height) <= size {
@@ -96,7 +111,11 @@ fn resize(source: &Path, size: u32) -> std::io::Result<Option<Vec<u8>>> {
     JpegEncoder::new_with_quality(&mut jpeg, JPEG_QUALITY)
         .encode_image(&DynamicImage::ImageRgb8(flatten(&image)))
         .map_err(std::io::Error::other)?;
-    Ok(Some(jpeg))
+    // 強く圧縮された元画像を作り直すと、画素が減っても容量が増えることがある
+    if jpeg.len() >= bytes.len() {
+        return Ok(Some((bytes, extension)));
+    }
+    Ok(Some((jpeg, "jpg")))
 }
 
 /// JPEG は透過を持てないので、白の上に重ねる。
@@ -112,7 +131,7 @@ fn flatten(image: &DynamicImage) -> RgbImage {
     })
 }
 
-/// 同じアルバムと大きさの、古い元画像から作ったファイルを消す。
+/// 同じアルバムと大きさの、古い元画像から作ったファイルを消す。書きかけのファイルは残す。
 fn remove_stale(dir: &Path, prefix: &str, keep: &Path) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
@@ -123,7 +142,7 @@ fn remove_stale(dir: &Path, prefix: &str, keep: &Path) {
             && path
                 .file_name()
                 .and_then(|n| n.to_str())
-                .is_some_and(|n| n.starts_with(prefix) && n.ends_with(".jpg"));
+                .is_some_and(|n| n.starts_with(prefix) && !n.ends_with(".tmp"));
         if stale {
             let _ = std::fs::remove_file(path);
         }

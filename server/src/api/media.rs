@@ -65,7 +65,7 @@ pub async fn stream(
     Ok(response)
 }
 
-/// アルバムか曲のカバーアートを返す。`size` があれば縮小した画像を返す（docs/schema.md の「カバーアート」）。
+/// アルバムか曲のカバーアートを、`size`（なければ 1024）に縮小して返す（docs/schema.md の「カバーアート」）。
 pub async fn cover_art(
     method: &Method,
     headers: &HeaderMap,
@@ -94,10 +94,9 @@ pub async fn cover_art(
     let size = params
         .get("size")
         .and_then(|s| s.parse::<u32>().ok())
-        .filter(|&s| s > 0);
-    if let Some(size) = size
-        && let Some(resized) = cover::resized(&state.cache_dir, &album_id, &path, size).await
-    {
+        .filter(|&s| s > 0)
+        .unwrap_or(cover::DEFAULT_SIZE);
+    if let Some(resized) = cover::resized(&state.cache_dir, &album_id, &path, size).await {
         return serve_file(ServeFile::new(&resized), &resized, method, headers).await;
     }
 

@@ -1072,7 +1072,8 @@ async fn playlist_cover_is_first_album_with_image() {
     assert_eq!(res["playlist"]["coverArt"], embedded.as_str());
 }
 
-/// 64×32 の PNG をフォルダの画像として置く。左半分を透明にする。
+/// 64×32 の PNG をフォルダの画像として置く。左半分を透明に、右半分を暗い色の雑音にする。
+/// 一色だと PNG のほうが縮小した JPEG より小さくなり、元の画像が返るため。
 async fn resize_server() -> Server {
     let dir = tempfile::tempdir().unwrap();
     place(&dir, &[("notag.flac", "a/1.flac")]);
@@ -1085,14 +1086,24 @@ fn write_cover(dir: &TempDir) {
 }
 
 fn cover_png() -> Vec<u8> {
-    let image = image::RgbaImage::from_fn(64, 32, |x, _| {
-        image::Rgba([0, 0, 0, if x < 32 { 0 } else { 255 }])
-    });
-    let mut png = Vec::new();
+    encode(&noise(64, 32), image::ImageFormat::Png)
+}
+
+fn noise(width: u32, height: u32) -> image::RgbaImage {
+    let mut seed = 1u32;
+    image::RgbaImage::from_fn(width, height, |x, _| {
+        seed = seed.wrapping_mul(1_103_515_245).wrapping_add(12345);
+        let v = u8::try_from(seed >> 25).unwrap();
+        image::Rgba([v, v / 2, v / 3, if x < width / 2 { 0 } else { 255 }])
+    })
+}
+
+fn encode(image: &image::RgbaImage, format: image::ImageFormat) -> Vec<u8> {
+    let mut bytes = Vec::new();
     image
-        .write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
+        .write_to(&mut std::io::Cursor::new(&mut bytes), format)
         .unwrap();
-    png
+    bytes
 }
 
 impl Server {
@@ -1124,7 +1135,7 @@ async fn cover_art_is_resized_and_cached() {
     assert_eq!(image.dimensions(), (16, 8));
     // 透明なところは白で塗りつぶす
     assert!(image.get_pixel(0, 0).0.iter().all(|&c| c > 100));
-    assert!(image.get_pixel(15, 7).0.iter().all(|&c| c < 50));
+    assert!(image.get_pixel(15, 7).0.iter().all(|&c| c < 128));
 
     let cached = server.cached_covers();
     assert_eq!(cached.len(), 1);
