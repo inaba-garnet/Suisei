@@ -503,18 +503,21 @@ pub async fn stream_file(pool: &Pool, track_id: &str) -> Result<Option<StreamFil
     .await
 }
 
-/// アルバムか曲の ID から、カバーアートの元（音楽フォルダからの相対パス）を引く。
-/// ID がなければ None、画像がなければ Some(None)。
-pub async fn cover_path(pool: &Pool, id: &str) -> Result<Option<Option<String>>, sqlx::Error> {
-    let row = sqlx::query_scalar!(
-        "SELECT cover_path FROM album WHERE id = ?
-         UNION ALL
-         SELECT album.cover_path FROM track JOIN album ON album.id = track.album_id
-         WHERE track.id = ?",
+/// アルバムか曲の ID から、アルバムの ID とカバーアートの元（音楽フォルダからの相対パス）を引く。
+/// ID がなければ None、画像がなければパスが None。
+pub async fn cover_source(
+    pool: &Pool,
+    id: &str,
+) -> Result<Option<(String, Option<String>)>, sqlx::Error> {
+    let row = sqlx::query!(
+        r#"SELECT id AS "album_id!", cover_path FROM album WHERE id = ?
+           UNION ALL
+           SELECT album.id, album.cover_path FROM track JOIN album ON album.id = track.album_id
+           WHERE track.id = ?"#,
         id,
         id
     )
     .fetch_optional(pool)
     .await?;
-    Ok(row)
+    Ok(row.map(|r| (r.album_id, r.cover_path)))
 }

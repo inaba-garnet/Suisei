@@ -1,5 +1,6 @@
 mod annotation;
 mod browse;
+mod cover;
 mod empty;
 mod history;
 mod media;
@@ -7,6 +8,7 @@ mod playlist;
 mod search;
 mod unsupported;
 
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use axum::Router;
@@ -30,6 +32,8 @@ pub struct AppState {
     pub db: Pool,
     pub scanner: Arc<Scanner>,
     pub now_playing: Arc<NowPlaying>,
+    /// 作り直せるデータの置き場所。データの置き場所の下の `cache/`（docs/server.md）
+    pub cache_dir: PathBuf,
 }
 
 pub fn router(state: AppState) -> Router {

@@ -18,6 +18,7 @@ async fn app() -> axum::Router {
         db: db.clone(),
         scanner: suisei::scan::Scanner::new(db, "/nonexistent".into()),
         now_playing: Default::default(),
+        cache_dir: "/nonexistent".into(),
     })
 }
 

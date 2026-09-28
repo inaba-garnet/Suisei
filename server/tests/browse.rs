@@ -8,6 +8,7 @@ use axum::http::Request;
 use http_body_util::BodyExt;
 use lofty::config::WriteOptions;
 use lofty::file::{AudioFile, TaggedFileExt};
+use lofty::picture::{MimeType, Picture, PictureType};
 use lofty::tag::{Accessor, ItemKey, Tag};
 use serde_json::Value;
 use suisei::scan::{Mode, Scanner};
@@ -20,6 +21,8 @@ use common::{assert_subset, navidrome, payload};
 
 struct Server {
     dir: TempDir,
+    /// 縮小したカバーアートの置き場所
+    cache: TempDir,
     app: axum::Router,
     db: suisei::db::Pool,
 }
@@ -81,6 +84,7 @@ async fn start(dir: TempDir) -> Server {
     let scanner = Scanner::new(db.clone(), dir.path().to_owned());
     assert!(scanner.start(Mode::Quick));
     scanner.wait().await;
+    let cache = tempfile::tempdir().unwrap();
     let app = suisei::router(AppState {
         credentials: Credentials {
             user: "inaba".into(),
@@ -90,8 +94,14 @@ async fn start(dir: TempDir) -> Server {
         db: db.clone(),
         scanner: Arc::clone(&scanner),
         now_playing: Default::default(),
+        cache_dir: cache.path().to_owned(),
     });
-    Server { dir, app, db }
+    Server {
+        dir,
+        cache,
+        app,
+        db,
+    }
 }
 
 impl Server {
@@ -1060,4 +1070,194 @@ async fn playlist_cover_is_first_album_with_image() {
     let query = format!("&name=p&songId={first}&songId={second}");
     let res = server.get("createPlaylist", &query).await;
     assert_eq!(res["playlist"]["coverArt"], embedded.as_str());
+}
+
+/// 64×32 の PNG をフォルダの画像として置く。左半分を透明に、右半分を暗い色の雑音にする。
+/// 一色だと PNG のほうが縮小した JPEG より小さくなり、元の画像が返るため。
+async fn resize_server() -> Server {
+    let dir = tempfile::tempdir().unwrap();
+    place(&dir, &[("notag.flac", "a/1.flac")]);
+    write_cover(&dir);
+    start(dir).await
+}
+
+fn write_cover(dir: &TempDir) {
+    std::fs::write(dir.path().join("a/cover.png"), cover_png()).unwrap();
+}
+
+fn cover_png() -> Vec<u8> {
+    encode(&noise(64, 32), image::ImageFormat::Png)
+}
+
+fn noise(width: u32, height: u32) -> image::RgbaImage {
+    let mut seed = 1u32;
+    image::RgbaImage::from_fn(width, height, |x, _| {
+        seed = seed.wrapping_mul(1_103_515_245).wrapping_add(12345);
+        let v = u8::try_from(seed >> 25).unwrap();
+        image::Rgba([v, v / 2, v / 3, if x < width / 2 { 0 } else { 255 }])
+    })
+}
+
+fn encode(image: &image::RgbaImage, format: image::ImageFormat) -> Vec<u8> {
+    let mut bytes = Vec::new();
+    image
+        .write_to(&mut std::io::Cursor::new(&mut bytes), format)
+        .unwrap();
+    bytes
+}
+
+impl Server {
+    /// 縮小したカバーアートのファイル名。
+    fn cached_covers(&self) -> Vec<String> {
+        let Ok(entries) = std::fs::read_dir(self.cache.path().join("cover")) else {
+            return Vec::new();
+        };
+        let mut names: Vec<String> = entries
+            .map(|e| e.unwrap().file_name().into_string().unwrap())
+            .collect();
+        names.sort();
+        names
+    }
+}
+
+#[tokio::test]
+async fn cover_art_is_resized_and_cached() {
+    let server = resize_server().await;
+    let album = server.id("album", "name", "a").await;
+
+    let (status, headers, body) = server
+        .bytes("getCoverArt", &format!("&id={album}&size=16"), None)
+        .await;
+    assert_eq!(status, 200);
+    assert_eq!(headers["content-type"], "image/jpeg");
+    let image = image::load_from_memory(&body).unwrap().to_rgb8();
+    // 縦横比を保ち、長いほうの辺を size に合わせる
+    assert_eq!(image.dimensions(), (16, 8));
+    // 透明なところは白で塗りつぶす
+    assert!(image.get_pixel(0, 0).0.iter().all(|&c| c > 100));
+    assert!(image.get_pixel(15, 7).0.iter().all(|&c| c < 128));
+
+    let cached = server.cached_covers();
+    assert_eq!(cached.len(), 1);
+    assert!(cached[0].starts_with(&format!("{album}-16-")));
+
+    // 二回目はキャッシュを返す
+    let (_, _, again) = server
+        .bytes("getCoverArt", &format!("&id={album}&size=16"), None)
+        .await;
+    assert_eq!(again, body);
+}
+
+/// 元の画像が size 以下なら、拡大せずに元の画像を返し、キャッシュも作らない。
+#[tokio::test]
+async fn small_cover_art_is_not_enlarged() {
+    let server = resize_server().await;
+    let album = server.id("album", "name", "a").await;
+
+    let (_, headers, body) = server
+        .bytes("getCoverArt", &format!("&id={album}&size=64"), None)
+        .await;
+    assert_eq!(headers["content-type"], "image/png");
+    assert_eq!(image::load_from_memory(&body).unwrap().width(), 64);
+    assert!(server.cached_covers().is_empty());
+}
+
+/// 画像を差し替えたら作り直し、古いキャッシュは消す。
+#[tokio::test]
+async fn replaced_cover_art_is_resized_again() {
+    let server = resize_server().await;
+    let album = server.id("album", "name", "a").await;
+    server
+        .bytes("getCoverArt", &format!("&id={album}&size=16"), None)
+        .await;
+    let before = server.cached_covers();
+
+    let path = server.dir.path().join("a/cover.png");
+    let later =
+        std::fs::metadata(&path).unwrap().modified().unwrap() + std::time::Duration::from_secs(60);
+    std::fs::File::options()
+        .write(true)
+        .open(&path)
+        .unwrap()
+        .set_modified(later)
+        .unwrap();
+    server
+        .bytes("getCoverArt", &format!("&id={album}&size=16"), None)
+        .await;
+    let after = server.cached_covers();
+    assert_eq!(after.len(), 1);
+    assert_ne!(after, before);
+}
+
+/// 埋め込みの画像も縮小する。
+#[tokio::test]
+async fn embedded_cover_art_is_resized() {
+    let dir = tempfile::tempdir().unwrap();
+    place(&dir, &[("notag.flac", "a/1.flac")]);
+    let path = dir.path().join("a/1.flac");
+    let mut file = lofty::read_from_path(&path).unwrap();
+    let mut tag = Tag::new(file.primary_tag_type());
+    tag.set_album("a".to_owned());
+    tag.push_picture(
+        Picture::unchecked(cover_png())
+            .pic_type(PictureType::CoverFront)
+            .mime_type(MimeType::Png)
+            .build(),
+    );
+    file.insert_tag(tag);
+    file.save_to_path(&path, WriteOptions::default()).unwrap();
+    let server = start(dir).await;
+    let album = server.id("album", "name", "a").await;
+
+    let (_, headers, body) = server
+        .bytes("getCoverArt", &format!("&id={album}&size=16"), None)
+        .await;
+    assert_eq!(headers["content-type"], "image/jpeg");
+    let resized = image::load_from_memory(&body).unwrap();
+    assert_eq!((resized.width(), resized.height()), (16, 8));
+}
+
+/// size がなければ 1024 を上限に縮める。
+#[tokio::test]
+async fn cover_art_without_size_is_capped() {
+    let dir = tempfile::tempdir().unwrap();
+    place(&dir, &[("notag.flac", "a/1.flac")]);
+    std::fs::write(
+        dir.path().join("a/cover.png"),
+        encode(&noise(2048, 16), image::ImageFormat::Png),
+    )
+    .unwrap();
+    let server = start(dir).await;
+    let album = server.id("album", "name", "a").await;
+
+    let (_, headers, body) = server
+        .bytes("getCoverArt", &format!("&id={album}"), None)
+        .await;
+    assert_eq!(headers["content-type"], "image/jpeg");
+    assert_eq!(image::load_from_memory(&body).unwrap().width(), 1024);
+}
+
+/// 縮小した JPEG が元より大きくなるなら、元の画像を返す。
+#[tokio::test]
+async fn cover_art_is_not_resized_into_larger_file() {
+    let dir = tempfile::tempdir().unwrap();
+    place(&dir, &[("notag.flac", "a/1.flac")]);
+    // 一色の PNG は、縮小した JPEG よりずっと小さい
+    let original = encode(
+        &image::RgbaImage::from_pixel(64, 32, image::Rgba([0, 0, 0, 255])),
+        image::ImageFormat::Png,
+    );
+    std::fs::write(dir.path().join("a/cover.png"), &original).unwrap();
+    let server = start(dir).await;
+    let album = server.id("album", "name", "a").await;
+
+    let (_, headers, body) = server
+        .bytes("getCoverArt", &format!("&id={album}&size=63"), None)
+        .await;
+    assert_eq!(headers["content-type"], "image/png");
+    assert_eq!(body, original);
+    // 元の画像をキャッシュに置き、次からは縮小を試さない
+    let cached = server.cached_covers();
+    assert_eq!(cached.len(), 1);
+    assert!(cached[0].ends_with(".png"));
 }

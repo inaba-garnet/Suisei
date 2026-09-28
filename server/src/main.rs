@@ -20,6 +20,7 @@ async fn main() -> std::io::Result<()> {
         db,
         scanner,
         now_playing: Default::default(),
+        cache_dir: config.data_dir.join("cache"),
     };
     let listener = TcpListener::bind(config.listen).await?;
     tracing::info!(addr = %config.listen, "listening");

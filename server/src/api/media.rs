@@ -10,8 +10,8 @@ use lofty::file::TaggedFileExt;
 use lofty::picture::PictureType;
 use tower_http::services::ServeFile;
 
-use super::AppState;
 use super::browse::db_error;
+use super::{AppState, cover};
 use crate::db::browse;
 use crate::subsonic::{Error, ErrorCode, Params};
 
@@ -65,7 +65,7 @@ pub async fn stream(
     Ok(response)
 }
 
-/// アルバムか曲のカバーアートを返す。`size` による縮小はまだしない（#23）。
+/// アルバムか曲のカバーアートを、`size`（なければ 1024）に縮小して返す（docs/schema.md の「カバーアート」）。
 pub async fn cover_art(
     method: &Method,
     headers: &HeaderMap,
@@ -82,35 +82,31 @@ pub async fn cover_art(
         .await
         .map_err(db_error)?;
     let not_found = || Error::new(ErrorCode::NotFound, "cover art not found");
-    let rel = browse::cover_path(&state.db, &id)
+    let (album_id, rel) = browse::cover_source(&state.db, &id)
         .await
         .map_err(db_error)?
-        .flatten()
         .ok_or_else(not_found)?;
+    let rel = rel.ok_or_else(not_found)?;
     let path = resolve(state.scanner.music_dir(), &rel)
         .filter(|p| p.is_file())
         .ok_or_else(not_found)?;
 
+    let size = params
+        .get("size")
+        .and_then(|s| s.parse::<u32>().ok())
+        .filter(|&s| s > 0)
+        .unwrap_or(cover::DEFAULT_SIZE);
+    if let Some(resized) = cover::resized(&state.cache_dir, &album_id, &path, size).await {
+        return serve_file(ServeFile::new(&resized), &resized, method, headers).await;
+    }
+
     if is_image(&path) {
         return serve_file(ServeFile::new(&path), &path, method, headers).await;
     }
-    // 音声のファイルなら、埋め込みの画像を読む。表紙の種類を優先する
-    let picture = tokio::task::spawn_blocking(move || {
-        let file = lofty::read_from_path(&path).ok()?;
-        let tag = file.primary_tag().or_else(|| file.first_tag())?;
-        let pictures = tag.pictures();
-        let picture = pictures
-            .iter()
-            .find(|p| p.pic_type() == PictureType::CoverFront)
-            .or_else(|| pictures.first())?;
-        Some((
-            picture.mime_type().map(|m| m.as_str().to_owned()),
-            picture.data().to_vec(),
-        ))
-    })
-    .await
-    .expect("画像を読むタスクが panic した")
-    .ok_or_else(not_found)?;
+    let picture = tokio::task::spawn_blocking(move || embedded_picture(&path))
+        .await
+        .expect("画像を読むタスクが panic した")
+        .ok_or_else(not_found)?;
     let (mime, data) = picture;
     let content_type = mime.unwrap_or_else(|| "image/jpeg".to_owned());
     Response::builder()
@@ -119,7 +115,22 @@ pub async fn cover_art(
         .map_err(|_| Error::new(ErrorCode::Generic, "cannot build response"))
 }
 
-fn is_image(path: &Path) -> bool {
+/// 音声のファイルに埋め込まれた画像と、その MIME タイプ。表紙の種類を優先する。
+pub(super) fn embedded_picture(path: &Path) -> Option<(Option<String>, Vec<u8>)> {
+    let file = lofty::read_from_path(path).ok()?;
+    let tag = file.primary_tag().or_else(|| file.first_tag())?;
+    let pictures = tag.pictures();
+    let picture = pictures
+        .iter()
+        .find(|p| p.pic_type() == PictureType::CoverFront)
+        .or_else(|| pictures.first())?;
+    Some((
+        picture.mime_type().map(|m| m.as_str().to_owned()),
+        picture.data().to_vec(),
+    ))
+}
+
+pub(super) fn is_image(path: &Path) -> bool {
     path.extension()
         .and_then(|ext| ext.to_str())
         .is_some_and(|ext| {
