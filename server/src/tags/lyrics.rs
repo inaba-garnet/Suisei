@@ -39,9 +39,27 @@ pub fn read(path: &Path) -> Vec<Lyrics> {
         }
     }
     found.extend(embedded(path));
+    let mut found = dedup(found);
     // 並べ替えは安定なので、同じ種類の中では見つけた順を保つ
     found.sort_by_key(|l| !l.synced);
     found
+}
+
+/// 本文と時刻が同じ歌詞を一つにまとめ、言語が分かっているほうの言語を残す。
+/// 言語だけ違う `USLT` を二つ埋め込んだ MP3 があるため。
+fn dedup(found: Vec<Lyrics>) -> Vec<Lyrics> {
+    let mut unique: Vec<Lyrics> = Vec::with_capacity(found.len());
+    for lyrics in found {
+        match unique
+            .iter_mut()
+            .find(|u| u.synced == lyrics.synced && u.lines == lyrics.lines)
+        {
+            Some(same) if same.lang == UNDETERMINED => same.lang = lyrics.lang,
+            Some(_) => {}
+            None => unique.push(lyrics),
+        }
+    }
+    unique
 }
 
 /// BOM があればそれに従い、なければ UTF-8、読めなければ Shift_JIS として読む。
@@ -297,6 +315,29 @@ mod tests {
         let (bytes, _, _) = encoding_rs::SHIFT_JIS.encode("[00:01.00]歌詞");
         assert_eq!(decode(&bytes), "[00:01.00]歌詞");
         assert_eq!(decode("\u{feff}歌詞".as_bytes()), "歌詞");
+    }
+
+    #[test]
+    fn same_text_is_returned_once() {
+        let found = vec![
+            parse("歌詞", "und").unwrap(),
+            parse("歌詞", "jpn").unwrap(),
+            parse("[00:01.00]歌詞", "und").unwrap(),
+            parse("別の歌詞", "eng").unwrap(),
+        ];
+        let unique = dedup(found);
+        let summary: Vec<(bool, &str, &str)> = unique
+            .iter()
+            .map(|l| (l.synced, l.lang.as_str(), l.lines[0].value.as_str()))
+            .collect();
+        assert_eq!(
+            summary,
+            [
+                (false, "jpn", "歌詞"),
+                (true, "und", "歌詞"),
+                (false, "eng", "別の歌詞"),
+            ]
+        );
     }
 
     #[test]
