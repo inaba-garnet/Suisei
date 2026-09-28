@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT track.id AS \"id!\" FROM track\n                   WHERE track.title = ?\n                     AND (track.display_artist = ? OR EXISTS (\n                         SELECT 1 FROM track_artist\n                           JOIN artist ON artist.id = track_artist.artist_id\n                         WHERE track_artist.track_id = track.id AND artist.name = ?))\n                   ORDER BY track.sort_key, track.id\n                   LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "148cd49873304b93695b91379b101f52f45e26f8b94b3fd815b2f7e49e09b914"
+}

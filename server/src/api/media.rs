@@ -164,7 +164,7 @@ async fn serve_file(
 }
 
 /// 音楽フォルダからの相対パスを、音楽フォルダの外に出ないことを確かめてからつなぐ。
-fn resolve(music_dir: &Path, rel: &str) -> Option<PathBuf> {
+pub(super) fn resolve(music_dir: &Path, rel: &str) -> Option<PathBuf> {
     let rel = Path::new(rel);
     rel.components()
         .all(|c| matches!(c, Component::Normal(_)))

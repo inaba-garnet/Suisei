@@ -10,8 +10,6 @@ pub const PENDING: &[&str] = &[
     "savePlayQueue",
     "getPlayQueueByIndex",
     "savePlayQueueByIndex",
-    "getLyrics",
-    "getLyricsBySongId",
     "getMusicDirectory",
 ];
 
