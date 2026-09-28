@@ -410,6 +410,16 @@ mod tests {
     }
 
     #[test]
+    fn genres_are_split_and_deduplicated() {
+        let tags = RawTags {
+            genres: strings(&["J-POP/General", "Rock, Pop; j-pop", " ", "Anime"]),
+            ..RawTags::default()
+        };
+        let names: Vec<_> = info(&tags).genres.into_iter().map(|g| g.name).collect();
+        assert_eq!(names, ["J-POP", "General", "Rock", "Pop", "Anime"]);
+    }
+
+    #[test]
     fn match_key_distinguishes_track_number() {
         let a = RawTags {
             title: Some("曲".into()),
