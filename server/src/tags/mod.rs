@@ -38,6 +38,13 @@ impl Credit {
     }
 }
 
+/// 曲に付くジャンル。track_genre の一行に対応する。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Genre {
+    pub name: String,
+    pub match_key: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AlbumInfo {
     pub name: String,
@@ -58,7 +65,7 @@ pub struct TrackInfo {
     pub disc_number: Option<u32>,
     pub track_number: Option<u32>,
     pub year: Option<i32>,
-    pub genres: Vec<String>,
+    pub genres: Vec<Genre>,
     pub match_key: String,
 }
 
@@ -92,7 +99,7 @@ impl TrackInfo {
             disc_number: tags.disc_number,
             track_number: tags.track_number,
             year: tags.year,
-            genres: tags.genres.clone(),
+            genres: genres(&tags.genres),
             match_key,
         }
     }
@@ -189,6 +196,24 @@ fn album_artists_by_mbid(tags: &RawTags, track_artists: &[Credit]) -> Option<Vec
 
 fn same_names(a: &[String], b: &[String]) -> bool {
     a.len() == b.len() && a.iter().zip(b).all(|(a, b)| normalize(a) == normalize(b))
+}
+
+/// 値を区切りで分ける。複数のジャンルを一つの値につないだタグがあるため（docs/schema.md の「ジャンル」）。
+/// 空のものを捨て、同じ鍵のものは先のものを残す。
+fn genres(values: &[String]) -> Vec<Genre> {
+    let mut genres: Vec<Genre> = Vec::new();
+    for name in values.iter().flat_map(|v| v.split(['/', ',', ';'])) {
+        let name = name.trim();
+        let match_key = normalize(name);
+        if match_key.is_empty() || genres.iter().any(|g| g.match_key == match_key) {
+            continue;
+        }
+        genres.push(Genre {
+            name: name.to_owned(),
+            match_key,
+        });
+    }
+    genres
 }
 
 fn credit_keys(credits: &[Credit]) -> String {

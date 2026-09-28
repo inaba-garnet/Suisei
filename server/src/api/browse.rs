@@ -193,17 +193,19 @@ async fn album_list(params: &Params, state: &AppState) -> Result<Map<String, Val
             from: required("fromYear")?,
             to: required("toYear")?,
         },
-        "byGenre" => AlbumOrder::ByGenre(
-            params
-                .get("genre")
-                .ok_or_else(|| {
-                    Error::new(
-                        ErrorCode::MissingParameter,
-                        "required parameter is missing: genre",
-                    )
-                })?
-                .to_owned(),
-        ),
+        "byGenre" => {
+            let genre = params.get("genre").ok_or_else(|| {
+                Error::new(
+                    ErrorCode::MissingParameter,
+                    "required parameter is missing: genre",
+                )
+            })?;
+            let name = browse::genre_name(&state.db, genre)
+                .await
+                .map_err(db_error)?;
+            // 知らないジャンルなら、そのまま絞り込んで空の一覧を返す
+            AlbumOrder::ByGenre(name.unwrap_or_else(|| genre.to_owned()))
+        }
         "recent" => AlbumOrder::Recent,
         "frequent" => AlbumOrder::Frequent,
         "starred" => AlbumOrder::Starred,
