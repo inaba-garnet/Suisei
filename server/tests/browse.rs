@@ -1216,3 +1216,48 @@ async fn embedded_cover_art_is_resized() {
     let resized = image::load_from_memory(&body).unwrap();
     assert_eq!((resized.width(), resized.height()), (16, 8));
 }
+
+/// size がなければ 1024 を上限に縮める。
+#[tokio::test]
+async fn cover_art_without_size_is_capped() {
+    let dir = tempfile::tempdir().unwrap();
+    place(&dir, &[("notag.flac", "a/1.flac")]);
+    std::fs::write(
+        dir.path().join("a/cover.png"),
+        encode(&noise(2048, 16), image::ImageFormat::Png),
+    )
+    .unwrap();
+    let server = start(dir).await;
+    let album = server.id("album", "name", "a").await;
+
+    let (_, headers, body) = server
+        .bytes("getCoverArt", &format!("&id={album}"), None)
+        .await;
+    assert_eq!(headers["content-type"], "image/jpeg");
+    assert_eq!(image::load_from_memory(&body).unwrap().width(), 1024);
+}
+
+/// 縮小した JPEG が元より大きくなるなら、元の画像を返す。
+#[tokio::test]
+async fn cover_art_is_not_resized_into_larger_file() {
+    let dir = tempfile::tempdir().unwrap();
+    place(&dir, &[("notag.flac", "a/1.flac")]);
+    // 一色の PNG は、縮小した JPEG よりずっと小さい
+    let original = encode(
+        &image::RgbaImage::from_pixel(64, 32, image::Rgba([0, 0, 0, 255])),
+        image::ImageFormat::Png,
+    );
+    std::fs::write(dir.path().join("a/cover.png"), &original).unwrap();
+    let server = start(dir).await;
+    let album = server.id("album", "name", "a").await;
+
+    let (_, headers, body) = server
+        .bytes("getCoverArt", &format!("&id={album}&size=63"), None)
+        .await;
+    assert_eq!(headers["content-type"], "image/png");
+    assert_eq!(body, original);
+    // 元の画像をキャッシュに置き、次からは縮小を試さない
+    let cached = server.cached_covers();
+    assert_eq!(cached.len(), 1);
+    assert!(cached[0].ends_with(".png"));
+}
