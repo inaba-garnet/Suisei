@@ -7,6 +7,7 @@ mod id;
 pub mod library;
 pub mod playlist;
 pub mod search;
+pub mod session;
 
 use std::path::Path;
 

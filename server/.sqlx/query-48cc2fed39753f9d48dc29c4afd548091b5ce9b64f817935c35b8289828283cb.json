@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT last_used_at FROM session WHERE id_hash = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "last_used_at",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "session",
+            "name": "last_used_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "48cc2fed39753f9d48dc29c4afd548091b5ce9b64f817935c35b8289828283cb"
+}

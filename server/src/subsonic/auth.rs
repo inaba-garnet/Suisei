@@ -3,6 +3,21 @@ use md5::{Digest, Md5};
 use super::{Error, ErrorCode, Params};
 use crate::Credentials;
 
+/// Subsonic の認証の引数。
+const AUTH_KEYS: [&str; 5] = ["u", "p", "t", "s", "apiKey"];
+
+/// 認証の引数を一つでも持つか。持たなければ Cookie のセッションで認証する（docs/server.md）。
+pub fn has_credentials(params: &Params) -> bool {
+    AUTH_KEYS.iter().any(|k| params.contains(k))
+}
+
+/// 利用者名とパスワードが正しいか。
+pub fn verify_password(creds: &Credentials, user: &str, password: &str) -> bool {
+    // 利用者名が違っても、パスワードの比較を省かない
+    let password_ok = constant_time_eq(password.as_bytes(), creds.password.as_bytes());
+    constant_time_eq(user.as_bytes(), creds.user.as_bytes()) & password_ok
+}
+
 /// Subsonic の認証（`p`、`t` と `s`、OpenSubsonic の `apiKey`）を確かめる。
 pub fn authenticate(params: &Params, creds: &Credentials) -> Result<(), Error> {
     if let Some(api_key) = params.get("apiKey") {
@@ -162,5 +177,21 @@ mod tests {
             check(&[("apiKey", "k"), ("u", "inaba")], Some("k")),
             Err(ErrorCode::ConflictingAuth)
         );
+    }
+
+    #[test]
+    fn credentials_are_detected() {
+        let has = |pairs: &[(&str, &str)]| has_credentials(&pairs.iter().copied().collect());
+        assert!(!has(&[("f", "json"), ("c", "web")]));
+        assert!(has(&[("u", "inaba")]));
+        assert!(has(&[("apiKey", "k")]));
+    }
+
+    #[test]
+    fn password_is_verified() {
+        let creds = creds(None);
+        assert!(verify_password(&creds, "inaba", "sesame"));
+        assert!(!verify_password(&creds, "inaba", "wrong"));
+        assert!(!verify_password(&creds, "someone", "sesame"));
     }
 }
