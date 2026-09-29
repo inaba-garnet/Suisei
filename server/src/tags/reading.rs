@@ -34,7 +34,11 @@ impl ReadingSource {
 pub fn reading(name: &str, sort_tag: Option<&str>) -> Option<Reading> {
     let from_sort_tag = sort_tag.and_then(|sort| {
         let sort: String = sort.nfkc().collect();
-        if is_kana_text(&sort) {
+        if sort.chars().any(is_kanji) {
+            // 名前をそのまま書いたタグは読みではない
+            None
+        } else if sort.chars().any(is_kana) {
+            // かなと混ぜた英字は英語や略語なので、ローマ字として読まずに残す
             Some(hiragana_to_katakana(&sort))
         } else if contains_japanese(name) {
             romaji_to_katakana(&sort)
@@ -62,7 +66,7 @@ pub fn reading(name: &str, sort_tag: Option<&str>) -> Option<Reading> {
 }
 
 /// 漢字を含む名前を、空白で区切った語ごとに解析して読みをつなぐ。
-/// 英字など読みのない部分はそのまま残し、読めない漢字が残れば None。
+/// 英字、数字、記号はそのまま残し、読めない漢字が残れば None。
 fn estimate(name: &str) -> Option<String> {
     if !name.chars().any(is_kanji) {
         return None;
@@ -71,17 +75,66 @@ fn estimate(name: &str) -> Option<String> {
         .split_whitespace()
         .map(|word| {
             let mut kana = String::new();
-            for token in suisei_dict::tokenize(word) {
-                match token.reading {
-                    Some(reading) => kana.push_str(&reading),
-                    None if token.surface.chars().any(is_kanji) => return None,
-                    None => kana.push_str(&hiragana_to_katakana(&token.surface)),
+            // 英字の並びは解析に渡さない。辞書には NHK電子音楽スタジオ のように英字を含む語もあるため
+            for (latin, part) in runs(word, |c| c.is_ascii_alphabetic()) {
+                if latin {
+                    kana.push_str(part);
+                } else {
+                    kana.push_str(&read(part)?);
                 }
             }
             Some(kana)
         })
         .collect::<Option<Vec<_>>>()?;
     Some(words.join(" "))
+}
+
+/// 英字を含まない部分を解析して読む。数字と記号は残す。
+fn read(text: &str) -> Option<String> {
+    let mut kana = String::new();
+    for token in suisei_dict::tokenize(text) {
+        let japanese = token.surface.chars().any(|c| is_kana(c) || is_kanji(c));
+        if !japanese {
+            // 数字や記号だけの語は、辞書に読みがあっても残す
+            kana.push_str(&token.surface);
+        } else if token.surface.chars().any(|c| c.is_ascii_digit()) {
+            // 3月 のように数字と一語になった語は、数字を残して残りを読み直す。
+            // 数字の前で切ってから解析すると、第2章 の 章 のように文脈を失って読み違えるため
+            for (digits, part) in runs(&token.surface, |c| c.is_ascii_digit()) {
+                if digits {
+                    kana.push_str(part);
+                } else {
+                    kana.push_str(&read(part)?);
+                }
+            }
+        } else if let Some(reading) = token.reading {
+            kana.push_str(&reading);
+        } else if token.surface.chars().any(is_kanji) {
+            return None;
+        } else {
+            kana.push_str(&hiragana_to_katakana(&token.surface));
+        }
+    }
+    Some(kana)
+}
+
+/// `pred` に合う文字の並びとそれ以外に分ける。合う並びなら true。
+fn runs(text: &str, pred: impl Fn(char) -> bool) -> Vec<(bool, &str)> {
+    let mut runs = Vec::new();
+    let mut start = 0;
+    let mut current = None;
+    for (i, c) in text.char_indices() {
+        let matched = pred(c);
+        if current.is_some_and(|m| m != matched) {
+            runs.push((current == Some(true), &text[start..i]));
+            start = i;
+        }
+        current = Some(matched);
+    }
+    if let Some(matched) = current {
+        runs.push((matched, &text[start..]));
+    }
+    runs
 }
 
 fn is_kanji(c: char) -> bool {
@@ -125,6 +178,8 @@ fn romaji_to_katakana(romaji: &str) -> Option<String> {
             'l' => prepared.push('r'),
             // 「姓, 名」形式の区切り。wana_kana は読点にするが、読みには要らない
             ',' => {}
+            // Kuma-san のような区切り。wana_kana は長音記号にする
+            '-' => {}
             _ => prepared.push(c),
         }
     }
@@ -171,6 +226,22 @@ mod tests {
             reading("歌物語 Special Edition", None),
             estimated("ウタモノガタリ Special Edition")
         );
+        // 辞書に読みのある英字も残す
+        assert_eq!(
+            reading("NHK電子音楽スタジオ", None),
+            estimated("NHKデンシオンガクスタジオ")
+        );
+        assert_eq!(reading("でんぱ組.inc", None), estimated("デンパグミ.inc"));
+        // 数字は残し、漢数字は読む
+        assert_eq!(
+            reading("3月のパンタシア", None),
+            estimated("3ツキノパンタシア")
+        );
+        assert_eq!(
+            reading("三月のパンタシア", None),
+            estimated("サンガツノパンタシア")
+        );
+        assert_eq!(reading("第2章", None), estimated("ダイ2ショウ"));
         // ソート用タグがあれば、そちらを採る
         assert_eq!(
             reading("米津玄師", Some("よねず けんし")),
@@ -211,6 +282,48 @@ mod tests {
             sort_tag("タカネ ルイ")
         );
         assert_eq!(reading("向上", Some("Kōjō")), sort_tag("コウジョウ"));
+    }
+
+    #[test]
+    fn mixed_sort_tag_keeps_latin() {
+        // かなと混ぜた英字はローマ字として読まない
+        assert_eq!(reading("歌手A", Some("かしゅA")), sort_tag("カシュA"));
+        assert_eq!(
+            reading("永訣のGemini", Some("えいけつのGemini")),
+            sort_tag("エイケツノGemini")
+        );
+        assert_eq!(
+            reading(
+                "U.N.オーエンは彼女なのか？",
+                Some("U.N.おーえんはかのじょなのか？")
+            ),
+            sort_tag("U.N.オーエンハカノジョナノカ?")
+        );
+        assert_eq!(
+            reading(
+                "I LOVE MEでいられるように",
+                Some("I LOVE MEでいられるように")
+            ),
+            sort_tag("I LOVE MEデイラレルヨウニ")
+        );
+    }
+
+    #[test]
+    fn kanji_sort_tag_is_not_a_reading() {
+        // 名前をそのまま書いたタグは使わず、推定に回す
+        assert_eq!(
+            source(reading("A吉スタジオ", Some("A吉スタジオ"))),
+            Some(ReadingSource::Estimated)
+        );
+        assert_eq!(reading("𠮷", Some("𠮷")), None);
+    }
+
+    #[test]
+    fn hyphen_in_romaji_is_a_separator() {
+        assert_eq!(
+            reading("はちみつくまさん", Some("Hachimitsu Kuma-san")),
+            sort_tag("ハチミツ クマサン")
+        );
     }
 
     #[test]
