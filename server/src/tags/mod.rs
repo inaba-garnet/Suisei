@@ -1,6 +1,7 @@
 //! タグを内部のモデルに変換する。DB には依存しない。
 //! ファイルをまたぐ集計（表示名や読みの多数決）はスキャンで行う。
 
+mod character;
 pub mod lyrics;
 mod match_key;
 mod raw;
@@ -81,6 +82,8 @@ impl TrackInfo {
         let display_artist = display_artist(&tags.artist, &tags.artists)
             .unwrap_or_else(|| UNKNOWN_ARTIST.to_owned());
         let album = album(tags, path, &artists, &display_artist);
+        // アルバムのアーティストを MusicBrainz ID で ARTISTS と対応させた後で分ける
+        let artists = split_characters(artists);
         let disc = tags.disc_number.map(|n| n.to_string()).unwrap_or_default();
         let track = tags.track_number.map(|n| n.to_string()).unwrap_or_default();
         let match_key = match_key::join([
@@ -142,7 +145,9 @@ fn album(tags: &RawTags, path: &Path, track_artists: &[Credit], track_display: &
             .map(|dir| dir.to_string_lossy().into_owned())
             .unwrap_or_else(|| UNKNOWN_ALBUM.to_owned())
     });
-    let artists = album_artists(tags, track_artists).unwrap_or_else(|| track_artists.to_vec());
+    let artists = split_characters(
+        album_artists(tags, track_artists).unwrap_or_else(|| track_artists.to_vec()),
+    );
     let display_artist = display_artist(&tags.album_artist, &tags.album_artists)
         .unwrap_or_else(|| track_display.to_owned());
     let match_key = match_key::join([normalize(&name).as_str(), &credit_keys(&artists)]);
@@ -192,6 +197,23 @@ fn album_artists_by_mbid(tags: &RawTags, track_artists: &[Credit]) -> Option<Vec
             Some(track_artists[i].clone())
         })
         .collect()
+}
+
+/// `キャラクター(CV:声優)` の形の名前を分ける（docs/schema.md の「アーティスト」）。
+/// 分けた名前は誰の読みか分からないので、ソート用タグの値を付けない。同じ鍵の名前は先のものを残す。
+fn split_characters(credits: Vec<Credit>) -> Vec<Credit> {
+    let mut result: Vec<Credit> = Vec::with_capacity(credits.len());
+    for credit in credits {
+        let split = character::split(&credit.name)
+            .map(|names| names.iter().map(|n| Credit::new(n, None)).collect())
+            .unwrap_or_else(|| vec![credit]);
+        for credit in split {
+            if !result.iter().any(|c| c.match_key == credit.match_key) {
+                result.push(credit);
+            }
+        }
+    }
+    result
 }
 
 fn same_names(a: &[String], b: &[String]) -> bool {
