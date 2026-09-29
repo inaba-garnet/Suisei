@@ -10,6 +10,7 @@ mod search;
 mod session;
 mod transcode;
 mod unsupported;
+mod web;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -28,6 +29,7 @@ use crate::scan::{self, Scanner};
 use crate::subsonic::{self, Error, ErrorCode, Format, Params};
 
 pub use history::NowPlaying;
+pub use web::Web;
 
 #[derive(Debug, Clone)]
 pub struct AppState {
@@ -42,14 +44,20 @@ pub struct AppState {
 }
 
 pub fn router(state: AppState) -> Router {
+    router_with(state, Web::embedded())
+}
+
+/// 配信する Web クライアントを差し替えられる [`router`]。
+pub fn router_with(state: AppState, web: Web) -> Router {
     Router::new()
-        .route("/", get(root))
         .route("/rest/{endpoint}", any(rest))
         .route("/api/login", post(session::login))
         .route("/api/logout", post(session::logout))
         .route("/api/me", get(session::me))
-        .fallback(not_found)
         .with_state(Arc::new(state))
+        .fallback(move |method: Method, uri: Uri, headers: HeaderMap| {
+            web::serve(web.clone(), method, uri, headers)
+        })
 }
 
 /// Subsonic のエンドポイントは `ping` と `ping.view` のどちらでも呼ばれるので、名前で振り分ける。
@@ -155,13 +163,6 @@ fn pending(name: &str, method: &Method, params: &Params, format: Format) -> Resp
         format,
         &Error::new(ErrorCode::Generic, format!("not implemented: {name}")),
     )
-}
-
-/// Amperfy はログインの前にサーバーの URL そのものを GET し、400 以上なら接続できないとみなす。
-/// Web クライアントを `/` で配信するかが決まるまでの仮の応答。
-async fn root(headers: HeaderMap) -> &'static str {
-    tracing::info!(user_agent = user_agent(&headers), "root");
-    "Suisei"
 }
 
 /// `/rest/` 以外へのリクエストも、クライアントの解析のために残す。
