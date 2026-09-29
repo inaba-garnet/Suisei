@@ -46,3 +46,29 @@ pub struct Credentials {
     #[arg(long, env = "SUISEI_API_KEY", hide_env_values = true)]
     pub api_key: Option<String>,
 }
+
+#[cfg(test)]
+mod tests {
+    use clap::Parser;
+
+    use super::*;
+
+    fn parse(args: &[&str]) -> Config {
+        let base = [
+            "suisei",
+            "--music-dir",
+            "m",
+            "--user",
+            "u",
+            "--password",
+            "p",
+        ];
+        Config::try_parse_from(base.iter().chain(args)).unwrap()
+    }
+
+    #[test]
+    fn characters_are_split_by_default() {
+        assert!(parse(&[]).split_characters);
+        assert!(!parse(&["--split-characters", "false"]).split_characters);
+    }
+}

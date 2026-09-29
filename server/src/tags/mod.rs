@@ -475,6 +475,24 @@ mod tests {
     }
 
     #[test]
+    fn characters_are_kept_when_disabled() {
+        let tags = RawTags {
+            artist: strings(&["後藤ひとり(CV:青山吉能)"]),
+            ..RawTags::default()
+        };
+        assert_eq!(names(&info(&tags).artists), ["後藤ひとり", "青山吉能"]);
+        let kept = TrackInfo::new(
+            &tags,
+            Path::new("a.flac"),
+            Options {
+                split_characters: false,
+            },
+        );
+        assert_eq!(names(&kept.artists), ["後藤ひとり(CV:青山吉能)"]);
+        assert_eq!(names(&kept.album.artists), ["後藤ひとり(CV:青山吉能)"]);
+    }
+
+    #[test]
     fn match_key_distinguishes_track_number() {
         let a = RawTags {
             title: Some("曲".into()),
