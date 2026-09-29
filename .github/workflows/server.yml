@@ -14,6 +14,7 @@ defaults:
 
 env:
   CARGO_TERM_COLOR: always
+  SUISEI_DICT_CACHE: ${{ github.workspace }}/.cache/suisei-dict
 
 jobs:
   check:
@@ -25,6 +26,11 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: server
+      # 形態素解析の辞書のソース。版を変えるまで取得し直さない
+      - uses: actions/cache@v4
+        with:
+          path: ${{ env.SUISEI_DICT_CACHE }}
+          key: suisei-dict-${{ hashFiles('server/dict/build.rs') }}
       - run: cargo fmt --check
       - run: cargo clippy --all-targets --locked -- -D warnings
       - run: cargo test --locked
