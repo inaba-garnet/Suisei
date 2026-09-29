@@ -19,6 +19,7 @@ md-5 = "0.10"
 mime = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+suisei-dict = { path = "dict" }
 sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "sqlite", "migrate", "macros"] }
 tokio = { version = "1", features = ["macros", "net", "process", "rt-multi-thread", "signal", "sync"] }
 tokio-util = { version = "0.7.19", features = ["io"] }
@@ -33,6 +34,13 @@ wana_kana = "5"
 http-body-util = "0.1"
 tempfile = "3"
 tower = { version = "0.5", features = ["util"] }
+
+# 辞書を作る build.rs は数十万語を処理するので、最適化しないと遅い
+[profile.dev.build-override]
+opt-level = 3
+
+[profile.release.build-override]
+opt-level = 3
 
 [profile.release]
 strip = true

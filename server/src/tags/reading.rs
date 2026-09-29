@@ -1,5 +1,5 @@
 //! 読みの規則（docs/schema.md の「日本語の並べ替え」）。
-//! 手動設定と形態素解析はここでは扱わない。
+//! 手動設定はここでは扱わない。
 
 use unicode_normalization::UnicodeNormalization;
 use wana_kana::ConvertJapanese;
@@ -16,6 +16,7 @@ pub struct Reading {
 pub enum ReadingSource {
     SortTag,
     Name,
+    Estimated,
 }
 
 impl ReadingSource {
@@ -24,11 +25,12 @@ impl ReadingSource {
         match self {
             Self::SortTag => "sort_tag",
             Self::Name => "name",
+            Self::Estimated => "estimated",
         }
     }
 }
 
-/// 名前とソート用タグから読みを決める。
+/// 名前とソート用タグから読みを決める。どちらからも得られなければ、形態素解析で推定する。
 pub fn reading(name: &str, sort_tag: Option<&str>) -> Option<Reading> {
     let from_sort_tag = sort_tag.and_then(|sort| {
         let sort: String = sort.nfkc().collect();
@@ -47,10 +49,49 @@ pub fn reading(name: &str, sort_tag: Option<&str>) -> Option<Reading> {
         });
     }
     let name: String = name.nfkc().collect();
-    is_kana_text(&name).then(|| Reading {
-        kana: hiragana_to_katakana(&name),
-        source: ReadingSource::Name,
+    if is_kana_text(&name) {
+        return Some(Reading {
+            kana: hiragana_to_katakana(&name),
+            source: ReadingSource::Name,
+        });
+    }
+    estimate(&name).map(|kana| Reading {
+        kana,
+        source: ReadingSource::Estimated,
     })
+}
+
+/// 漢字を含む名前を、空白で区切った語ごとに解析して読みをつなぐ。
+/// 英字など読みのない部分はそのまま残し、読めない漢字が残れば None。
+fn estimate(name: &str) -> Option<String> {
+    if !name.chars().any(is_kanji) {
+        return None;
+    }
+    let words = name
+        .split_whitespace()
+        .map(|word| {
+            let mut kana = String::new();
+            for token in suisei_dict::tokenize(word) {
+                match token.reading {
+                    Some(reading) => kana.push_str(&reading),
+                    None if token.surface.chars().any(is_kanji) => return None,
+                    None => kana.push_str(&hiragana_to_katakana(&token.surface)),
+                }
+            }
+            Some(kana)
+        })
+        .collect::<Option<Vec<_>>>()?;
+    Some(words.join(" "))
+}
+
+fn is_kanji(c: char) -> bool {
+    matches!(c,
+        '\u{3005}' // 々
+        | '\u{3400}'..='\u{4dbf}'
+        | '\u{4e00}'..='\u{9fff}'
+        | '\u{f900}'..='\u{faff}'
+        | '\u{20000}'..='\u{3134f}' // 拡張 B 以降
+    )
 }
 
 /// かなと記号だけでできているか。数字は記号に含めない。
@@ -65,14 +106,7 @@ fn is_kana(c: char) -> bool {
 
 fn contains_japanese(text: &str) -> bool {
     text.chars().any(|c| {
-        is_kana(c)
-            || matches!(c,
-                '\u{3005}' // 々
-                | '\u{3400}'..='\u{4dbf}'
-                | '\u{4e00}'..='\u{9fff}'
-                | '\u{f900}'..='\u{faff}'
-                | '\u{ff66}'..='\u{ff9f}' // 半角カタカナ
-            )
+        is_kana(c) || is_kanji(c) || matches!(c, '\u{ff66}'..='\u{ff9f}') // 半角カタカナ
     })
 }
 
@@ -114,6 +148,41 @@ mod tests {
             kana: kana.to_owned(),
             source: ReadingSource::Name,
         })
+    }
+
+    fn estimated(kana: &str) -> Option<Reading> {
+        Some(Reading {
+            kana: kana.to_owned(),
+            source: ReadingSource::Estimated,
+        })
+    }
+
+    #[test]
+    fn estimates_kanji_names() {
+        // 辞書を選んだときのベンチマーク
+        assert_eq!(reading("米津玄師", None), estimated("ヨネヅケンシ"));
+        assert_eq!(reading("富田美憂", None), estimated("トミタミユ"));
+        assert_eq!(
+            reading("君の知らない物語", None),
+            estimated("キミノシラナイモノガタリ")
+        );
+        // 語ごとに読み、英字はそのまま残す
+        assert_eq!(
+            reading("歌物語 Special Edition", None),
+            estimated("ウタモノガタリ Special Edition")
+        );
+        // ソート用タグがあれば、そちらを採る
+        assert_eq!(
+            reading("米津玄師", Some("よねず けんし")),
+            sort_tag("ヨネズ ケンシ")
+        );
+    }
+
+    #[test]
+    fn unknown_kanji_is_not_estimated() {
+        assert_eq!(reading("ClariS", None), None);
+        // 辞書にない漢字が残れば、推定しない
+        assert_eq!(reading("𠮷", None), None);
     }
 
     #[test]
@@ -162,12 +231,20 @@ mod tests {
         assert_eq!(reading("Rin", Some("Rin")), None);
     }
 
+    fn source(reading: Option<Reading>) -> Option<ReadingSource> {
+        reading.map(|r| r.source)
+    }
+
     #[test]
     fn english_sort_tag_is_rejected() {
-        assert_eq!(reading("片羽", Some("Katahane feat. Someone")), None);
+        // ソート用タグを使わず、推定に回す
         assert_eq!(
-            reading("返信願望", Some("Henshin Ganbou (Short ver.)")),
-            None
+            source(reading("片羽", Some("Katahane feat. Someone"))),
+            Some(ReadingSource::Estimated)
+        );
+        assert_eq!(
+            source(reading("返信願望", Some("Henshin Ganbou (Short ver.)"))),
+            Some(ReadingSource::Estimated)
         );
     }
 
@@ -175,7 +252,11 @@ mod tests {
     fn kana_name() {
         assert_eq!(reading("やなぎなぎ", None), name("ヤナギナギ"));
         assert_eq!(reading("ユキトキ", None), name("ユキトキ"));
-        assert_eq!(reading("お返事まだカナ", None), None);
+        // 漢字を含む名前は、名前をそのまま読みにせず推定に回す
+        assert_eq!(
+            source(reading("お返事まだカナ", None)),
+            Some(ReadingSource::Estimated)
+        );
         assert_eq!(reading("〈ものがたり〉", None), name("〈モノガタリ〉"));
         assert_eq!(reading("ｶﾀｶﾅ", None), name("カタカナ"));
     }
@@ -183,7 +264,10 @@ mod tests {
     #[test]
     fn digits_are_not_symbols() {
         assert_eq!(reading("4U", None), None);
-        assert_eq!(reading("3月のパンタシア", None), None);
+        assert_eq!(
+            source(reading("3月のパンタシア", None)),
+            Some(ReadingSource::Estimated)
+        );
     }
 
     #[test]
