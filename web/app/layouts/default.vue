@@ -8,8 +8,10 @@
       <AppSidebar />
     </aside>
     <main class="min-h-0 flex-1 overflow-y-auto">
-      <div class="mx-auto max-w-6xl px-4 pt-[calc(env(safe-area-inset-top)+16px)] pb-6 md:px-8 md:pt-6">
-        <slot />
+      <div class="px-4 pt-[calc(env(safe-area-inset-top)+16px)] pb-6 md:px-8 md:pt-6">
+        <div class="mx-auto max-w-[640px]" data-testid="content">
+          <slot />
+        </div>
       </div>
     </main>
     <div class="shrink-0 md:col-span-2 md:border-t md:border-divider md:bg-surface-1">
