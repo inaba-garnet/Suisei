@@ -150,6 +150,41 @@ mod tests {
         })
     }
 
+    fn estimated(kana: &str) -> Option<Reading> {
+        Some(Reading {
+            kana: kana.to_owned(),
+            source: ReadingSource::Estimated,
+        })
+    }
+
+    #[test]
+    fn estimates_kanji_names() {
+        // 辞書を選んだときのベンチマーク
+        assert_eq!(reading("米津玄師", None), estimated("ヨネヅケンシ"));
+        assert_eq!(reading("富田美憂", None), estimated("トミタミユ"));
+        assert_eq!(
+            reading("君の知らない物語", None),
+            estimated("キミノシラナイモノガタリ")
+        );
+        // 語ごとに読み、英字はそのまま残す
+        assert_eq!(
+            reading("歌物語 Special Edition", None),
+            estimated("ウタモノガタリ Special Edition")
+        );
+        // ソート用タグがあれば、そちらを採る
+        assert_eq!(
+            reading("米津玄師", Some("よねず けんし")),
+            sort_tag("ヨネズ ケンシ")
+        );
+    }
+
+    #[test]
+    fn unknown_kanji_is_not_estimated() {
+        assert_eq!(reading("ClariS", None), None);
+        // 辞書にない漢字が残れば、推定しない
+        assert_eq!(reading("𠮷", None), None);
+    }
+
     #[test]
     fn kana_sort_tag() {
         assert_eq!(
