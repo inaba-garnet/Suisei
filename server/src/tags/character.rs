@@ -155,3 +155,109 @@ fn voice(inner: &str) -> Option<&str> {
     }
     Some(voice)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn names(name: &str) -> Option<Vec<String>> {
+        split(name)
+    }
+
+    fn some(names: &[&str]) -> Option<Vec<String>> {
+        Some(names.iter().map(|&n| n.to_owned()).collect())
+    }
+
+    #[test]
+    fn one_character() {
+        for name in [
+            "後藤ひとり(CV:青山吉能)",
+            "後藤ひとり(CV.青山吉能)",
+            "後藤ひとり (CV. 青山吉能)",
+            "後藤ひとり（CV：青山吉能）",
+            "後藤ひとり(cv.青山吉能)",
+            "後藤ひとり(Cv.青山吉能)",
+            "後藤ひとり( CV.青山吉能)",
+            "後藤ひとり(CV 青山吉能)",
+            "後藤ひとり(ＣＶ．青山吉能)",
+        ] {
+            assert_eq!(names(name), some(&["後藤ひとり", "青山吉能"]), "{name}");
+        }
+        assert_eq!(
+            names("Kiryu Moeka (CV. Goto Saori)"),
+            some(&["Kiryu Moeka", "Goto Saori"])
+        );
+    }
+
+    #[test]
+    fn listed_characters() {
+        assert_eq!(
+            names("鈴仙・優曇華院・イナバ(cv.さくらみこ), 因幡てゐ(cv.兎田ぺこら)"),
+            some(&[
+                "鈴仙・優曇華院・イナバ",
+                "さくらみこ",
+                "因幡てゐ",
+                "兎田ぺこら"
+            ])
+        );
+        assert_eq!(
+            names("ひーなー(CV.鬼頭明里)&かーなー(CV.ファイルーズあい)"),
+            some(&["ひーなー", "鬼頭明里", "かーなー", "ファイルーズあい"])
+        );
+        assert_eq!(
+            names("栗山未来(CV.種田梨沙)×名瀬美月(CV.茅原実里)"),
+            some(&["栗山未来", "種田梨沙", "名瀬美月", "茅原実里"])
+        );
+        assert_eq!(
+            names("マヤ (CV:水瀬いのり) エリカ (CV: 伊波杏樹)"),
+            some(&["マヤ", "水瀬いのり", "エリカ", "伊波杏樹"])
+        );
+        assert_eq!(
+            names("泉こなた( CV.平野綾), 柊かがみ( CV.加藤英美里) 他"),
+            some(&["泉こなた", "平野綾", "柊かがみ", "加藤英美里"])
+        );
+    }
+
+    #[test]
+    fn unit_and_members() {
+        let expected = some(&[
+            "あんこうチーム",
+            "西住みほ",
+            "渕上舞",
+            "武部沙織",
+            "茅野愛衣",
+        ]);
+        for name in [
+            "あんこうチーム [西住みほ(CV.渕上舞)、武部沙織(CV.茅野愛衣)]",
+            "あんこうチーム《西住みほ(CV:渕上舞)、武部沙織(CV:茅野愛衣)》",
+            "あんこうチーム(西住みほ(CV.渕上舞)、武部沙織(CV.茅野愛衣))",
+            "あんこうチーム: 西住みほ(CV:渕上舞)、武部沙織(CV:茅野愛衣)",
+            "あんこうチーム/西住みほ(CV:渕上舞)、武部沙織(CV:茅野愛衣)",
+        ] {
+            assert_eq!(names(name), expected, "{name}");
+        }
+    }
+
+    #[test]
+    fn other_forms_are_kept() {
+        for name in [
+            "ClariS",
+            "[Alexandros]",
+            "〈物語〉シリーズ",
+            "C.V. Jørgensen",
+            "CV Massage",
+            "アンジェラ(Vo.Alisa)",
+            "(CV:声優)",
+            "Artist (CVS Remix)",
+            "IOSYS feat. チルノ（CV.ファイルーズあい）",
+            "桜高軽音部 [平沢唯・秋山澪(CV:豊崎愛生、日笠陽子)]",
+            "立花響×風鳴翼(CV:悠木碧×水樹奈々)",
+            "山田一郎&山田二郎(CV.木村 昴&野津山幸宏)",
+            "A/B(CV.野田順子/福島潤)",
+            "放課後スイーツ部《アイリ(CV:水森ちこ)、ヨシミ)》",
+            "後藤ひとり(CV:青山吉能) with 結束バンド",
+        ] {
+            assert_eq!(names(name), None, "{name}");
+        }
+    }
+}
