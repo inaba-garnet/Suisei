@@ -36,6 +36,15 @@
 ## 設定
 - 起動引数と環境変数のどちらでも渡す（clap の `env`）。環境変数は `SUISEI_` で始める。
 
+## Web クライアントのログイン
+- `POST /api/login` で利用者名とパスワードを確かめ、セッションの Cookie を発行する。Web クライアントがパスワードをブラウザに保存しないため。
+- セッションは DB の表に持ち、最後に使ってから 30 日で切れる。最終利用日時の更新は 1 時間に一度までにする。`stream` などのたびに DB へ書き込まないため。
+- `GET /api/me` は Cookie を発行し直して期限を延ばす。Web クライアントは起動時にこれを呼ぶ。
+- Cookie は HttpOnly、SameSite=Strict にし、`X-Forwarded-Proto: https` のときは Secure も付ける。TLS はリバースプロキシが終端するため。偽装されても、影響は送り主自身の Cookie に限られる。
+- `/api` の POST は `Content-Type: application/json` のときだけ受け付ける。SameSite と合わせて、別のサイトのフォームから送らせないため。
+- Subsonic API は、`u`、`p`、`t`、`s`、`apiKey` のどれもないときに限り、Cookie のセッションで認証する。Cookie があって切れているか不正なら、エラー 40 を返す。Web クライアントがログイン画面に戻る判断に使うため。
+- 期限の切れたセッションは、ログインのときにまとめて消す。
+
 ## ツールチェーン
 - `server/rust-toolchain.toml` で Rust のバージョンを固定する。
 - 検証用サーバーには musl の静的バイナリを送る。Sprite にツールチェーンもリポジトリの認証も要らないため。
