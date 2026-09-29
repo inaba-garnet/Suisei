@@ -76,22 +76,11 @@ fn estimate(name: &str) -> Option<String> {
         .map(|word| {
             let mut kana = String::new();
             // 英字の並びは解析に渡さない。辞書には NHK電子音楽スタジオ のように英字を含む語もあるため
-            for (latin, part) in latin_runs(word) {
+            for (latin, part) in runs(word, |c| c.is_ascii_alphabetic()) {
                 if latin {
                     kana.push_str(part);
-                    continue;
-                }
-                for token in suisei_dict::tokenize(part) {
-                    // 英字や数字は、辞書に読みがあっても残す（NHK をエヌエイチケーにしない）
-                    if !token.surface.chars().any(|c| is_kana(c) || is_kanji(c)) {
-                        kana.push_str(&token.surface);
-                        continue;
-                    }
-                    match token.reading {
-                        Some(reading) => kana.push_str(&reading),
-                        None if token.surface.chars().any(is_kanji) => return None,
-                        None => kana.push_str(&hiragana_to_katakana(&token.surface)),
-                    }
+                } else {
+                    kana.push_str(&read(part)?);
                 }
             }
             Some(kana)
@@ -100,21 +89,50 @@ fn estimate(name: &str) -> Option<String> {
     Some(words.join(" "))
 }
 
-/// 英字の並びとそれ以外に分ける。英字の並びなら true。
-fn latin_runs(word: &str) -> Vec<(bool, &str)> {
+/// 英字を含まない部分を解析して読む。数字と記号は残す。
+fn read(text: &str) -> Option<String> {
+    let mut kana = String::new();
+    for token in suisei_dict::tokenize(text) {
+        let japanese = token.surface.chars().any(|c| is_kana(c) || is_kanji(c));
+        if !japanese {
+            // 数字や記号だけの語は、辞書に読みがあっても残す
+            kana.push_str(&token.surface);
+        } else if token.surface.chars().any(|c| c.is_ascii_digit()) {
+            // 3月 のように数字と一語になった語は、数字を残して残りを読み直す。
+            // 数字の前で切ってから解析すると、第2章 の 章 のように文脈を失って読み違えるため
+            for (digits, part) in runs(&token.surface, |c| c.is_ascii_digit()) {
+                if digits {
+                    kana.push_str(part);
+                } else {
+                    kana.push_str(&read(part)?);
+                }
+            }
+        } else if let Some(reading) = token.reading {
+            kana.push_str(&reading);
+        } else if token.surface.chars().any(is_kanji) {
+            return None;
+        } else {
+            kana.push_str(&hiragana_to_katakana(&token.surface));
+        }
+    }
+    Some(kana)
+}
+
+/// `pred` に合う文字の並びとそれ以外に分ける。合う並びなら true。
+fn runs(text: &str, pred: impl Fn(char) -> bool) -> Vec<(bool, &str)> {
     let mut runs = Vec::new();
     let mut start = 0;
     let mut current = None;
-    for (i, c) in word.char_indices() {
-        let latin = c.is_ascii_alphabetic();
-        if current.is_some_and(|l| l != latin) {
-            runs.push((current == Some(true), &word[start..i]));
+    for (i, c) in text.char_indices() {
+        let matched = pred(c);
+        if current.is_some_and(|m| m != matched) {
+            runs.push((current == Some(true), &text[start..i]));
             start = i;
         }
-        current = Some(latin);
+        current = Some(matched);
     }
-    if let Some(latin) = current {
-        runs.push((latin, &word[start..]));
+    if let Some(matched) = current {
+        runs.push((matched, &text[start..]));
     }
     runs
 }
