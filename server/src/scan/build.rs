@@ -332,6 +332,7 @@ pub fn build(
         .iter()
         .map(|(id, _, _, at)| (id.as_str(), *at))
         .collect();
+    let genre_names = genre_names(&infos);
     let mut tracks = Vec::new();
     let mut track_artists = Vec::new();
     let mut track_genres = Vec::new();
@@ -373,7 +374,7 @@ pub fn build(
         track_genres.extend(info.genres.iter().enumerate().map(|(p, genre)| GenreRow {
             track_id: id.clone(),
             position: p as i64,
-            genre: genre.clone(),
+            genre: genre_names[genre.match_key.as_str()].to_owned(),
         }));
     }
     let album_artists = album_ids
@@ -528,6 +529,22 @@ fn album_row(
         cover_path: None,
         name,
     }
+}
+
+/// ジャンルの鍵ごとの表示名。そのジャンルが付いたファイルの多数決で決める。
+fn genre_names(infos: &[TrackInfo]) -> HashMap<&str, &str> {
+    let mut names: HashMap<&str, Vec<&str>> = HashMap::new();
+    // 一つのファイルでは鍵が重ならないので、一ファイル一票になる
+    for genre in infos.iter().flat_map(|i| &i.genres) {
+        names
+            .entry(genre.match_key.as_str())
+            .or_default()
+            .push(genre.name.as_str());
+    }
+    names
+        .into_iter()
+        .filter_map(|(key, names)| Some((key, majority(names.into_iter())?)))
+        .collect()
 }
 
 /// アーティストの表記と読みは、そのアーティストが載っているファイルの多数決で決める。

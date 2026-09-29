@@ -1,6 +1,7 @@
 //! 閲覧のエンドポイントが読む問い合わせ。
 
 use super::Pool;
+use crate::tags::normalize;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ArtistEntry {
@@ -306,6 +307,15 @@ pub async fn album_list(
             .await
         }
     }
+}
+
+/// `genre` と同じ鍵の、保存しているジャンル名。表記の違う名前で求められても見つけるため（docs/schema.md の「ジャンル」）。
+pub async fn genre_name(pool: &Pool, genre: &str) -> Result<Option<String>, sqlx::Error> {
+    let key = normalize(genre);
+    let names = sqlx::query_scalar!("SELECT DISTINCT genre FROM track_genre")
+        .fetch_all(pool)
+        .await?;
+    Ok(names.into_iter().find(|name| normalize(name) == key))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

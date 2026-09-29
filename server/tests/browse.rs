@@ -493,6 +493,57 @@ async fn genres_count_songs_and_albums() {
 }
 
 #[tokio::test]
+async fn genres_are_split_and_merged() {
+    let server = server(&[
+        Song {
+            genre: Some("J-Pop"),
+            ..song("a.flac", "ClariS", "a")
+        },
+        Song {
+            genre: Some("J-Pop"),
+            ..song("b.flac", "ClariS", "b")
+        },
+        Song {
+            genre: Some("J-POP/General"),
+            ..song("c.flac", "ClariS", "c")
+        },
+        Song {
+            genre: Some("Rock, Pop"),
+            ..song("d.flac", "ClariS", "d")
+        },
+    ])
+    .await;
+    let res = server.get("getGenres", "").await;
+    assert_eq!(
+        res["genres"]["genre"],
+        serde_json::json!([
+            { "value": "General", "songCount": 1, "albumCount": 1 },
+            { "value": "J-Pop", "songCount": 3, "albumCount": 3 },
+            { "value": "Pop", "songCount": 1, "albumCount": 1 },
+            { "value": "Rock", "songCount": 1, "albumCount": 1 },
+        ])
+    );
+
+    // 表示名と違う表記で求めても見つかる
+    let res = server
+        .get("getAlbumList2", "&type=byGenre&genre=j-pop&size=10")
+        .await;
+    assert_eq!(names(&res["albumList2"]["album"]), ["a", "b", "c"]);
+
+    let res = server
+        .get("getAlbumList2", "&type=byGenre&genre=General")
+        .await;
+    let album_id = res["albumList2"]["album"][0]["id"].as_str().unwrap();
+    let res = server.get("getAlbum", &format!("&id={album_id}")).await;
+    let song = &res["album"]["song"][0];
+    assert_eq!(song["genre"], "J-Pop");
+    assert_eq!(
+        song["genres"],
+        serde_json::json!([{ "name": "J-Pop" }, { "name": "General" }])
+    );
+}
+
+#[tokio::test]
 async fn list_shapes_match_navidrome() {
     let server = album_list_server().await;
     for (endpoint, query) in [
