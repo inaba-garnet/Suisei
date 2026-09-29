@@ -66,7 +66,7 @@ pub fn reading(name: &str, sort_tag: Option<&str>) -> Option<Reading> {
 }
 
 /// 漢字を含む名前を、空白で区切った語ごとに解析して読みをつなぐ。
-/// 英字など読みのない部分はそのまま残し、読めない漢字が残れば None。
+/// 英字、数字、記号はそのまま残し、読めない漢字が残れば None。
 fn estimate(name: &str) -> Option<String> {
     if !name.chars().any(is_kanji) {
         return None;
@@ -75,17 +75,48 @@ fn estimate(name: &str) -> Option<String> {
         .split_whitespace()
         .map(|word| {
             let mut kana = String::new();
-            for token in suisei_dict::tokenize(word) {
-                match token.reading {
-                    Some(reading) => kana.push_str(&reading),
-                    None if token.surface.chars().any(is_kanji) => return None,
-                    None => kana.push_str(&hiragana_to_katakana(&token.surface)),
+            // 英字の並びは解析に渡さない。辞書には NHK電子音楽スタジオ のように英字を含む語もあるため
+            for (latin, part) in latin_runs(word) {
+                if latin {
+                    kana.push_str(part);
+                    continue;
+                }
+                for token in suisei_dict::tokenize(part) {
+                    // 英字や数字は、辞書に読みがあっても残す（NHK をエヌエイチケーにしない）
+                    if !token.surface.chars().any(|c| is_kana(c) || is_kanji(c)) {
+                        kana.push_str(&token.surface);
+                        continue;
+                    }
+                    match token.reading {
+                        Some(reading) => kana.push_str(&reading),
+                        None if token.surface.chars().any(is_kanji) => return None,
+                        None => kana.push_str(&hiragana_to_katakana(&token.surface)),
+                    }
                 }
             }
             Some(kana)
         })
         .collect::<Option<Vec<_>>>()?;
     Some(words.join(" "))
+}
+
+/// 英字の並びとそれ以外に分ける。英字の並びなら true。
+fn latin_runs(word: &str) -> Vec<(bool, &str)> {
+    let mut runs = Vec::new();
+    let mut start = 0;
+    let mut current = None;
+    for (i, c) in word.char_indices() {
+        let latin = c.is_ascii_alphabetic();
+        if current.is_some_and(|l| l != latin) {
+            runs.push((current == Some(true), &word[start..i]));
+            start = i;
+        }
+        current = Some(latin);
+    }
+    if let Some(latin) = current {
+        runs.push((latin, &word[start..]));
+    }
+    runs
 }
 
 fn is_kanji(c: char) -> bool {
