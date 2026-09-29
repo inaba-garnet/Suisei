@@ -232,6 +232,16 @@ mod tests {
             estimated("NHKデンシオンガクスタジオ")
         );
         assert_eq!(reading("でんぱ組.inc", None), estimated("デンパグミ.inc"));
+        // 数字は残し、漢数字は読む
+        assert_eq!(
+            reading("3月のパンタシア", None),
+            estimated("3ツキノパンタシア")
+        );
+        assert_eq!(
+            reading("三月のパンタシア", None),
+            estimated("サンガツノパンタシア")
+        );
+        assert_eq!(reading("第2章", None), estimated("ダイ2ショウ"));
         // ソート用タグがあれば、そちらを採る
         assert_eq!(
             reading("米津玄師", Some("よねず けんし")),
