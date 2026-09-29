@@ -208,6 +208,12 @@ mod tests {
             reading("歌物語 Special Edition", None),
             estimated("ウタモノガタリ Special Edition")
         );
+        // 辞書に読みのある英字も残す
+        assert_eq!(
+            reading("NHK電子音楽スタジオ", None),
+            estimated("NHKデンシオンガクスタジオ")
+        );
+        assert_eq!(reading("でんぱ組.inc", None), estimated("デンパグミ.inc"));
         // ソート用タグがあれば、そちらを採る
         assert_eq!(
             reading("米津玄師", Some("よねず けんし")),
