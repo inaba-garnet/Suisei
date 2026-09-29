@@ -203,3 +203,46 @@ fn now_ms() -> i64 {
 fn millis(duration: Duration) -> i64 {
     i64::try_from(duration.as_millis()).unwrap_or(i64::MAX)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn headers(pairs: &[(&'static str, &'static str)]) -> HeaderMap {
+        pairs
+            .iter()
+            .map(|(k, v)| (k.parse().unwrap(), HeaderValue::from_static(v)))
+            .collect()
+    }
+
+    #[test]
+    fn cookie_is_found_among_others() {
+        let h = headers(&[("cookie", "a=1; suisei_session=abc; b=2")]);
+        assert_eq!(cookie(&h), Some("abc"));
+        assert_eq!(cookie(&headers(&[("cookie", "a=1")])), None);
+        assert_eq!(cookie(&headers(&[])), None);
+    }
+
+    #[test]
+    fn secure_only_behind_https() {
+        let plain = session_cookie("x", &headers(&[]));
+        assert!(!plain.to_str().unwrap().contains("Secure"));
+        let https = session_cookie("x", &headers(&[("x-forwarded-proto", "https, http")]));
+        assert!(https.to_str().unwrap().ends_with("; Secure"));
+        let http = session_cookie("x", &headers(&[("x-forwarded-proto", "http, https")]));
+        assert!(!http.to_str().unwrap().contains("Secure"));
+    }
+
+    #[test]
+    fn json_content_type() {
+        assert!(is_json(&headers(&[(
+            "content-type",
+            "application/json; charset=utf-8"
+        )])));
+        assert!(!is_json(&headers(&[(
+            "content-type",
+            "application/x-www-form-urlencoded"
+        )])));
+        assert!(!is_json(&headers(&[])));
+    }
+}
