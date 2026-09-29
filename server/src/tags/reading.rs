@@ -220,6 +220,48 @@ mod tests {
     }
 
     #[test]
+    fn mixed_sort_tag_keeps_latin() {
+        // かなと混ぜた英字はローマ字として読まない
+        assert_eq!(reading("歌手A", Some("かしゅA")), sort_tag("カシュA"));
+        assert_eq!(
+            reading("永訣のGemini", Some("えいけつのGemini")),
+            sort_tag("エイケツノGemini")
+        );
+        assert_eq!(
+            reading(
+                "U.N.オーエンは彼女なのか？",
+                Some("U.N.おーえんはかのじょなのか？")
+            ),
+            sort_tag("U.N.オーエンハカノジョナノカ?")
+        );
+        assert_eq!(
+            reading(
+                "I LOVE MEでいられるように",
+                Some("I LOVE MEでいられるように")
+            ),
+            sort_tag("I LOVE MEデイラレルヨウニ")
+        );
+    }
+
+    #[test]
+    fn kanji_sort_tag_is_not_a_reading() {
+        // 名前をそのまま書いたタグは使わず、推定に回す
+        assert_eq!(
+            source(reading("A吉スタジオ", Some("A吉スタジオ"))),
+            Some(ReadingSource::Estimated)
+        );
+        assert_eq!(reading("𠮷", Some("𠮷")), None);
+    }
+
+    #[test]
+    fn hyphen_in_romaji_is_a_separator() {
+        assert_eq!(
+            reading("はちみつくまさん", Some("Hachimitsu Kuma-san")),
+            sort_tag("ハチミツ クマサン")
+        );
+    }
+
+    #[test]
     fn family_name_first_sort_tag() {
         assert_eq!(
             reading("やなぎなぎ", Some("Yanagi, Nagi")),
