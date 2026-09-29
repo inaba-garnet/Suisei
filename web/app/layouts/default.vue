@@ -1,0 +1,30 @@
+<script setup lang="ts">
+const { align } = useContentAlign()
+</script>
+
+<template>
+  <div class="flex h-dvh flex-col md:grid md:grid-cols-[240px_1fr] md:grid-rows-[1fr_72px]">
+    <!--
+      PC（md 以上）はサイドバー、内容、下端の再生バー。スマホは内容、再生バー、下のタブ（docs/web.md）。
+      再生バーはページの外に一つだけ置き、画面を移っても作り直さない。
+    -->
+    <aside class="hidden border-r border-divider bg-surface-1 md:block">
+      <AppSidebar />
+    </aside>
+    <!--
+      PC は内容を一枚のパネルに収め、中の一覧は枠を持たない行にする（docs/web.md）。
+      スマホはパネルを画面いっぱいに広げ、角丸と外側の余白を付けない。
+    -->
+    <main class="min-h-0 flex-1 md:py-3 md:pr-5 md:pl-5">
+      <div class="h-full overflow-y-auto px-4 pt-[calc(env(safe-area-inset-top)+16px)] pb-6 md:rounded-xl md:border md:border-divider md:bg-surface-1 md:p-5">
+        <div class="max-w-[640px]" :class="{ 'mx-auto': align === 'center' }" data-testid="content">
+          <slot />
+        </div>
+      </div>
+    </main>
+    <div class="shrink-0 md:col-span-2 md:border-t md:border-divider md:bg-surface-1 md:px-4 md:py-2.5">
+      <PlayerBar />
+    </div>
+    <AppTabBar class="md:hidden" />
+  </div>
+</template>

@@ -1,0 +1,128 @@
+@import 'tailwindcss';
+@import './fonts.css';
+@import './tokens.css';
+
+/* data-theme は html に付ける（nuxt.config.ts の起動時のスクリプト） */
+@custom-variant dark (&:where(:root:not([data-theme='light']) *));
+
+/* Design のトークンを Tailwind のユーティリティとして使う */
+@theme inline {
+  --font-sans: 'Geist Variable', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif;
+  --font-mono: ui-monospace, monospace;
+
+  --color-surface-0: var(--surface-0);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-surface-4: var(--surface-4);
+
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border-default);
+  --color-border-strong: var(--border-strong);
+  --color-divider: var(--divider-subtle);
+  --color-divider-strong: var(--divider-strong);
+
+  --color-accent-base: var(--accent-base);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-active: var(--accent-active);
+  --color-accent-subtle: var(--accent-subtle-bg);
+  --color-accent-soft: var(--accent-soft-fill);
+
+  --color-glow-low: var(--glow-low);
+  --color-glow-medium: var(--glow-medium);
+  --color-glow-high: var(--glow-high);
+  --color-glow-strong: var(--glow-strong);
+
+  /* 文字の 3 段階。text-fg、text-fg-muted、text-fg-subtle で使う */
+  --color-fg: var(--text-primary);
+  --color-fg-muted: var(--text-secondary);
+  --color-fg-subtle: var(--text-tertiary);
+
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+  --color-success-bg: var(--success-bg);
+  --color-warning-bg: var(--warning-bg);
+  --color-danger-bg: var(--danger-bg);
+  --color-info-bg: var(--info-bg);
+
+  /* shadcn-vue の部品が使う名前 */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  --shadow-elevation-1: var(--elevation-1);
+  --shadow-elevation-2: var(--elevation-2);
+  --shadow-elevation-3: var(--elevation-3);
+  --shadow-elevation-4: var(--elevation-4);
+  --shadow-focus: var(--focus-ring);
+  --shadow-glow-selected: var(--glow-card-selected);
+  --shadow-glow-soft: 0 0 10px var(--glow-low);
+
+  --text-display: 32px;
+  --text-display--line-height: 40px;
+  --text-display--letter-spacing: -0.3px;
+  --text-h1: 24px;
+  --text-h1--line-height: 32px;
+  --text-h1--letter-spacing: -0.2px;
+  --text-h2: 20px;
+  --text-h2--line-height: 28px;
+  --text-h2--letter-spacing: -0.1px;
+  --text-h3: 16px;
+  --text-h3--line-height: 24px;
+  --text-body-lg: 14px;
+  --text-body-lg--line-height: 20px;
+  --text-body: 13px;
+  --text-body--line-height: 18px;
+  --text-body-sm: 12px;
+  --text-body-sm--line-height: 16px;
+  --text-caption: 11px;
+  --text-caption--line-height: 14px;
+
+  --ease-suisei: ease;
+  --default-transition-duration: 150ms;
+}
+
+@layer base {
+  html {
+    background-color: var(--surface-0);
+  }
+
+  body {
+    @apply bg-surface-0 font-sans text-body text-fg antialiased;
+  }
+
+  *,
+  ::before,
+  ::after {
+    border-color: var(--border-subtle);
+  }
+
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+  }
+}
