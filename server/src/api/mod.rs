@@ -7,6 +7,7 @@ mod lyrics;
 mod media;
 mod playlist;
 mod search;
+mod session;
 mod transcode;
 mod unsupported;
 
@@ -18,7 +19,7 @@ use axum::extract::{Path, State};
 use axum::http::header::USER_AGENT;
 use axum::http::{HeaderMap, Method, StatusCode, Uri};
 use axum::response::{IntoResponse, Response};
-use axum::routing::{any, get};
+use axum::routing::{any, get, post};
 use serde_json::{Map, Value, json};
 
 use crate::Credentials;
@@ -44,6 +45,9 @@ pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/", get(root))
         .route("/rest/{endpoint}", any(rest))
+        .route("/api/login", post(session::login))
+        .route("/api/logout", post(session::logout))
+        .route("/api/me", get(session::me))
         .fallback(not_found)
         .with_state(Arc::new(state))
 }
@@ -68,7 +72,7 @@ async fn rest(
 
     // OpenSubsonic の仕様で、認証なしで呼べることになっている。
     if name != "getOpenSubsonicExtensions"
-        && let Err(err) = subsonic::authenticate(&params, &state.credentials)
+        && let Err(err) = session::authenticate(&state, &headers, &params).await
     {
         tracing::info!(
             endpoint = name,

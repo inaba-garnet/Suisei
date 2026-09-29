@@ -5,6 +5,6 @@ mod params;
 mod response;
 mod xml;
 
-pub use auth::authenticate;
+pub use auth::{authenticate, has_credentials, verify_password};
 pub use params::Params;
 pub use response::{Error, ErrorCode, Format, error, ok};
