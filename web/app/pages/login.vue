@@ -40,7 +40,7 @@ async function onSubmit() {
         @submit.prevent="onSubmit"
       >
         <div class="flex flex-col gap-2">
-          <Label for="username">利用者名</Label>
+          <Label for="username">ユーザー名</Label>
           <Input id="username" v-model="username" name="username" autocomplete="username" autocapitalize="none" required />
         </div>
         <div class="flex flex-col gap-2">

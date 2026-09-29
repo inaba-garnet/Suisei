@@ -6,10 +6,10 @@ test('ログインしていなければログインの画面に移し、ログ�
   await page.goto('/library/albums')
   await expect(page).toHaveURL('/login?redirect=/library/albums')
 
-  await page.getByLabel('利用者名').fill(USER)
+  await page.getByLabel('ユーザー名').fill(USER)
   await page.getByLabel('パスワード').fill('wrong')
   await page.getByRole('button', { name: 'ログイン' }).click()
-  await expect(page.getByRole('alert')).toHaveText('利用者名かパスワードが違います')
+  await expect(page.getByRole('alert')).toHaveText('ユーザー名かパスワードが違います')
 
   await page.getByLabel('パスワード').fill(PASSWORD)
   await page.getByRole('button', { name: 'ログイン' }).click()
@@ -20,7 +20,7 @@ test('ログインしていなければログインの画面に移し、ログ�
 test('別のサイトへの戻り先は無視してホームに移る', async ({ page }) => {
   await mockApi(page)
   await page.goto('/login?redirect=//example.com/')
-  await page.getByLabel('利用者名').fill(USER)
+  await page.getByLabel('ユーザー名').fill(USER)
   await page.getByLabel('パスワード').fill(PASSWORD)
   await page.getByRole('button', { name: 'ログイン' }).click()
   await expect(page).toHaveURL('/')
@@ -36,7 +36,7 @@ test('サーバーに届かなければそう伝える', async ({ page }) => {
   await mockApi(page)
   await page.goto('/login')
   await page.route('**/api/login', route => route.fulfill({ status: 502 }))
-  await page.getByLabel('利用者名').fill(USER)
+  await page.getByLabel('ユーザー名').fill(USER)
   await page.getByLabel('パスワード').fill(PASSWORD)
   await page.getByRole('button', { name: 'ログイン' }).click()
   await expect(page.getByRole('alert')).toHaveText('サーバーに接続できません')

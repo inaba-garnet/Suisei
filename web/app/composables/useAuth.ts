@@ -29,7 +29,7 @@ export function useAuth() {
     }
     catch (err) {
       if (statusOf(err) === 401) {
-        throw new LoginError('利用者名かパスワードが違います')
+        throw new LoginError('ユーザー名かパスワードが違います')
       }
       throw err
     }
