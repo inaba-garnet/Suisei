@@ -34,7 +34,11 @@ impl ReadingSource {
 pub fn reading(name: &str, sort_tag: Option<&str>) -> Option<Reading> {
     let from_sort_tag = sort_tag.and_then(|sort| {
         let sort: String = sort.nfkc().collect();
-        if is_kana_text(&sort) {
+        if sort.chars().any(is_kanji) {
+            // 名前をそのまま書いたタグは読みではない
+            None
+        } else if sort.chars().any(is_kana) {
+            // かなと混ぜた英字は英語や略語なので、ローマ字として読まずに残す
             Some(hiragana_to_katakana(&sort))
         } else if contains_japanese(name) {
             romaji_to_katakana(&sort)
@@ -125,6 +129,8 @@ fn romaji_to_katakana(romaji: &str) -> Option<String> {
             'l' => prepared.push('r'),
             // 「姓, 名」形式の区切り。wana_kana は読点にするが、読みには要らない
             ',' => {}
+            // Kuma-san のような区切り。wana_kana は長音記号にする
+            '-' => {}
             _ => prepared.push(c),
         }
     }
