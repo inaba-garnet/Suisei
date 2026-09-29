@@ -2,25 +2,32 @@ use axum::body::Body;
 use axum::http::{Request, StatusCode, header};
 use http_body_util::BodyExt;
 use serde_json::Value;
-use suisei::{AppState, Credentials};
+use suisei::{AppState, Credentials, Web};
 use tower::ServiceExt;
 
 const AUTH: &str = "u=inaba&p=sesame";
 
 async fn app() -> axum::Router {
+    app_with(Web::from_files([])).await
+}
+
+async fn app_with(web: Web) -> axum::Router {
     let db = suisei::db::open_in_memory().await.unwrap();
-    suisei::router(AppState {
-        credentials: Credentials {
-            user: "inaba".into(),
-            password: "sesame".into(),
-            api_key: None,
+    suisei::router_with(
+        AppState {
+            credentials: Credentials {
+                user: "inaba".into(),
+                password: "sesame".into(),
+                api_key: None,
+            },
+            db: db.clone(),
+            scanner: suisei::scan::Scanner::new(db, "/nonexistent".into(), Default::default()),
+            now_playing: Default::default(),
+            cache_dir: "/nonexistent".into(),
+            ffmpeg: "ffmpeg".into(),
         },
-        db: db.clone(),
-        scanner: suisei::scan::Scanner::new(db, "/nonexistent".into(), Default::default()),
-        now_playing: Default::default(),
-        cache_dir: "/nonexistent".into(),
-        ffmpeg: "ffmpeg".into(),
-    })
+        web,
+    )
 }
 
 async fn send(req: Request<Body>) -> (StatusCode, String) {
@@ -151,9 +158,74 @@ async fn form_post() {
 }
 
 #[tokio::test]
-async fn root_is_reachable() {
-    let (status, _) = get("/").await;
+async fn root_is_reachable_without_web() {
+    let (status, body) = get("/").await;
     assert_eq!(status, StatusCode::OK);
+    assert_eq!(body, "Suisei");
+}
+
+fn web() -> Web {
+    Web::from_files([
+        ("index.html".to_owned(), b"<!doctype html>index".to_vec()),
+        ("favicon.svg".to_owned(), b"<svg/>".to_vec()),
+        (
+            "_nuxt/entry.abc123.js".to_owned(),
+            b"console.log(1)".to_vec(),
+        ),
+    ])
+}
+
+async fn get_web(uri: &str) -> (StatusCode, axum::http::HeaderMap, String) {
+    let res = app_with(web())
+        .await
+        .oneshot(Request::get(uri).body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    let status = res.status();
+    let headers = res.headers().clone();
+    let body = res.into_body().collect().await.unwrap().to_bytes();
+    (status, headers, String::from_utf8(body.to_vec()).unwrap())
+}
+
+#[tokio::test]
+async fn web_pages_return_index() {
+    for uri in ["/", "/library/albums", "/settings?x=1"] {
+        let (status, headers, body) = get_web(uri).await;
+        assert_eq!(status, StatusCode::OK, "{uri}");
+        assert_eq!(body, "<!doctype html>index", "{uri}");
+        assert_eq!(headers[header::CONTENT_TYPE], "text/html", "{uri}");
+        assert_eq!(headers[header::CACHE_CONTROL], "no-cache", "{uri}");
+    }
+}
+
+#[tokio::test]
+async fn web_files_are_served() {
+    let (status, headers, body) = get_web("/favicon.svg").await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body, "<svg/>");
+    assert_eq!(headers[header::CONTENT_TYPE], "image/svg+xml");
+
+    let (status, headers, _) = get_web("/_nuxt/entry.abc123.js").await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(headers[header::CONTENT_TYPE], "text/javascript");
+    assert_eq!(
+        headers[header::CACHE_CONTROL],
+        "public, max-age=31536000, immutable"
+    );
+}
+
+#[tokio::test]
+async fn web_does_not_cover_api_or_missing_files() {
+    for uri in [
+        "/api/unknown",
+        "/rest",
+        "/_nuxt/missing.js",
+        "/server/xml.server.php",
+        "/../Cargo.toml",
+    ] {
+        let (status, _, _) = get_web(uri).await;
+        assert_eq!(status, StatusCode::NOT_FOUND, "{uri}");
+    }
 }
 
 #[tokio::test]
