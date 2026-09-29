@@ -25,6 +25,10 @@ pub struct Config {
     #[arg(long, env = "SUISEI_FFMPEG", default_value = "ffmpeg")]
     pub ffmpeg: PathBuf,
 
+    /// `キャラクター(CV:声優)` の形のアーティスト名を、キャラクターと声優に分ける。
+    #[arg(long, env = "SUISEI_SPLIT_CHARACTERS", default_value_t = true, action = clap::ArgAction::Set)]
+    pub split_characters: bool,
+
     #[command(flatten)]
     pub credentials: Credentials,
 }

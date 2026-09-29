@@ -16,6 +16,7 @@ use crate::db::Pool;
 use crate::db::library::{self, FileRow, Snapshot};
 use crate::tags;
 
+pub use crate::tags::Options;
 use build::Scanned;
 pub use scanner::{Scanner, Status};
 
@@ -90,8 +91,13 @@ impl From<sqlx::Error> for Error {
     }
 }
 
-pub async fn run(pool: &Pool, music_dir: &Path, mode: Mode) -> Result<Summary, Error> {
-    run_with_progress(pool, music_dir, mode, Arc::default()).await
+pub async fn run(
+    pool: &Pool,
+    music_dir: &Path,
+    mode: Mode,
+    options: Options,
+) -> Result<Summary, Error> {
+    run_with_progress(pool, music_dir, mode, options, Arc::default()).await
 }
 
 /// `progress` に、見つけた音声の数を数えながらスキャンする。
@@ -99,6 +105,7 @@ async fn run_with_progress(
     pool: &Pool,
     music_dir: &Path,
     mode: Mode,
+    options: Options,
     progress: Arc<AtomicUsize>,
 ) -> Result<Summary, Error> {
     let started = Instant::now();
@@ -119,6 +126,7 @@ async fn run_with_progress(
             &snapshot,
             &music_dir.to_string_lossy(),
             unix_millis(SystemTime::now()),
+            options,
         );
         summary.files = library.files.len();
         summary.folders = library

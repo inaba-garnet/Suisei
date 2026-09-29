@@ -20,7 +20,7 @@ async fn suisei(endpoint: &str, query: &str) -> Map<String, Value> {
             api_key: None,
         },
         db: db.clone(),
-        scanner: suisei::scan::Scanner::new(db, "/nonexistent".into()),
+        scanner: suisei::scan::Scanner::new(db, "/nonexistent".into(), Default::default()),
         now_playing: Default::default(),
         cache_dir: "/nonexistent".into(),
         ffmpeg: "ffmpeg".into(),

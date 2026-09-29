@@ -20,6 +20,21 @@ pub use sort_key::{index_heading, sort_key};
 pub const UNKNOWN_ARTIST: &str = "[Unknown Artist]";
 pub const UNKNOWN_ALBUM: &str = "[Unknown Album]";
 
+/// タグの解釈を切り替える設定。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Options {
+    /// `キャラクター(CV:声優)` の形の名前を分ける
+    pub split_characters: bool,
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Self {
+            split_characters: true,
+        }
+    }
+}
+
 /// 曲とアルバムに付くアーティスト。track_artist と album_artist の一行に対応する。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Credit {
@@ -72,7 +87,7 @@ pub struct TrackInfo {
 
 impl TrackInfo {
     /// `path` は音楽フォルダからの相対パス。タグが欠けたときの代わりの値に使う。
-    pub fn new(tags: &RawTags, path: &Path) -> Self {
+    pub fn new(tags: &RawTags, path: &Path, options: Options) -> Self {
         let title = tags.title.clone().unwrap_or_else(|| {
             path.file_stem()
                 .map(|stem| stem.to_string_lossy().into_owned())
@@ -81,9 +96,9 @@ impl TrackInfo {
         let artists = track_artists(tags);
         let display_artist = display_artist(&tags.artist, &tags.artists)
             .unwrap_or_else(|| UNKNOWN_ARTIST.to_owned());
-        let album = album(tags, path, &artists, &display_artist);
+        let album = album(tags, path, &artists, &display_artist, options);
         // アルバムのアーティストを MusicBrainz ID で ARTISTS と対応させた後で分ける
-        let artists = split_characters(artists);
+        let artists = split_characters(artists, options);
         let disc = tags.disc_number.map(|n| n.to_string()).unwrap_or_default();
         let track = tags.track_number.map(|n| n.to_string()).unwrap_or_default();
         let match_key = match_key::join([
@@ -137,7 +152,13 @@ fn display_artist(artist: &[String], artists: &[String]) -> Option<String> {
         .map(|values| values.join(" / "))
 }
 
-fn album(tags: &RawTags, path: &Path, track_artists: &[Credit], track_display: &str) -> AlbumInfo {
+fn album(
+    tags: &RawTags,
+    path: &Path,
+    track_artists: &[Credit],
+    track_display: &str,
+    options: Options,
+) -> AlbumInfo {
     let name = tags.album.clone().unwrap_or_else(|| {
         // 音楽フォルダの直下にあるファイルは、フォルダ名を使えない
         path.parent()
@@ -147,6 +168,7 @@ fn album(tags: &RawTags, path: &Path, track_artists: &[Credit], track_display: &
     });
     let artists = split_characters(
         album_artists(tags, track_artists).unwrap_or_else(|| track_artists.to_vec()),
+        options,
     );
     let display_artist = display_artist(&tags.album_artist, &tags.album_artists)
         .unwrap_or_else(|| track_display.to_owned());
@@ -201,7 +223,10 @@ fn album_artists_by_mbid(tags: &RawTags, track_artists: &[Credit]) -> Option<Vec
 
 /// `キャラクター(CV:声優)` の形の名前を分ける（docs/schema.md の「アーティスト」）。
 /// 分けた名前は誰の読みか分からないので、ソート用タグの値を付けない。同じ鍵の名前は先のものを残す。
-fn split_characters(credits: Vec<Credit>) -> Vec<Credit> {
+fn split_characters(credits: Vec<Credit>, options: Options) -> Vec<Credit> {
+    if !options.split_characters {
+        return credits;
+    }
     let mut result: Vec<Credit> = Vec::with_capacity(credits.len());
     for credit in credits {
         let split = character::split(&credit.name)
@@ -255,7 +280,11 @@ mod tests {
     }
 
     fn info(tags: &RawTags) -> TrackInfo {
-        TrackInfo::new(tags, Path::new("アーティスト/アルバム/01 曲.flac"))
+        TrackInfo::new(
+            tags,
+            Path::new("アーティスト/アルバム/01 曲.flac"),
+            Options::default(),
+        )
     }
 
     #[test]
@@ -270,7 +299,11 @@ mod tests {
 
     #[test]
     fn file_at_folder_root_has_unknown_album() {
-        let track = TrackInfo::new(&RawTags::default(), Path::new("notag.flac"));
+        let track = TrackInfo::new(
+            &RawTags::default(),
+            Path::new("notag.flac"),
+            Options::default(),
+        );
         assert_eq!(track.title, "notag");
         assert_eq!(track.album.name, UNKNOWN_ALBUM);
     }

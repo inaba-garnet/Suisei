@@ -86,7 +86,7 @@ async fn start(dir: TempDir) -> Server {
 
 async fn start_with_ffmpeg(dir: TempDir, ffmpeg: std::path::PathBuf) -> Server {
     let db = suisei::db::open_in_memory().await.unwrap();
-    let scanner = Scanner::new(db.clone(), dir.path().to_owned());
+    let scanner = Scanner::new(db.clone(), dir.path().to_owned(), Default::default());
     assert!(scanner.start(Mode::Quick));
     scanner.wait().await;
     let cache = tempfile::tempdir().unwrap();

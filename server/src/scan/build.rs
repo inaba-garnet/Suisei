@@ -9,7 +9,7 @@ use crate::db::library::{
     AlbumRow, ArtistRow, CreditRow, FileRow, GenreRow, Library, Snapshot, TrackRow,
 };
 use crate::db::{IdKind, new_id};
-use crate::tags::{Credit, RawTags, TrackInfo, reading, search_text, sort_key, to_stored};
+use crate::tags::{Credit, Options, RawTags, TrackInfo, reading, search_text, sort_key, to_stored};
 
 /// スキャンで見つけたファイル。
 #[derive(Debug, Clone)]
@@ -135,6 +135,7 @@ pub fn build(
     snapshot: &Snapshot,
     music_dir: &str,
     now: i64,
+    options: Options,
 ) -> Library {
     files.sort_by(|a, b| a.row.path.cmp(&b.row.path));
     let mut taken: HashSet<String> = snapshot
@@ -155,7 +156,7 @@ pub fn build(
     }
     let infos: Vec<TrackInfo> = files
         .iter()
-        .map(|f| TrackInfo::new(&f.tags, Path::new(&f.row.path)))
+        .map(|f| TrackInfo::new(&f.tags, Path::new(&f.row.path), options))
         .collect();
 
     // 曲
