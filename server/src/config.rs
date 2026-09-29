@@ -25,6 +25,10 @@ pub struct Config {
     #[arg(long, env = "SUISEI_FFMPEG", default_value = "ffmpeg")]
     pub ffmpeg: PathBuf,
 
+    /// `キャラクター(CV:声優)` の形のアーティスト名を、キャラクターと声優に分ける。
+    #[arg(long, env = "SUISEI_SPLIT_CHARACTERS", default_value_t = true, action = clap::ArgAction::Set)]
+    pub split_characters: bool,
+
     #[command(flatten)]
     pub credentials: Credentials,
 }
@@ -41,4 +45,30 @@ pub struct Credentials {
     /// 指定したときだけ OpenSubsonic の apiKey 認証を受け付ける。
     #[arg(long, env = "SUISEI_API_KEY", hide_env_values = true)]
     pub api_key: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use clap::Parser;
+
+    use super::*;
+
+    fn parse(args: &[&str]) -> Config {
+        let base = [
+            "suisei",
+            "--music-dir",
+            "m",
+            "--user",
+            "u",
+            "--password",
+            "p",
+        ];
+        Config::try_parse_from(base.iter().chain(args)).unwrap()
+    }
+
+    #[test]
+    fn characters_are_split_by_default() {
+        assert!(parse(&[]).split_characters);
+        assert!(!parse(&["--split-characters", "false"]).split_characters);
+    }
 }

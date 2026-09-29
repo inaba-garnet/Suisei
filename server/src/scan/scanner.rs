@@ -7,13 +7,14 @@ use std::time::{Duration, Instant, SystemTime};
 
 use tokio::sync::{Mutex as AsyncMutex, OwnedMutexGuard};
 
-use super::{Mode, run_with_progress};
+use super::{Mode, Options, run_with_progress};
 use crate::db::Pool;
 
 #[derive(Debug)]
 pub struct Scanner {
     pool: Pool,
     music_dir: PathBuf,
+    options: Options,
     /// スキャン中は取られている
     lock: Arc<AsyncMutex<()>>,
     scanning: AtomicBool,
@@ -40,10 +41,11 @@ pub struct Status {
 }
 
 impl Scanner {
-    pub fn new(pool: Pool, music_dir: PathBuf) -> Arc<Self> {
+    pub fn new(pool: Pool, music_dir: PathBuf, options: Options) -> Arc<Self> {
         Arc::new(Self {
             pool,
             music_dir,
+            options,
             lock: Arc::default(),
             scanning: AtomicBool::new(false),
             progress: Arc::default(),
@@ -113,6 +115,7 @@ impl Scanner {
             &self.pool,
             &self.music_dir,
             mode,
+            self.options,
             Arc::clone(&self.progress),
         )
         .await;

@@ -50,7 +50,7 @@ impl Library {
     }
 
     async fn scan(&self) -> scan::Summary {
-        scan::run(&self.pool, self.dir.path(), Mode::Quick)
+        scan::run(&self.pool, self.dir.path(), Mode::Quick, Default::default())
             .await
             .unwrap()
     }
@@ -357,7 +357,7 @@ async fn empty_folder_does_not_wipe_library() {
     lib.scan().await;
 
     std::fs::remove_file(lib.path("a/01.flac")).unwrap();
-    let result = scan::run(&lib.pool, lib.dir.path(), Mode::Quick).await;
+    let result = scan::run(&lib.pool, lib.dir.path(), Mode::Quick, Default::default()).await;
     assert!(matches!(result, Err(scan::Error::Empty)));
     assert_eq!(lib.count("file").await, 1);
 }
@@ -365,7 +365,13 @@ async fn empty_folder_does_not_wipe_library() {
 #[tokio::test]
 async fn missing_folder_is_an_error() {
     let lib = Library::new().await;
-    let result = scan::run(&lib.pool, &lib.path("missing"), Mode::Quick).await;
+    let result = scan::run(
+        &lib.pool,
+        &lib.path("missing"),
+        Mode::Quick,
+        Default::default(),
+    )
+    .await;
     assert!(matches!(result, Err(scan::Error::Folder(_))));
 }
 
@@ -388,7 +394,11 @@ async fn scan_endpoints() {
     let lib = Library::new().await;
     lib.put("full.flac", "a/01.flac");
     lib.put("id3v1.mp3", "b/01.mp3");
-    let scanner = Scanner::new(lib.pool.clone(), lib.dir.path().to_owned());
+    let scanner = Scanner::new(
+        lib.pool.clone(),
+        lib.dir.path().to_owned(),
+        Default::default(),
+    );
     let app = suisei::router(AppState {
         credentials: Credentials {
             user: "inaba".into(),

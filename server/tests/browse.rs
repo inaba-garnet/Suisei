@@ -86,7 +86,7 @@ async fn start(dir: TempDir) -> Server {
 
 async fn start_with_ffmpeg(dir: TempDir, ffmpeg: std::path::PathBuf) -> Server {
     let db = suisei::db::open_in_memory().await.unwrap();
-    let scanner = Scanner::new(db.clone(), dir.path().to_owned());
+    let scanner = Scanner::new(db.clone(), dir.path().to_owned(), Default::default());
     assert!(scanner.start(Mode::Quick));
     scanner.wait().await;
     let cache = tempfile::tempdir().unwrap();
@@ -341,6 +341,40 @@ async fn artist_includes_albums_with_guest_appearances() {
     let res = server.get("getArtist", &format!("&id={guest}")).await;
     assert_eq!(res["artist"]["albumCount"], 1);
     assert_eq!(res["artist"]["album"][0]["name"], "c");
+}
+
+#[tokio::test]
+async fn character_and_voice_actor_are_separate_artists() {
+    let server = server(&[
+        Song {
+            artist: "宝鐘マリン(cv.宝鐘マリン), 因幡てゐ(cv.兎田ぺこら)",
+            ..song("1.flac", "COOL&CREATE", "a")
+        },
+        song("2.flac", "兎田ぺこら", "b"),
+    ])
+    .await;
+
+    // 声優の名前で、ほかの曲とつながる
+    let pekora = server.id("artist", "name", "兎田ぺこら").await;
+    let res = server.get("getArtist", &format!("&id={pekora}")).await;
+    assert_eq!(res["artist"]["album"].as_array().unwrap().len(), 2);
+
+    let album_id = server.id("album", "name", "a").await;
+    let res = server.get("getAlbum", &format!("&id={album_id}")).await;
+    let song = &res["album"]["song"][0];
+    let artists: Vec<&str> = song["artists"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|a| a["name"].as_str().unwrap())
+        .collect();
+    // 同じ名前のキャラクターと声優は一人にまとめる
+    assert_eq!(artists, ["宝鐘マリン", "因幡てゐ", "兎田ぺこら"]);
+    // 表示用の文字列はタグのまま
+    assert_eq!(
+        song["displayArtist"],
+        "宝鐘マリン(cv.宝鐘マリン), 因幡てゐ(cv.兎田ぺこら)"
+    );
 }
 
 #[tokio::test]

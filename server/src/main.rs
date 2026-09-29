@@ -13,7 +13,10 @@ async fn main() -> std::io::Result<()> {
     let db = db::open(&config.data_dir)
         .await
         .map_err(std::io::Error::other)?;
-    let scanner = scan::Scanner::new(db.clone(), config.music_dir.clone());
+    let options = scan::Options {
+        split_characters: config.split_characters,
+    };
+    let scanner = scan::Scanner::new(db.clone(), config.music_dir.clone(), options);
     tokio::spawn(scanner.clone().run_periodically(config.scan_interval));
     let state = AppState {
         credentials: config.credentials,
