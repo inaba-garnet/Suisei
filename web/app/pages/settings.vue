@@ -63,7 +63,7 @@ async function onLogout() {
       <h2 class="text-h3 font-semibold">
         アカウント
       </h2>
-      <div class="flex items-center gap-4 rounded-lg border border-border-subtle bg-surface-1 p-4">
+      <div class="flex items-center gap-3 border-y border-divider px-3 py-3">
         <span class="flex size-9 items-center justify-center rounded-full border border-border-strong bg-accent-soft text-body font-medium">
           {{ user?.charAt(0).toUpperCase() }}
         </span>

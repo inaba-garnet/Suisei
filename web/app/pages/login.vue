@@ -36,7 +36,7 @@ async function onSubmit() {
         <AppLogo :size="36" />
       </div>
       <form
-        class="flex flex-col gap-5 rounded-xl border border-border-subtle bg-surface-1 p-6 shadow-elevation-2"
+        class="flex flex-col gap-5 rounded-lg border border-border-default bg-surface-3 p-5 shadow-elevation-4"
         @submit.prevent="onSubmit"
       >
         <div class="flex flex-col gap-2">

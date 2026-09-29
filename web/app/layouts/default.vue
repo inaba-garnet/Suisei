@@ -11,14 +11,18 @@ const { align } = useContentAlign()
     <aside class="hidden border-r border-divider bg-surface-1 md:block">
       <AppSidebar />
     </aside>
-    <main class="min-h-0 flex-1 overflow-y-auto">
-      <div class="px-4 pt-[calc(env(safe-area-inset-top)+16px)] pb-6 md:px-8 md:pt-6">
+    <!--
+      PC は内容を一枚のパネルに収め、中の一覧は枠を持たない行にする（docs/web.md）。
+      スマホはパネルを画面いっぱいに広げ、角丸と外側の余白を付けない。
+    -->
+    <main class="min-h-0 flex-1 md:py-3 md:pr-5 md:pl-5">
+      <div class="h-full overflow-y-auto px-4 pt-[calc(env(safe-area-inset-top)+16px)] pb-6 md:rounded-xl md:border md:border-divider md:bg-surface-1 md:p-5">
         <div class="max-w-[640px]" :class="{ 'mx-auto': align === 'center' }" data-testid="content">
           <slot />
         </div>
       </div>
     </main>
-    <div class="shrink-0 md:col-span-2 md:border-t md:border-divider md:bg-surface-1">
+    <div class="shrink-0 md:col-span-2 md:border-t md:border-divider md:bg-surface-1 md:px-4 md:py-2.5">
       <PlayerBar />
     </div>
     <AppTabBar class="md:hidden" />
