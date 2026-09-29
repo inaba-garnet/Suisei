@@ -1,0 +1,18 @@
+[package]
+name = "suisei-dict"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+lindera = { version = "6.2", default-features = false }
+lindera-dictionary = { version = "6.2", default-features = false }
+
+[build-dependencies]
+bzip2 = "0.6"
+flate2 = "1"
+lindera-dictionary = { version = "6.2", default-features = false, features = ["build_rs"] }
+sha2 = "0.10"
+serde_json = "1"
+tar = "0.4"
+ureq = { version = "3.3", default-features = false, features = ["rustls"] }

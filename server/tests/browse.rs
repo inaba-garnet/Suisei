@@ -215,6 +215,8 @@ async fn artists_are_grouped_by_reading() {
         song("6.flac", "ClariS", "f"),
         song("7.flac", "4U", "g"),
         song("8.flac", "[Alexandros]", "h"),
+        // 辞書にない漢字は読めない
+        song("10.flac", "𠮷", "i"),
         // 曲にだけ参加しているアーティストは載せない
         Song {
             artist: "ゲスト",
@@ -231,14 +233,19 @@ async fn artists_are_grouped_by_reading() {
             ("#".to_owned(), strings(&["[Alexandros]", "4U"])),
             ("C".to_owned(), strings(&["ClariS"])),
             ("さ".to_owned(), strings(&["サカナクション"])),
+            // 読みは形態素解析で推定する
+            ("た".to_owned(), strings(&["田村ゆかり"])),
             ("や".to_owned(), strings(&["やなぎなぎ", "米津玄師"])),
-            ("他".to_owned(), strings(&["田村ゆかり"])),
+            ("他".to_owned(), strings(&["𠮷"])),
         ]
     );
     let clairs = &artists["index"][1]["artist"][0];
     assert_eq!(clairs["albumCount"], 2);
     assert!(clairs.get("sortName").is_none());
-    let yonezu = &artists["index"][3]["artist"][1];
+    let tamura = &artists["index"][3]["artist"][0];
+    assert_eq!(tamura["sortName"], "タムラユカリ");
+    let yonezu = &artists["index"][4]["artist"][1];
+    // ソート用タグがあれば、推定より優先する
     assert_eq!(yonezu["sortName"], "ヨネズ ケンシ");
     assert!(artists["lastModified"].as_i64().unwrap() > 0);
 }
