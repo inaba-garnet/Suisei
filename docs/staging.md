@@ -27,10 +27,11 @@ exec /home/sprite/suisei/suisei
 トランスコードに使う ffmpeg は apt で入れた（`sudo apt-get install -y ffmpeg`）。`/usr/bin/ffmpeg` にあるので、`SUISEI_FFMPEG` は設定しない。
 
 ## デプロイ
-1. `server/` で `cargo build --release --target x86_64-unknown-linux-musl` を実行する。musl のターゲットと `musl-tools` が要る。
-2. `PUT /fs/write?path=/home/sprite/suisei/suisei.new&workingDir=/home/sprite&mode=0755` でバイナリを送る。
-3. `POST /exec` で sha256 を照合し、`suisei.new` を `suisei` に置き換える。
-4. `POST /services/suisei/restart` で再起動する。
+1. `web/` で `pnpm install --frozen-lockfile` と `pnpm build` を実行する。サーバーのビルドが、できた Web をバイナリに取り込む。
+2. 続けて `server/` で `cargo build --release --target x86_64-unknown-linux-musl` を実行する。musl のターゲットと `musl-tools` が要る。
+3. `PUT /fs/write?path=/home/sprite/suisei/suisei.new&workingDir=/home/sprite&mode=0755` でバイナリを送る。
+4. `POST /exec` で sha256 を照合し、`suisei.new` を `suisei` に置き換える。
+5. `POST /services/suisei/restart` で再起動する。
 
 `fs/write` には `Content-Type: application/octet-stream` を付ける。curl の `--data-binary` はフォームの型を付け、400 や 413 で失敗する。
 
