@@ -1,3 +1,7 @@
+<script setup lang="ts">
+const { align } = useContentAlign()
+</script>
+
 <template>
   <div class="flex h-dvh flex-col md:grid md:grid-cols-[240px_1fr] md:grid-rows-[1fr_72px]">
     <!--
@@ -9,7 +13,7 @@
     </aside>
     <main class="min-h-0 flex-1 overflow-y-auto">
       <div class="px-4 pt-[calc(env(safe-area-inset-top)+16px)] pb-6 md:px-8 md:pt-6">
-        <div class="mx-auto max-w-[640px]" data-testid="content">
+        <div class="max-w-[640px]" :class="{ 'mx-auto': align === 'center' }" data-testid="content">
           <slot />
         </div>
       </div>

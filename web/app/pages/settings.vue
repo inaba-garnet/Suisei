@@ -1,16 +1,27 @@
 <script setup lang="ts">
+import type { Component } from 'vue'
+import type { ContentAlign } from '~/utils/layout'
 import type { ThemePreference } from '~/utils/theme'
-import { LogOut, Monitor, Moon, Sun } from 'lucide-vue-next'
+import { AlignCenter, AlignLeft, LogOut, Monitor, Moon, Sun } from 'lucide-vue-next'
 
 useHead({ title: '設定' })
 
 const { user, logout } = useAuth()
 const { preference, setPreference } = useTheme()
+const { align, setAlign } = useContentAlign()
 
-const themes: { value: ThemePreference, label: string, icon: typeof Sun }[] = [
+const themeModel = computed({ get: () => preference.value, set: setPreference })
+const alignModel = computed({ get: () => align.value, set: setAlign })
+
+const themes: { value: ThemePreference, label: string, icon: Component }[] = [
   { value: 'system', label: 'OS に合わせる', icon: Monitor },
   { value: 'light', label: 'ライト', icon: Sun },
   { value: 'dark', label: 'ダーク', icon: Moon },
+]
+
+const aligns: { value: ContentAlign, label: string, icon: Component }[] = [
+  { value: 'center', label: '中央', icon: AlignCenter },
+  { value: 'left', label: '左寄せ', icon: AlignLeft },
 ]
 
 const loggingOut = ref(false)
@@ -35,21 +46,17 @@ async function onLogout() {
       <h2 class="text-h3 font-semibold">
         テーマ
       </h2>
-      <!-- Design の SegmentedControl に合わせる -->
-      <div role="radiogroup" aria-label="テーマ" class="inline-flex w-fit gap-0.5 rounded-md border border-border-subtle bg-surface-1 p-0.5">
-        <button
-          v-for="theme in themes"
-          :key="theme.value"
-          type="button"
-          role="radio"
-          :aria-checked="preference === theme.value"
-          class="inline-flex h-8 items-center gap-1.5 rounded-sm border border-transparent px-3 text-body text-fg-muted transition-all hover:text-fg aria-checked:border-border-strong aria-checked:bg-accent-soft aria-checked:text-fg"
-          @click="setPreference(theme.value)"
-        >
-          <component :is="theme.icon" class="size-3.5" />
-          {{ theme.label }}
-        </button>
-      </div>
+      <SegmentedControl v-model="themeModel" label="テーマ" :options="themes" />
+    </section>
+
+    <section class="mt-8 flex flex-col gap-3">
+      <h2 class="text-h3 font-semibold">
+        開発
+      </h2>
+      <p class="text-body text-fg-subtle">
+        PC で内容を置く位置を見比べるための一時的な項目です。
+      </p>
+      <SegmentedControl v-model="alignModel" label="内容の配置" :options="aligns" />
     </section>
 
     <section class="mt-8 flex flex-col gap-3">
