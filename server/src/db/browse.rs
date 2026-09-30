@@ -12,6 +12,8 @@ pub struct ArtistEntry {
     pub album_count: i64,
     pub starred_at: Option<i64>,
     pub rating: Option<i64>,
+    /// ライブラリでの役割を空白で区切ったもの。`roles()` で分ける
+    pub roles: String,
 }
 
 /// アルバムアーティストになっているアーティストを、並べ替えキーの順に返す。
@@ -21,6 +23,24 @@ pub async fn album_artists(pool: &Pool) -> Result<Vec<ArtistEntry>, sqlx::Error>
         ArtistEntry,
         r#"SELECT artist.id AS "id!", artist.name, artist.sort_name, artist.sort_key,
                   COUNT(DISTINCT album_artist.album_id) AS "album_count!: i64",
+                  (CASE WHEN EXISTS (SELECT 1 FROM album_artist
+                                     WHERE album_artist.artist_id = artist.id)
+                     THEN 'albumartist ' ELSE '' END
+                   || CASE WHEN EXISTS (SELECT 1 FROM track_artist
+                                        WHERE track_artist.artist_id = artist.id)
+                      THEN 'artist ' ELSE '' END
+                   || CASE WHEN EXISTS (SELECT 1 FROM track_contributor
+                                        WHERE track_contributor.artist_id = artist.id
+                                          AND track_contributor.role = 'composer')
+                      THEN 'composer ' ELSE '' END
+                   || CASE WHEN EXISTS (SELECT 1 FROM track_contributor
+                                        WHERE track_contributor.artist_id = artist.id
+                                          AND track_contributor.role = 'lyricist')
+                      THEN 'lyricist ' ELSE '' END
+                   || CASE WHEN EXISTS (SELECT 1 FROM track_contributor
+                                        WHERE track_contributor.artist_id = artist.id
+                                          AND track_contributor.role = 'arranger')
+                      THEN 'arranger ' ELSE '' END) AS "roles!: String",
                   artist.starred_at, artist.rating
            FROM artist JOIN album_artist ON album_artist.artist_id = artist.id
            GROUP BY artist.id
@@ -28,6 +48,83 @@ pub async fn album_artists(pool: &Pool) -> Result<Vec<ArtistEntry>, sqlx::Error>
     )
     .fetch_all(pool)
     .await
+}
+
+/// 曲のアーティストになっているアーティスト。アルバムの数は、曲で参加しているアルバムの数。
+pub async fn track_artists(pool: &Pool) -> Result<Vec<ArtistEntry>, sqlx::Error> {
+    sqlx::query_as!(
+        ArtistEntry,
+        r#"SELECT artist.id AS "id!", artist.name, artist.sort_name, artist.sort_key,
+                  COUNT(DISTINCT track.album_id) AS "album_count!: i64",
+                  (CASE WHEN EXISTS (SELECT 1 FROM album_artist
+                                     WHERE album_artist.artist_id = artist.id)
+                     THEN 'albumartist ' ELSE '' END
+                   || CASE WHEN EXISTS (SELECT 1 FROM track_artist
+                                        WHERE track_artist.artist_id = artist.id)
+                      THEN 'artist ' ELSE '' END
+                   || CASE WHEN EXISTS (SELECT 1 FROM track_contributor
+                                        WHERE track_contributor.artist_id = artist.id
+                                          AND track_contributor.role = 'composer')
+                      THEN 'composer ' ELSE '' END
+                   || CASE WHEN EXISTS (SELECT 1 FROM track_contributor
+                                        WHERE track_contributor.artist_id = artist.id
+                                          AND track_contributor.role = 'lyricist')
+                      THEN 'lyricist ' ELSE '' END
+                   || CASE WHEN EXISTS (SELECT 1 FROM track_contributor
+                                        WHERE track_contributor.artist_id = artist.id
+                                          AND track_contributor.role = 'arranger')
+                      THEN 'arranger ' ELSE '' END) AS "roles!: String",
+                  artist.starred_at, artist.rating
+           FROM artist
+             JOIN track_artist ON track_artist.artist_id = artist.id
+             JOIN track ON track.id = track_artist.track_id
+           GROUP BY artist.id
+           ORDER BY artist.sort_key, artist.id"#
+    )
+    .fetch_all(pool)
+    .await
+}
+
+/// 作曲、作詞、編曲のどれかの役割を持つアーティスト。アルバムの数は、その役割で関わったアルバムの数。
+pub async fn contributors(pool: &Pool, role: &str) -> Result<Vec<ArtistEntry>, sqlx::Error> {
+    sqlx::query_as!(
+        ArtistEntry,
+        r#"SELECT artist.id AS "id!", artist.name, artist.sort_name, artist.sort_key,
+                  COUNT(DISTINCT track.album_id) AS "album_count!: i64",
+                  (CASE WHEN EXISTS (SELECT 1 FROM album_artist
+                                     WHERE album_artist.artist_id = artist.id)
+                     THEN 'albumartist ' ELSE '' END
+                   || CASE WHEN EXISTS (SELECT 1 FROM track_artist
+                                        WHERE track_artist.artist_id = artist.id)
+                      THEN 'artist ' ELSE '' END
+                   || CASE WHEN EXISTS (SELECT 1 FROM track_contributor
+                                        WHERE track_contributor.artist_id = artist.id
+                                          AND track_contributor.role = 'composer')
+                      THEN 'composer ' ELSE '' END
+                   || CASE WHEN EXISTS (SELECT 1 FROM track_contributor
+                                        WHERE track_contributor.artist_id = artist.id
+                                          AND track_contributor.role = 'lyricist')
+                      THEN 'lyricist ' ELSE '' END
+                   || CASE WHEN EXISTS (SELECT 1 FROM track_contributor
+                                        WHERE track_contributor.artist_id = artist.id
+                                          AND track_contributor.role = 'arranger')
+                      THEN 'arranger ' ELSE '' END) AS "roles!: String",
+                  artist.starred_at, artist.rating
+           FROM artist
+             JOIN track_contributor ON track_contributor.artist_id = artist.id
+             JOIN track ON track.id = track_contributor.track_id
+           WHERE track_contributor.role = ?
+           GROUP BY artist.id
+           ORDER BY artist.sort_key, artist.id"#,
+        role
+    )
+    .fetch_all(pool)
+    .await
+}
+
+/// 問い合わせで空白区切りにした役割を分ける。並びは albumartist、artist、composer、lyricist、arranger。
+pub fn roles(roles: &str) -> Vec<&str> {
+    roles.split_whitespace().collect()
 }
 
 /// 手動や自動のマージで消えた ID なら、引き継いだ ID に引き直す。
@@ -45,6 +142,7 @@ pub struct Artist {
     pub sort_name: Option<String>,
     pub starred_at: Option<i64>,
     pub rating: Option<i64>,
+    pub roles: String,
 }
 
 /// 検索とお気に入りの一覧に出すアーティスト。
@@ -53,16 +151,37 @@ pub struct ArtistSummary {
     pub id: String,
     pub name: String,
     pub sort_name: Option<String>,
-    /// アルバムアーティストのアルバムと、曲で参加しているアルバムの数（getArtist と同じ）
+    /// アルバムアーティストのアルバムと、曲や作曲などで関わったアルバムの数（getArtist と同じ）
     pub album_count: i64,
     pub starred_at: Option<i64>,
     pub rating: Option<i64>,
+    pub roles: String,
 }
 
 pub async fn artist(pool: &Pool, id: &str) -> Result<Option<Artist>, sqlx::Error> {
     sqlx::query_as!(
         Artist,
-        r#"SELECT id AS "id!", name, sort_name, starred_at, rating FROM artist WHERE id = ?"#,
+        r#"SELECT artist.id AS "id!", artist.name, artist.sort_name,
+                  (CASE WHEN EXISTS (SELECT 1 FROM album_artist
+                                     WHERE album_artist.artist_id = artist.id)
+                     THEN 'albumartist ' ELSE '' END
+                   || CASE WHEN EXISTS (SELECT 1 FROM track_artist
+                                        WHERE track_artist.artist_id = artist.id)
+                      THEN 'artist ' ELSE '' END
+                   || CASE WHEN EXISTS (SELECT 1 FROM track_contributor
+                                        WHERE track_contributor.artist_id = artist.id
+                                          AND track_contributor.role = 'composer')
+                      THEN 'composer ' ELSE '' END
+                   || CASE WHEN EXISTS (SELECT 1 FROM track_contributor
+                                        WHERE track_contributor.artist_id = artist.id
+                                          AND track_contributor.role = 'lyricist')
+                      THEN 'lyricist ' ELSE '' END
+                   || CASE WHEN EXISTS (SELECT 1 FROM track_contributor
+                                        WHERE track_contributor.artist_id = artist.id
+                                          AND track_contributor.role = 'arranger')
+                      THEN 'arranger ' ELSE '' END) AS "roles!: String",
+                  artist.starred_at, artist.rating
+           FROM artist WHERE artist.id = ?"#,
         id
     )
     .fetch_optional(pool)
@@ -125,8 +244,13 @@ pub async fn albums_of_artist(pool: &Pool, artist_id: &str) -> Result<Vec<Album>
              UNION
              SELECT track.album_id FROM track
                JOIN track_artist ON track_artist.track_id = track.id
-               WHERE track_artist.artist_id = ?)
+               WHERE track_artist.artist_id = ?
+             UNION
+             SELECT track.album_id FROM track
+               JOIN track_contributor ON track_contributor.track_id = track.id
+               WHERE track_contributor.artist_id = ?)
          ORDER BY album.year IS NULL, album.year, album.sort_key, album.id",
+        artist_id,
         artist_id,
         artist_id
     )
@@ -380,6 +504,38 @@ pub async fn track_artists_of_album(
     .await
 }
 
+/// 曲の作曲者など。名前は表記ゆれをまとめた表示名。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Contributor {
+    pub track_id: String,
+    pub role: String,
+    pub artist_id: String,
+    pub name: String,
+}
+
+/// アルバムの曲すべての作曲者など。役割は作曲、作詞、編曲の順。
+pub async fn contributors_of_album(
+    pool: &Pool,
+    album_id: &str,
+) -> Result<Vec<Contributor>, sqlx::Error> {
+    sqlx::query_as!(
+        Contributor,
+        r#"SELECT track_contributor.track_id, track_contributor.role,
+                  artist.id AS "artist_id!", artist.name
+           FROM track_contributor
+             JOIN artist ON artist.id = track_contributor.artist_id
+             JOIN track ON track.id = track_contributor.track_id
+           WHERE track.album_id = ?
+           ORDER BY track_contributor.track_id,
+                    CASE track_contributor.role WHEN 'composer' THEN 0 WHEN 'lyricist' THEN 1
+                      ELSE 2 END,
+                    track_contributor.position"#,
+        album_id
+    )
+    .fetch_all(pool)
+    .await
+}
+
 /// アルバムの曲すべてのジャンル。(曲の ID, ジャンル)
 pub async fn track_genres_of_album(
     pool: &Pool,
@@ -423,6 +579,8 @@ pub struct Song {
     pub track_number: Option<i64>,
     pub year: Option<i64>,
     pub created_at: i64,
+    /// COMPOSER のまま（displayComposer）
+    pub display_composer: Option<String>,
     pub album_name: String,
     pub album_display_artist: String,
     pub album_has_cover: bool,
@@ -448,7 +606,8 @@ pub async fn songs_of_album(pool: &Pool, album_id: &str) -> Result<Vec<Song>, sq
         Song,
         r#"SELECT track.id AS "id!", track.album_id, track.title, track.display_artist,
                   track.sort_name, track.disc_number, track.track_number, track.year,
-                  track.created_at, track.starred_at, track.rating, album.name AS album_name,
+                  track.created_at, track.starred_at, track.rating, track.display_composer,
+                  album.name AS album_name,
                   album.display_artist AS album_display_artist,
                   album.cover_path IS NOT NULL AS "album_has_cover!: bool", file.path, file.size,
                   file.suffix, file.content_type, file.duration_ms, file.bit_rate,
@@ -474,7 +633,8 @@ pub async fn song(pool: &Pool, id: &str) -> Result<Option<Song>, sqlx::Error> {
         Song,
         r#"SELECT track.id AS "id!", track.album_id, track.title, track.display_artist,
                   track.sort_name, track.disc_number, track.track_number, track.year,
-                  track.created_at, track.starred_at, track.rating, album.name AS album_name,
+                  track.created_at, track.starred_at, track.rating, track.display_composer,
+                  album.name AS album_name,
                   album.display_artist AS album_display_artist,
                   album.cover_path IS NOT NULL AS "album_has_cover!: bool", file.path, file.size,
                   file.suffix, file.content_type, file.duration_ms, file.bit_rate,

@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT track_contributor.track_id, track_contributor.role,\n                  artist.id AS \"artist_id!\", artist.name\n           FROM track_contributor\n             JOIN artist ON artist.id = track_contributor.artist_id\n             JOIN track ON track.id = track_contributor.track_id\n           WHERE track.album_id = ?\n           ORDER BY track_contributor.track_id,\n                    CASE track_contributor.role WHEN 'composer' THEN 0 WHEN 'lyricist' THEN 1\n                      ELSE 2 END,\n                    track_contributor.position",
+  "describe": {
+    "columns": [
+      {
+        "name": "track_id",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track_contributor",
+            "name": "track_id"
+          }
+        }
+      },
+      {
+        "name": "role",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track_contributor",
+            "name": "role"
+          }
+        }
+      },
+      {
+        "name": "artist_id!",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "name",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "name"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "f7177d9fce39992b0cfa369f640ce636ffef3d6a97861af2a05cccaf7c769135"
+}

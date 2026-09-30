@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT track_id, role, position, artist_id FROM track_contributor",
+  "describe": {
+    "columns": [
+      {
+        "name": "track_id",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track_contributor",
+            "name": "track_id"
+          }
+        }
+      },
+      {
+        "name": "role",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track_contributor",
+            "name": "role"
+          }
+        }
+      },
+      {
+        "name": "position",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "track_contributor",
+            "name": "position"
+          }
+        }
+      },
+      {
+        "name": "artist_id",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track_contributor",
+            "name": "artist_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "5cb420f31e181edc6a0fa433eb2f4baef76eb10c207dc30a50839823e2c2aa36"
+}

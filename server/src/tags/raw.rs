@@ -28,14 +28,17 @@ pub struct RawTags {
     pub track_number: Option<u32>,
     pub year: Option<i32>,
     pub genres: Vec<String>,
+    pub composers: Vec<String>,
+    pub lyricists: Vec<String>,
+    pub arrangers: Vec<String>,
     pub compilation: bool,
     /// 埋め込みの画像があるか。カバーアートを探すのに使う
     pub has_picture: bool,
 }
 
 /// DB に保存するタグの版。タグから読む項目を足したら上げ、古い版で保存したファイルを読み直させる。
-/// 版 1 で `has_picture` を足した。
-const STORED_VERSION: u32 = 1;
+/// 版 1 で `has_picture`、版 2 で `composers`、`lyricists`、`arrangers` を足した。
+const STORED_VERSION: u32 = 2;
 
 #[derive(serde::Serialize, serde::Deserialize)]
 struct Stored {
@@ -111,6 +114,9 @@ fn from_tag(tag: &Tag) -> RawTags {
         track_number: tag.track(),
         year: tag.date().map(|date| i32::from(date.year)),
         genres: many(ItemKey::Genre),
+        composers: many(ItemKey::Composer),
+        lyricists: many(ItemKey::Lyricist),
+        arrangers: many(ItemKey::Arranger),
         compilation: tag
             .get_string(ItemKey::FlagCompilation)
             .is_some_and(|value| matches!(value.trim(), "1") || value.eq_ignore_ascii_case("true")),
@@ -204,6 +210,9 @@ mod tests {
             track_number: Some(3),
             year: Some(2015),
             genres: strings(&["Rock", "Pop"]),
+            composers: Vec::new(),
+            lyricists: Vec::new(),
+            arrangers: Vec::new(),
             compilation: true,
             has_picture: false,
         }

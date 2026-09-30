@@ -1,0 +1,81 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT artist.id AS \"id!\", artist.name, artist.sort_name,\n                  (CASE WHEN EXISTS (SELECT 1 FROM album_artist\n                                     WHERE album_artist.artist_id = artist.id)\n                     THEN 'albumartist ' ELSE '' END\n                   || CASE WHEN EXISTS (SELECT 1 FROM track_artist\n                                        WHERE track_artist.artist_id = artist.id)\n                      THEN 'artist ' ELSE '' END\n                   || CASE WHEN EXISTS (SELECT 1 FROM track_contributor\n                                        WHERE track_contributor.artist_id = artist.id\n                                          AND track_contributor.role = 'composer')\n                      THEN 'composer ' ELSE '' END\n                   || CASE WHEN EXISTS (SELECT 1 FROM track_contributor\n                                        WHERE track_contributor.artist_id = artist.id\n                                          AND track_contributor.role = 'lyricist')\n                      THEN 'lyricist ' ELSE '' END\n                   || CASE WHEN EXISTS (SELECT 1 FROM track_contributor\n                                        WHERE track_contributor.artist_id = artist.id\n                                          AND track_contributor.role = 'arranger')\n                      THEN 'arranger ' ELSE '' END) AS \"roles!: String\",\n                  artist.starred_at, artist.rating\n           FROM artist WHERE artist.id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "name": "sort_name",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "sort_name"
+          }
+        }
+      },
+      {
+        "name": "roles!: String",
+        "ordinal": 3,
+        "type_info": "Null",
+        "origin": "Expression"
+      },
+      {
+        "name": "starred_at",
+        "ordinal": 4,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "starred_at"
+          }
+        }
+      },
+      {
+        "name": "rating",
+        "ordinal": 5,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "rating"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      null,
+      true,
+      true
+    ]
+  },
+  "hash": "1266bf8ec34ca07f846d18b5e22c88e03f9452fe31875a49c3ed835d53d3f7f3"
+}

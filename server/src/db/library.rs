@@ -68,6 +68,7 @@ pub struct TrackRow {
     pub disc_number: Option<i64>,
     pub track_number: Option<i64>,
     pub year: Option<i64>,
+    pub display_composer: Option<String>,
     pub primary_file_id: String,
     pub created_at: i64,
 }
@@ -80,6 +81,16 @@ pub struct CreditRow {
     pub artist_id: String,
     pub credited_name: String,
     pub credited_sort: Option<String>,
+}
+
+/// track_contributor の一行。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ContributorRow {
+    pub track_id: String,
+    pub role: String,
+    pub position: i64,
+    pub artist_id: String,
+    pub credited_name: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -103,6 +114,8 @@ pub struct Snapshot {
     pub track_artists: Vec<(String, i64, String)>,
     /// (album_id, position, artist_id)
     pub album_artists: Vec<(String, i64, String)>,
+    /// (track_id, role, position, artist_id)
+    pub track_contributors: Vec<(String, String, i64, String)>,
     /// 別名として使っている古い ID
     pub alias_ids: Vec<String>,
 }
@@ -117,6 +130,7 @@ pub struct Library {
     pub files: Vec<FileRow>,
     pub track_artists: Vec<CreditRow>,
     pub album_artists: Vec<CreditRow>,
+    pub track_contributors: Vec<ContributorRow>,
     pub track_genres: Vec<GenreRow>,
     /// (old_id, new_id)
     pub aliases: Vec<(String, String)>,
@@ -163,6 +177,13 @@ pub async fn snapshot(pool: &Pool) -> Result<Snapshot, sqlx::Error> {
         .into_iter()
         .map(|r| (r.album_id, r.position, r.artist_id))
         .collect();
+    let track_contributors =
+        sqlx::query!("SELECT track_id, role, position, artist_id FROM track_contributor")
+            .fetch_all(&mut *conn)
+            .await?
+            .into_iter()
+            .map(|r| (r.track_id, r.role, r.position, r.artist_id))
+            .collect();
     let alias_ids = sqlx::query_scalar!(r#"SELECT old_id AS "old_id!" FROM id_alias"#)
         .fetch_all(&mut *conn)
         .await?;
@@ -173,6 +194,7 @@ pub async fn snapshot(pool: &Pool) -> Result<Snapshot, sqlx::Error> {
         artists,
         track_artists,
         album_artists,
+        track_contributors,
         alias_ids,
     })
 }
@@ -197,6 +219,9 @@ pub async fn replace(pool: &Pool, library: &Library) -> Result<(), sqlx::Error> 
         .execute(&mut *tx)
         .await?;
     sqlx::query!("DELETE FROM album_artist")
+        .execute(&mut *tx)
+        .await?;
+    sqlx::query!("DELETE FROM track_contributor")
         .execute(&mut *tx)
         .await?;
     sqlx::query!("DELETE FROM track_genre")
@@ -253,8 +278,8 @@ pub async fn replace(pool: &Pool, library: &Library) -> Result<(), sqlx::Error> 
         sqlx::query!(
             "INSERT INTO track (id, match_key, album_id, title, display_artist, sort_name,
                  sort_name_source, disc_number, track_number, year, primary_file_id, sort_key,
-                 created_at, search_text)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 created_at, search_text, display_composer)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT (id) DO UPDATE SET match_key = excluded.match_key,
                  album_id = excluded.album_id, title = excluded.title,
                  display_artist = excluded.display_artist, sort_name = excluded.sort_name,
@@ -262,7 +287,8 @@ pub async fn replace(pool: &Pool, library: &Library) -> Result<(), sqlx::Error> 
                  disc_number = excluded.disc_number, track_number = excluded.track_number,
                  year = excluded.year, primary_file_id = excluded.primary_file_id,
                  sort_key = excluded.sort_key, created_at = excluded.created_at,
-                 search_text = excluded.search_text",
+                 search_text = excluded.search_text,
+                 display_composer = excluded.display_composer",
             t.id,
             t.match_key,
             t.album_id,
@@ -276,7 +302,8 @@ pub async fn replace(pool: &Pool, library: &Library) -> Result<(), sqlx::Error> 
             t.primary_file_id,
             t.sort_key,
             t.created_at,
-            t.search_text
+            t.search_text,
+            t.display_composer
         )
         .execute(&mut *tx)
         .await?;
@@ -350,6 +377,19 @@ pub async fn replace(pool: &Pool, library: &Library) -> Result<(), sqlx::Error> 
         .execute(&mut *tx)
         .await?;
     }
+    for c in &library.track_contributors {
+        sqlx::query!(
+            "INSERT INTO track_contributor (track_id, role, position, artist_id, credited_name)
+             VALUES (?, ?, ?, ?, ?)",
+            c.track_id,
+            c.role,
+            c.position,
+            c.artist_id,
+            c.credited_name
+        )
+        .execute(&mut *tx)
+        .await?;
+    }
     for g in &library.track_genres {
         sqlx::query!(
             "INSERT INTO track_genre (track_id, position, genre) VALUES (?, ?, ?)",
@@ -400,7 +440,8 @@ pub async fn replace(pool: &Pool, library: &Library) -> Result<(), sqlx::Error> 
         .await?;
     sqlx::query!(
         "DELETE FROM artist WHERE id NOT IN (SELECT artist_id FROM track_artist)
-             AND id NOT IN (SELECT artist_id FROM album_artist)"
+             AND id NOT IN (SELECT artist_id FROM album_artist)
+             AND id NOT IN (SELECT artist_id FROM track_contributor)"
     )
     .execute(&mut *tx)
     .await?;

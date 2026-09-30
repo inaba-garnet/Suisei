@@ -6,10 +6,12 @@ use std::path::Path;
 
 use super::Images;
 use crate::db::library::{
-    AlbumRow, ArtistRow, CreditRow, FileRow, GenreRow, Library, Snapshot, TrackRow,
+    AlbumRow, ArtistRow, ContributorRow, CreditRow, FileRow, GenreRow, Library, Snapshot, TrackRow,
 };
 use crate::db::{IdKind, new_id};
-use crate::tags::{Credit, Options, RawTags, TrackInfo, reading, search_text, sort_key, to_stored};
+use crate::tags::{
+    Contributor, Credit, Options, RawTags, TrackInfo, reading, search_text, sort_key, to_stored,
+};
 
 /// スキャンで見つけたファイル。
 #[derive(Debug, Clone)]
@@ -260,6 +262,18 @@ pub fn build(
             slots.push((credit, previous.copied()));
         }
     }
+    // 作曲者などは、役割ごとの位置で前回のアーティストを引き継ぐ
+    let previous_contributor: HashMap<(&str, &str, i64), &str> = snapshot
+        .track_contributors
+        .iter()
+        .map(|(t, r, p, a)| ((t.as_str(), r.as_str(), *p), a.as_str()))
+        .collect();
+    for (&primary, owner) in primaries.iter().zip(&track_ids) {
+        for (role, position, contributor) in contributor_positions(&infos[primary]) {
+            let previous = previous_contributor.get(&(owner.as_str(), role, position));
+            slots.push((&contributor.credit, previous.copied()));
+        }
+    }
     let (artist_keys, slot_artist) = group_by(slots.iter().map(|(c, _)| c.match_key.as_str()));
     let mut artist_groups: Vec<Group> = artist_keys
         .iter()
@@ -336,6 +350,7 @@ pub fn build(
     let genre_names = genre_names(&infos);
     let mut tracks = Vec::new();
     let mut track_artists = Vec::new();
+    let mut track_contributors = Vec::new();
     let mut track_genres = Vec::new();
     for (t, id) in track_ids.iter().enumerate() {
         let primary = primaries[t];
@@ -363,6 +378,7 @@ pub fn build(
             disc_number: info.disc_number.map(i64::from),
             track_number: info.track_number.map(i64::from),
             year: info.year.map(i64::from),
+            display_composer: info.display_composer.clone(),
             primary_file_id: files[primary].row.id.clone(),
             // 0 は、created_at を持つ前のマイグレーションで入った行
             created_at: track_created_at
@@ -372,6 +388,15 @@ pub fn build(
                 .unwrap_or(now),
         });
         track_artists.extend(credit_rows(id, &info.artists, &artist_by_key));
+        track_contributors.extend(contributor_positions(info).map(|(role, position, c)| {
+            ContributorRow {
+                track_id: id.clone(),
+                role: role.to_owned(),
+                position,
+                artist_id: artist_by_key[c.credit.match_key.as_str()].to_owned(),
+                credited_name: c.credit.name.clone(),
+            }
+        }));
         track_genres.extend(info.genres.iter().enumerate().map(|(p, genre)| GenreRow {
             track_id: id.clone(),
             position: p as i64,
@@ -402,9 +427,23 @@ pub fn build(
         files,
         track_artists,
         album_artists,
+        track_contributors,
         track_genres,
         aliases,
     }
+}
+
+/// 作曲者などと、役割の名前と、役割ごとの位置。
+fn contributor_positions(
+    info: &TrackInfo,
+) -> impl Iterator<Item = (&'static str, i64, &Contributor)> {
+    let mut counts: HashMap<&'static str, i64> = HashMap::new();
+    info.contributors.iter().map(move |c| {
+        let role = c.role.as_str();
+        let position = counts.entry(role).or_insert(0);
+        *position += 1;
+        (role, *position - 1, c)
+    })
 }
 
 /// 配信に使うファイル。可逆圧縮を優先し、同じ種類ならビットレートが高いほう（docs/schema.md）。
@@ -560,7 +599,13 @@ fn artist_rows(infos: &[TrackInfo], keys: &[String], ids: &[String]) -> Vec<Arti
     let mut sorts: Vec<Vec<&str>> = vec![Vec::new(); keys.len()];
     for info in infos {
         let mut seen = HashSet::new();
-        for credit in info.artists.iter().chain(&info.album.artists) {
+        let contributors = info.contributors.iter().map(|c| &c.credit);
+        for credit in info
+            .artists
+            .iter()
+            .chain(&info.album.artists)
+            .chain(contributors)
+        {
             let Some(&i) = index.get(credit.match_key.as_str()) else {
                 continue;
             };
