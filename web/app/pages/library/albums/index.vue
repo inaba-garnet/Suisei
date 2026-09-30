@@ -37,7 +37,7 @@ const sort = ref('name')
   <div>
     <PageHeader title="アルバム" />
     <div v-if="dev" class="mb-4 flex flex-wrap items-center gap-2" data-testid="album-controls">
-      <SegmentedControl v-model="view" label="表示" :options="views" />
+      <SegmentedControl v-model="view" label="表示" :options="views" icon-only />
       <select
         v-model="sort"
         aria-label="並び順"
