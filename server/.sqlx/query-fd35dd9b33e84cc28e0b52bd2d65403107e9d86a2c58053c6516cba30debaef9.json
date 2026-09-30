@@ -1,0 +1,311 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT track.id AS \"id!\", track.album_id, track.title, track.display_artist,\n                  track.sort_name, track.disc_number, track.track_number, track.year,\n                  track.created_at, track.starred_at, track.rating, track.display_composer,\n                  album.name AS album_name,\n                  album.display_artist AS album_display_artist,\n                  album.cover_path IS NOT NULL AS \"album_has_cover!: bool\", file.path, file.size,\n                  file.suffix, file.content_type, file.duration_ms, file.bit_rate,\n                  file.sample_rate, file.channels, file.bit_depth,\n                  (SELECT COUNT(*) FROM play_history WHERE play_history.track_id = track.id)\n                    AS \"play_count!: i64\",\n                  (SELECT MAX(played_at) FROM play_history WHERE play_history.track_id = track.id)\n                    AS \"last_played: i64\"\n           FROM track\n             JOIN album ON album.id = track.album_id\n             JOIN file ON file.id = track.primary_file_id\n           WHERE track.id IN (\n               SELECT track.id FROM track\n                 JOIN album_artist ON album_artist.album_id = track.album_id\n               WHERE album_artist.artist_id = ?1 AND ?2\n               UNION\n               SELECT track_id FROM track_artist WHERE artist_id = ?1 AND ?3\n               UNION\n               SELECT track_id FROM track_contributor\n               WHERE artist_id = ?1\n                 AND ((role = 'composer' AND ?4)\n                   OR (role = 'lyricist' AND ?5)\n                   OR (role = 'arranger' AND ?6)))\n           ORDER BY album.year IS NULL, album.year, album.sort_key, album.id,\n                    track.disc_number IS NULL, track.disc_number,\n                    track.track_number IS NULL, track.track_number, track.sort_key, track.id",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "album_id",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "album_id"
+          }
+        }
+      },
+      {
+        "name": "title",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "name": "display_artist",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "display_artist"
+          }
+        }
+      },
+      {
+        "name": "sort_name",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "sort_name"
+          }
+        }
+      },
+      {
+        "name": "disc_number",
+        "ordinal": 5,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "disc_number"
+          }
+        }
+      },
+      {
+        "name": "track_number",
+        "ordinal": 6,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "track_number"
+          }
+        }
+      },
+      {
+        "name": "year",
+        "ordinal": 7,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "year"
+          }
+        }
+      },
+      {
+        "name": "created_at",
+        "ordinal": 8,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "name": "starred_at",
+        "ordinal": 9,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "starred_at"
+          }
+        }
+      },
+      {
+        "name": "rating",
+        "ordinal": 10,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "rating"
+          }
+        }
+      },
+      {
+        "name": "display_composer",
+        "ordinal": 11,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "display_composer"
+          }
+        }
+      },
+      {
+        "name": "album_name",
+        "ordinal": 12,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "name": "album_display_artist",
+        "ordinal": 13,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "display_artist"
+          }
+        }
+      },
+      {
+        "name": "album_has_cover!: bool",
+        "ordinal": 14,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "path",
+        "ordinal": 15,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "path"
+          }
+        }
+      },
+      {
+        "name": "size",
+        "ordinal": 16,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "size"
+          }
+        }
+      },
+      {
+        "name": "suffix",
+        "ordinal": 17,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "suffix"
+          }
+        }
+      },
+      {
+        "name": "content_type",
+        "ordinal": 18,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "content_type"
+          }
+        }
+      },
+      {
+        "name": "duration_ms",
+        "ordinal": 19,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "duration_ms"
+          }
+        }
+      },
+      {
+        "name": "bit_rate",
+        "ordinal": 20,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "bit_rate"
+          }
+        }
+      },
+      {
+        "name": "sample_rate",
+        "ordinal": 21,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "sample_rate"
+          }
+        }
+      },
+      {
+        "name": "channels",
+        "ordinal": 22,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "channels"
+          }
+        }
+      },
+      {
+        "name": "bit_depth",
+        "ordinal": 23,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "bit_depth"
+          }
+        }
+      },
+      {
+        "name": "play_count!: i64",
+        "ordinal": 24,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "last_played: i64",
+        "ordinal": 25,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "fd35dd9b33e84cc28e0b52bd2d65403107e9d86a2c58053c6516cba30debaef9"
+}
