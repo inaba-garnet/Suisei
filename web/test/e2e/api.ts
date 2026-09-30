@@ -85,17 +85,26 @@ export async function mockLibrary(page: Page, { count = 250, songs = 2, name = (
   return { albums, requests }
 }
 
-/** `/rest` のアーティストの偽物。読みの行ごとに `perRow` 人ずつ並べ、呼ばれた回数を `calls` に数える。 */
+/**
+ * `/rest` のアーティストの偽物。読みの行ごとに `perRow` 人ずつ並べ、呼ばれた回数を `calls` に数える。
+ * `getArtists` の `role` がアルバムアーティスト以外なら、名前の前に役割を付けて別の人にする。受けた `role` は `roles` に残す。
+ */
 export async function mockArtists(page: Page, { rows = ['ア', 'カ', 'サ', 'タ', 'A', 'B'], perRow = 12 } = {}) {
   const index = rows.map(row => ({
     name: row,
     artist: Array.from({ length: perRow }, (_, i) => ({ id: `ar-${row}-${i}`, name: `${row}のアーティスト ${i}`, albumCount: 2 })),
   }))
   const calls = { artists: 0 }
+  const roles: string[] = []
   const ok = (body: object) => ({ json: { 'subsonic-response': { status: 'ok', version: '1.16.1', ...body } } })
   await page.route(/\/rest\/getArtists(\?|$)/, (route) => {
     calls.artists++
-    return route.fulfill(ok({ artists: { ignoredArticles: '', index } }))
+    const role = new URL(route.request().url()).searchParams.get('role') ?? 'albumartist'
+    roles.push(role)
+    const named = role === 'albumartist'
+      ? index
+      : index.map(group => ({ ...group, artist: group.artist.map(a => ({ ...a, name: `${role}:${a.name}` })) }))
+    return route.fulfill(ok({ artists: { ignoredArticles: '', index: named } }))
   })
   await page.route(/\/rest\/getArtist(\?|$)/, (route) => {
     const id = new URL(route.request().url()).searchParams.get('id')!
@@ -111,5 +120,5 @@ export async function mockArtists(page: Page, { rows = ['ア', 'カ', 'サ', '�
     }))
   })
   await page.route(/\/rest\/getCoverArt(\?|$)/, route => route.fulfill({ status: 404 }))
-  return { index, calls }
+  return { index, calls, roles }
 }
