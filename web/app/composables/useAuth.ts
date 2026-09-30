@@ -7,18 +7,21 @@ export class LoginError extends Error {}
 
 export function useAuth() {
   const user = useUser()
+  const serverDev = useServerDev()
 
   /** `GET /api/me` でログイン中かを確かめる（docs/server.md の「Web クライアントのログイン」）。 */
   async function fetchMe(): Promise<string | null> {
     try {
-      const me = await $fetch<{ username: string }>('/api/me')
+      const me = await $fetch<{ username: string, dev?: boolean }>('/api/me')
       user.value = me.username
+      serverDev.value = me.dev === true
     }
     catch (err) {
       if (statusOf(err) !== 401) {
         throw err
       }
       user.value = null
+      serverDev.value = false
     }
     return user.value
   }
@@ -33,13 +36,15 @@ export function useAuth() {
       }
       throw err
     }
-    user.value = username
+    // 開発モードかどうかも受け取るため、ログイン中の利用者を取り直す
+    await fetchMe()
   }
 
   async function logout(): Promise<void> {
     // $fetch は body がないと Content-Type を付けないので、空の JSON を送る
     await $fetch('/api/logout', { method: 'POST', body: {} })
     user.value = null
+    serverDev.value = false
   }
 
   return { user, fetchMe, login, logout }

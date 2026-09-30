@@ -101,6 +101,7 @@ async fn start_with_ffmpeg(dir: TempDir, ffmpeg: std::path::PathBuf) -> Server {
         now_playing: Default::default(),
         cache_dir: cache.path().to_owned(),
         ffmpeg,
+        dev: false,
     });
     Server {
         dir,

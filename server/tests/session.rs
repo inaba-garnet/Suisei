@@ -38,6 +38,7 @@ impl App {
             now_playing: Default::default(),
             cache_dir: "/nonexistent".into(),
             ffmpeg: "ffmpeg".into(),
+            dev: false,
         });
         Self { router, db }
     }
@@ -216,6 +217,7 @@ async fn me_returns_user_and_renews_cookie() {
     assert_eq!(res.status, StatusCode::OK);
     let body: Value = serde_json::from_str(&res.body).unwrap();
     assert_eq!(body["username"], "inaba");
+    assert_eq!(body["dev"], false);
     let cookie = res.set_cookie.unwrap();
     assert_eq!(cookie_value(&cookie), token);
     assert!(cookie.contains("; Max-Age=2592000"), "{cookie}");

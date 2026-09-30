@@ -29,6 +29,10 @@ pub struct Config {
     #[arg(long, env = "SUISEI_SPLIT_CHARACTERS", default_value_t = true, action = clap::ArgAction::Set)]
     pub split_characters: bool,
 
+    /// 開発モード。Web クライアントが未完成の UI を出す。
+    #[arg(long, env = "SUISEI_DEV", default_value_t = false, action = clap::ArgAction::Set)]
+    pub dev: bool,
+
     #[command(flatten)]
     pub credentials: Credentials,
 }
@@ -70,5 +74,11 @@ mod tests {
     fn characters_are_split_by_default() {
         assert!(parse(&[]).split_characters);
         assert!(!parse(&["--split-characters", "false"]).split_characters);
+    }
+
+    #[test]
+    fn dev_is_off_by_default() {
+        assert!(!parse(&[]).dev);
+        assert!(parse(&["--dev", "true"]).dev);
     }
 }
