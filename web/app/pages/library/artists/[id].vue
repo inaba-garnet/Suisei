@@ -13,11 +13,6 @@ const { data: artist, status, refresh } = useAsyncData(
 
 useHead({ title: () => artist.value?.name ?? 'アーティスト' })
 
-// 作曲家の一覧から来たなら、作曲家の一覧に戻る
-const back = import.meta.client && window.history.state?.back === '/library/composers'
-  ? { to: '/library/composers', label: '作曲家' }
-  : { to: '/library/artists', label: 'アーティスト' }
-
 // 大きな見出しが帯の下に隠れたら、帯にアーティストの名前を出す
 const scroller = useScroller()
 const { y } = useScroll(scroller)
@@ -33,7 +28,7 @@ const titleVisible = computed(() => {
   <div>
     <PageHeader
       :title="artist?.name ?? 'アーティスト'"
-      :back="back"
+      :back="{ to: '/library/artists' }"
       detail
       :title-visible="titleVisible"
     />

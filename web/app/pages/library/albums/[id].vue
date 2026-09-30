@@ -59,7 +59,7 @@ const titleVisible = computed(() => {
   <div>
     <PageHeader
       :title="album?.name ?? 'アルバム'"
-      :back="{ to: '/library/albums', label: 'アルバム' }"
+      :back="{ to: '/library/albums' }"
       detail
       :title-visible="titleVisible"
     />
