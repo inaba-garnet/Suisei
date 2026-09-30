@@ -4,11 +4,11 @@ export const USER = 'inaba'
 export const PASSWORD = 'sesame'
 
 /** `/api` の偽物。ログインの状態をテストの中に持つ。 */
-export async function mockApi(page: Page, { loggedIn = false } = {}) {
+export async function mockApi(page: Page, { loggedIn = false, dev = false } = {}) {
   let session = loggedIn
   await page.route('**/api/me', route =>
     session
-      ? route.fulfill({ json: { username: USER } })
+      ? route.fulfill({ json: { username: USER, dev } })
       : route.fulfill({ status: 401 }))
   await page.route('**/api/login', async (route) => {
     const request = route.request()
