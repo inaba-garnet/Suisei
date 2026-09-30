@@ -38,6 +38,7 @@ impl App {
             now_playing: Default::default(),
             cache_dir: "/nonexistent".into(),
             ffmpeg: "ffmpeg".into(),
+            dev: false,
         });
         Self { router, db }
     }

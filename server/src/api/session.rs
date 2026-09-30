@@ -80,7 +80,7 @@ pub(super) async fn me(State(state): State<Arc<AppState>>, headers: HeaderMap) -
     match verify(&state, token).await {
         Ok(true) => (
             [(SET_COOKIE, session_cookie(token, &headers))],
-            Json(json!({ "username": state.credentials.user })),
+            Json(json!({ "username": state.credentials.user, "dev": state.dev })),
         )
             .into_response(),
         Ok(false) => (

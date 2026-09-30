@@ -41,6 +41,8 @@ pub struct AppState {
     pub cache_dir: PathBuf,
     /// トランスコードに使う ffmpeg（docs/server.md）
     pub ffmpeg: PathBuf,
+    /// 開発モード（docs/server.md の「設定」）
+    pub dev: bool,
 }
 
 pub fn router(state: AppState) -> Router {
