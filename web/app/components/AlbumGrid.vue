@@ -4,7 +4,7 @@ import { useVirtualizer } from '@tanstack/vue-virtual'
 import { useElementSize } from '@vueuse/core'
 import { gridColumns } from '~/utils/grid'
 
-/** アルバムのジャケットの格子。画面に見える行だけを描き、末尾に近づいたら `more` を出す（docs/web.md の「一覧」）。 */
+/** アルバムのジャケットのグリッド。画面に見える行だけを描き、末尾に近づいたら `more` を出す（docs/web.md の「一覧」）。 */
 const props = defineProps<{ albums: Album[], more: boolean }>()
 const emit = defineEmits<{ more: [] }>()
 
@@ -25,7 +25,7 @@ const virtualizer = useVirtualizer(computed(() => ({
   getScrollElement: () => scroller.value ?? null,
   estimateSize: () => cell.value + CAPTION + ROW_GAP,
   overscan: 3,
-  // 格子の上にある見出しなどの高さ。パネルの中での格子の位置
+  // グリッドの上にある見出しなどの高さ。パネルの中でのグリッドの位置
   scrollMargin: root.value?.offsetTop ?? 0,
 })))
 

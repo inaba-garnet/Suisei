@@ -21,7 +21,7 @@ const { items, done, loading, error, loadMore } = useInfiniteList<Album>('albums
 type View = 'grid' | 'list'
 const view = ref<View>('grid')
 const views: { value: View, label: string, icon: Component, disabled?: boolean }[] = [
-  { value: 'grid', label: '格子', icon: LayoutGrid },
+  { value: 'grid', label: 'グリッド', icon: LayoutGrid },
   { value: 'list', label: 'リスト', icon: List, disabled: true },
 ]
 const sorts = [
