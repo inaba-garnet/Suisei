@@ -49,7 +49,7 @@ test('詳細から「戻る」と読み直さずに元の位置に戻り、リ�
   await expect.poll(() => scrollTop(page)).toBe(0)
   const loaded = requests.length
 
-  await page.getByRole('button', { name: 'アルバムに戻る' }).click()
+  await page.getByRole('button', { name: '戻る', exact: true }).click()
   await expect(page).toHaveURL('/library/albums')
   await expect.poll(() => scrollTop(page)).toBe(before)
   expect(requests.length).toBe(loaded)
@@ -62,6 +62,17 @@ test('詳細から「戻る」と読み直さずに元の位置に戻り、リ�
   await expect(page.getByRole('link', { name: 'アルバム 000' })).toBeVisible()
   expect(await scrollTop(page)).toBe(0)
   expect(requests.at(-1)?.get('offset')).toBe('0')
+})
+
+test('直に開いたアルバムの詳細の「戻る」は、アルバムの一覧に移る', async ({ page }) => {
+  await mockApi(page, { loggedIn: true })
+  await mockLibrary(page, { count: 3 })
+  await page.goto('/library/albums/al-1')
+  await expect(page.getByRole('heading', { name: 'アルバム 001' })).toBeVisible()
+
+  await page.getByRole('button', { name: '戻る', exact: true }).click()
+  await expect(page).toHaveURL('/library/albums')
+  await expect(page.getByRole('link', { name: 'アルバム 000' })).toBeVisible()
 })
 
 test('表示の切り替えと並び順は開発モードのときだけ出す', async ({ page }) => {
