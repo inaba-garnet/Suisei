@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import { expect, test } from '@playwright/test'
 import { mockApi, mockLibrary } from './api'
 
@@ -49,7 +49,7 @@ test('詳細から「戻る」と読み直さずに元の位置に戻り、リ�
   await expect.poll(() => scrollTop(page)).toBe(0)
   const loaded = requests.length
 
-  await page.getByRole('button', { name: 'アルバム' }).click()
+  await page.getByRole('button', { name: 'アルバムに戻る' }).click()
   await expect(page).toHaveURL('/library/albums')
   await expect.poll(() => scrollTop(page)).toBe(before)
   expect(requests.length).toBe(loaded)
@@ -89,4 +89,57 @@ test('セッションが切れていればログインの画面に移す', async
   }))
   await page.goto('/library/albums')
   await expect(page).toHaveURL(/\/login\?redirect=(%2F|\/)library(%2F|\/)albums$/)
+})
+
+test('スマホは一覧の見出しの帯にライブラリへ戻る矢印を出し、PC は出さない', async ({ page, isMobile }) => {
+  await mockApi(page, { loggedIn: true })
+  await mockLibrary(page, { count: 3 })
+  await page.goto('/library/albums')
+  const back = page.getByRole('button', { name: 'ライブラリに戻る' })
+  if (!isMobile) {
+    await expect(back).toBeHidden()
+    return
+  }
+  await back.click()
+  await expect(page).toHaveURL('/library')
+})
+
+test('見出しの帯はスクロールしても残り、詳細では大きな見出しが隠れたら名前を出す', async ({ page }) => {
+  await mockApi(page, { loggedIn: true })
+  await mockLibrary(page, { count: 3, songs: 30 })
+  await page.goto('/library/albums/al-1')
+  await expect(page.getByTestId('songs').getByRole('listitem')).toHaveCount(30)
+  const header = page.getByTestId('page-header')
+  const title = header.getByText('アルバム 001')
+  await expect(title).toHaveCSS('opacity', '0')
+
+  await scrollTo(page, 800)
+  await expect(title).toHaveCSS('opacity', '1')
+  const box = (await header.boundingBox())!
+  const scroller = (await page.getByTestId('scroller').boundingBox())!
+  expect(Math.abs(box.y - scroller.y)).toBeLessThan(2)
+})
+
+test('長いアルバム名は、はみ出した分を…で省く', async ({ page }) => {
+  const long = 'とても長いアルバムの名前'.repeat(8)
+  await mockApi(page, { loggedIn: true })
+  await mockLibrary(page, { count: 3, songs: 30, name: () => long })
+  const clipped = (locator: Locator) => locator.evaluate(el =>
+    el.scrollWidth > el.clientWidth || el.scrollHeight > el.clientHeight)
+
+  await page.goto('/library/albums')
+  const card = page.getByTestId('album-grid').getByText(long).first()
+  await expect(card).toHaveCSS('text-overflow', 'ellipsis')
+  expect(await clipped(card)).toBe(true)
+
+  await page.goto('/library/albums/al-1')
+  // 大きな見出しは 2 行まで出し、残りを…で省く
+  const heading = page.getByRole('heading', { name: long })
+  await expect(heading).toHaveCSS('-webkit-line-clamp', '2')
+  expect(await clipped(heading)).toBe(true)
+  await scrollTo(page, 1200)
+  const bar = page.getByTestId('page-header').getByText(long)
+  await expect(bar).toHaveCSS('opacity', '1')
+  await expect(bar).toHaveCSS('text-overflow', 'ellipsis')
+  expect(await clipped(bar)).toBe(true)
 })

@@ -42,10 +42,10 @@ export interface MockAlbum {
 }
 
 /** `/rest` のライブラリの偽物。`count` 枚のアルバムを名前順で返し、呼ばれた引数を `requests` に残す。 */
-export async function mockLibrary(page: Page, { count = 250 } = {}) {
+export async function mockLibrary(page: Page, { count = 250, songs = 2, name = (i: number) => `アルバム ${String(i).padStart(3, '0')}` } = {}) {
   const albums: MockAlbum[] = Array.from({ length: count }, (_, i) => ({
     id: `al-${i}`,
-    name: `アルバム ${String(i).padStart(3, '0')}`,
+    name: name(i),
     artist: `アーティスト ${i % 7}`,
     songCount: 2,
     duration: 400,
@@ -74,6 +74,9 @@ export async function mockLibrary(page: Page, { count = 250 } = {}) {
         song: [
           { id: `${id}-1`, title: '一曲目', artist: album.artist, track: 1, discNumber: 1, duration: 200 },
           { id: `${id}-2`, title: '二曲目', artist: 'ゲスト', track: 2, discNumber: 1, duration: 200 },
+          ...Array.from({ length: Math.max(0, songs - 2) }, (_, i) => (
+            { id: `${id}-${i + 3}`, title: `曲 ${i + 3}`, artist: album.artist, track: i + 3, discNumber: 1, duration: 200 }
+          )),
         ],
       },
     }))
