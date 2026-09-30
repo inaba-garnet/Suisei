@@ -50,21 +50,13 @@ async fn id_param(params: &Params, state: &AppState) -> Result<String, Error> {
     browse::resolve_alias(&state.db, id).await.map_err(db_error)
 }
 
-/// 独自の引数 `role` で、その役割のアーティストを返す。既定はアルバムアーティスト（docs/schema.md の「日本語の並べ替え」）。
+/// 独自の引数 `role`（カンマ区切りで複数）で、その役割のアーティストを返す。
+/// 既定はアルバムアーティスト（docs/schema.md の「日本語の並べ替え」）。
 async fn artists(params: &Params, state: &AppState) -> Result<Map<String, Value>, Error> {
-    let role = params.get("role").unwrap_or("albumartist");
-    let entries = match role {
-        "albumartist" => browse::album_artists(&state.db).await,
-        "artist" => browse::track_artists(&state.db).await,
-        "composer" | "lyricist" | "arranger" => browse::contributors(&state.db, role).await,
-        _ => {
-            return Err(Error::new(
-                ErrorCode::Generic,
-                format!("unknown role: {role}"),
-            ));
-        }
-    }
-    .map_err(db_error)?;
+    let filter = role_filter(params.get("role").unwrap_or("albumartist"))?;
+    let entries = browse::artists_with_roles(&state.db, filter)
+        .await
+        .map_err(db_error)?;
     let index = group(&entries, |a| {
         let mut artist = json!({
             "id": a.id,
@@ -83,6 +75,27 @@ async fn artists(params: &Params, state: &AppState) -> Result<Map<String, Value>
         "lastModified": last_modified(state),
         "index": index,
     }})))
+}
+
+fn role_filter(value: &str) -> Result<browse::RoleFilter, Error> {
+    let mut filter = browse::RoleFilter::default();
+    for role in value.split(',').map(str::trim) {
+        let flag = match role {
+            "albumartist" => &mut filter.album_artist,
+            "artist" => &mut filter.artist,
+            "composer" => &mut filter.composer,
+            "lyricist" => &mut filter.lyricist,
+            "arranger" => &mut filter.arranger,
+            _ => {
+                return Err(Error::new(
+                    ErrorCode::Generic,
+                    format!("unknown role: {role}"),
+                ));
+            }
+        };
+        *flag = true;
+    }
+    Ok(filter)
 }
 
 /// 音楽フォルダが一つなので、getArtists と同じアーティストを返す。

@@ -1735,6 +1735,34 @@ async fn artists_are_listed_by_role() {
 
     let res = server.raw("getArtists", "&role=producer").await;
     assert_eq!(res["subsonic-response"]["status"], "failed");
+    let res = server.raw("getArtists", "&role=composer,producer").await;
+    assert_eq!(res["subsonic-response"]["status"], "failed");
+}
+
+#[tokio::test]
+async fn artists_are_listed_by_several_roles() {
+    let server = credited_server().await;
+
+    // 作曲、作詞、編曲のどれかを持つ人を一つの一覧にまとめる
+    let res = server
+        .get("getArtists", "&role=composer,lyricist,arranger")
+        .await;
+    assert_eq!(
+        artist_names(&res["artists"]["index"]),
+        ["作曲A", "作曲B", "作詞C", "作詞D", "編曲E"]
+    );
+
+    // アルバムの数は、渡した役割のどれかで関わったアルバムの数
+    let res = server.get("getArtists", "&role=albumartist,composer").await;
+    let composer_b = res["artists"]["index"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|index| index["artist"].as_array().unwrap())
+        .find(|a| a["name"] == "作曲B")
+        .unwrap()
+        .clone();
+    assert_eq!(composer_b["albumCount"], 2);
 }
 
 #[tokio::test]
