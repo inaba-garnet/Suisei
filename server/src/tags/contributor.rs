@@ -59,3 +59,58 @@ fn strip_suffix(name: &str) -> &str {
     }
     name
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn run(values: &[&str]) -> Vec<String> {
+        names(&values.iter().map(|v| (*v).to_owned()).collect::<Vec<_>>())
+    }
+
+    #[test]
+    fn joint_credits_are_split() {
+        assert_eq!(
+            run(&[
+                "荒幡亮平、堀江晶太、rui（fade）、⽑蟹（LIVE LAB.）、ハヤシケイ（LIVE LAB.）、神崎エルザ"
+            ]),
+            [
+                "荒幡亮平",
+                "堀江晶太",
+                "rui",
+                "⽑蟹",
+                "ハヤシケイ",
+                "神崎エルザ"
+            ]
+        );
+        assert_eq!(run(&["A, B & C"]), ["A", "B", "C"]);
+        assert_eq!(run(&["A／B"]), ["A", "B"]);
+        assert_eq!(run(&["A; B"]), ["A", "B"]);
+    }
+
+    #[test]
+    fn multiple_values_are_kept_apart() {
+        assert_eq!(run(&["eba", "睦月周平"]), ["eba", "睦月周平"]);
+    }
+
+    #[test]
+    fn middle_dots_and_spaces_are_not_separators() {
+        assert_eq!(run(&["ジョン・レノン"]), ["ジョン・レノン"]);
+        assert_eq!(run(&["HIDEO NEKOTA"]), ["HIDEO NEKOTA"]);
+    }
+
+    #[test]
+    fn affiliations_are_removed() {
+        assert_eq!(run(&["藤永龍太郎(Elements Garden)"]), ["藤永龍太郎"]);
+        assert_eq!(run(&["本多友紀 (Arte Refact)"]), ["本多友紀"]);
+        // 括弧の中の区切りでは分けない
+        assert_eq!(run(&["A（X、Y）、B"]), ["A", "B"]);
+        // 名前が括弧だけなら残す
+        assert_eq!(run(&["(仮)"]), ["(仮)"]);
+    }
+
+    #[test]
+    fn empty_parts_are_dropped() {
+        assert_eq!(run(&["A、、B、"]), ["A", "B"]);
+        assert!(run(&[" "]).is_empty());
+    }
+}
