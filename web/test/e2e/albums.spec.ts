@@ -76,7 +76,7 @@ test('開発モードでは未実装の表示と並び順を押せない状態�
   await mockApi(page, { loggedIn: true, dev: true })
   await mockLibrary(page, { count: 3 })
   await page.goto('/library/albums')
-  await expect(page.getByRole('radio', { name: '格子' })).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByRole('radio', { name: 'グリッド' })).toHaveAttribute('aria-checked', 'true')
   await expect(page.getByRole('radio', { name: 'リスト' })).toBeDisabled()
   await expect(page.getByRole('combobox', { name: '並び順' })).toHaveValue('name')
   await expect(page.getByRole('option', { name: '新着順' })).toBeDisabled()
