@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import type { AlbumWithSongs, Song } from '~/utils/subsonic'
-import { ChevronLeft } from 'lucide-vue-next'
+import { useScroll } from '@vueuse/core'
 import { formatDuration } from '~/utils/subsonic'
 
 const route = useRoute()
-const router = useRouter()
 const subsonic = useSubsonic()
 const id = computed(() => String(route.params.id))
 
@@ -45,23 +44,25 @@ function songArtist(song: Song): string | undefined {
   return song.artist && song.artist !== album.value?.artist ? song.artist : undefined
 }
 
-// 一覧から来たなら「戻る」で戻し、一覧の位置を戻す。直接開いたなら一覧を開く
-function back() {
-  if (window.history.state?.back) {
-    router.back()
-  }
-  else {
-    navigateTo('/library/albums')
-  }
-}
+// 大きな見出しが帯の下に隠れたら、帯にアルバムの名前を出す
+const scroller = useScroller()
+const { y } = useScroll(scroller)
+const heading = ref<HTMLElement>()
+const titleVisible = computed(() => {
+  const el = heading.value
+  const bar = scroller.value?.querySelector<HTMLElement>('[data-testid="page-header"]')
+  return !!el && !!bar && y.value + bar.offsetHeight > el.offsetTop + el.offsetHeight
+})
 </script>
 
 <template>
   <div>
-    <button type="button" class="-ml-1 mb-3 inline-flex items-center gap-1 text-body-sm text-fg-muted hover:text-fg" @click="back">
-      <ChevronLeft class="size-4" />
-      アルバム
-    </button>
+    <PageHeader
+      :title="album?.name ?? 'アルバム'"
+      :back="{ to: '/library/albums', label: 'アルバム' }"
+      detail
+      :title-visible="titleVisible"
+    />
 
     <p v-if="status === 'pending' && !album" class="py-6 text-center text-body-sm text-fg-subtle">
       読み込み中…
@@ -78,7 +79,7 @@ function back() {
       <header class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end">
         <CoverArt :id="album.coverArt" :size="200" :alt="album.name" class="w-40 shrink-0 sm:w-48" />
         <div class="flex min-w-0 flex-col gap-1">
-          <h1 class="text-h1 font-semibold">
+          <h1 ref="heading" class="line-clamp-2 text-h1 font-semibold break-words" :title="album.name">
             {{ album.name }}
           </h1>
           <p class="text-body-lg text-fg-muted">
