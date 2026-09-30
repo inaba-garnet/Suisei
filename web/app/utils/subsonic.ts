@@ -5,6 +5,22 @@ export interface ArtistRef {
   name: string
 }
 
+export interface Artist {
+  id: string
+  name: string
+  albumCount: number
+}
+
+/** `getArtists` の、読みの行ごとの見出しとアーティスト。 */
+export interface ArtistIndex {
+  name: string
+  artist?: Artist[]
+}
+
+export interface ArtistWithAlbums extends Artist {
+  album?: Album[]
+}
+
 export interface Album {
   id: string
   name: string

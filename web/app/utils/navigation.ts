@@ -1,5 +1,5 @@
 import type { Component } from 'vue'
-import { Disc3, Heart, House, Library, ListMusic, MicVocal, Music, Search, Settings, Shapes } from 'lucide-vue-next'
+import { Disc3, Feather, Heart, House, Library, ListMusic, MicVocal, Music, Search, Settings, Shapes } from 'lucide-vue-next'
 
 export interface NavItem {
   to: string
@@ -22,6 +22,7 @@ export const libraryNav: NavItem[] = [
   { to: '/library/artists', label: 'アーティスト', icon: MicVocal },
   { to: '/library/tracks', label: 'トラック', icon: Music },
   { to: '/library/genres', label: 'ジャンル', icon: Shapes },
+  { to: '/library/composers', label: '作曲家', icon: Feather },
   { to: '/library/favorites', label: 'お気に入り', icon: Heart },
 ]
 

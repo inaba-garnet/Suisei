@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { mockApi } from './api'
 
 const TABS = ['ホーム', '検索', 'ライブラリ', 'プレイリスト', '設定']
-const LIBRARY = ['アルバム', 'アーティスト', 'トラック', 'ジャンル', 'お気に入り']
+const LIBRARY = ['アルバム', 'アーティスト', 'トラック', 'ジャンル', '作曲家', 'お気に入り']
 
 test.beforeEach(async ({ page }) => {
   await mockApi(page, { loggedIn: true })
