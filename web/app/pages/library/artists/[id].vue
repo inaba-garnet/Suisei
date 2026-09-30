@@ -94,11 +94,11 @@ const titleVisible = computed(() => {
               <li>
                 <NuxtLink
                   :to="`/library/albums/${group.albumId}`"
-                  class="flex items-center gap-3 border-b border-divider px-3 pt-4 pb-2 transition-colors hover:text-fg"
+                  class="flex items-center gap-4 border-b border-divider px-3 pt-5 pb-3 transition-colors hover:text-fg"
                   data-testid="song-group"
                 >
-                  <CoverArt :id="group.coverArt" :size="40" :alt="group.album" class="size-10 shrink-0" />
-                  <span class="min-w-0 truncate text-body font-medium">{{ group.album }}</span>
+                  <CoverArt :id="group.coverArt" :size="64" :alt="group.album" class="size-16 shrink-0" />
+                  <span class="min-w-0 line-clamp-2 break-words text-body-lg font-semibold">{{ group.album }}</span>
                 </NuxtLink>
               </li>
               <li v-for="song in group.songs" :key="song.id" class="flex h-12 items-center gap-3 border-b border-divider px-3">
