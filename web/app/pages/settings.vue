@@ -9,6 +9,7 @@ useHead({ title: '設定' })
 const { user, logout } = useAuth()
 const { preference, setPreference } = useTheme()
 const { align, setAlign } = useContentAlign()
+const dev = useDev()
 
 const themeModel = computed({ get: () => preference.value, set: setPreference })
 const alignModel = computed({ get: () => align.value, set: setAlign })
@@ -49,7 +50,7 @@ async function onLogout() {
       <SegmentedControl v-model="themeModel" label="テーマ" :options="themes" />
     </section>
 
-    <section class="mt-8 flex flex-col gap-3">
+    <section v-if="dev" class="mt-8 flex flex-col gap-3">
       <h2 class="text-h3 font-semibold">
         開発
       </h2>

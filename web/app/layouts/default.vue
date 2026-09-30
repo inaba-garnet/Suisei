@@ -1,5 +1,8 @@
 <script setup lang="ts">
 const { align } = useContentAlign()
+const dev = useDev()
+// 内容の配置は開発モードだけの一時的な項目なので、それ以外では既定の中央にする
+const centered = computed(() => !dev.value || align.value === 'center')
 </script>
 
 <template>
@@ -17,7 +20,7 @@ const { align } = useContentAlign()
     -->
     <main class="min-h-0 flex-1 md:py-3 md:pr-5 md:pl-5">
       <div class="h-full overflow-y-auto px-4 pt-[calc(env(safe-area-inset-top)+16px)] pb-6 md:rounded-xl md:border md:border-divider md:bg-surface-1 md:p-5">
-        <div class="max-w-[640px]" :class="{ 'mx-auto': align === 'center' }" data-testid="content">
+        <div class="max-w-[640px]" :class="{ 'mx-auto': centered }" data-testid="content">
           <slot />
         </div>
       </div>
