@@ -96,6 +96,8 @@ export async function mockArtists(page: Page, { rows = ['ア', 'カ', 'サ', '�
   }))
   const calls = { artists: 0 }
   const roles: string[] = []
+  /** `getArtist` に渡った `songs`。渡らなければ空文字 */
+  const songs: string[] = []
   const ok = (body: object) => ({ json: { 'subsonic-response': { status: 'ok', version: '1.16.1', ...body } } })
   await page.route(/\/rest\/getArtists(\?|$)/, (route) => {
     calls.artists++
@@ -107,18 +109,30 @@ export async function mockArtists(page: Page, { rows = ['ア', 'カ', 'サ', '�
     return route.fulfill(ok({ artists: { ignoredArticles: '', index: named } }))
   })
   await page.route(/\/rest\/getArtist(\?|$)/, (route) => {
-    const id = new URL(route.request().url()).searchParams.get('id')!
+    const params = new URL(route.request().url()).searchParams
+    const id = params.get('id')!
     const artist = index.flatMap(group => group.artist).find(a => a.id === id)
+    const self = [{ id, name: artist?.name ?? '' }]
+    const guest = { id: `${id}-al-g`, name: '客演のアルバム', artist: 'ほかの人', artists: [{ id: 'ar-other', name: 'ほかの人' }], songCount: 8, duration: 2000 }
+    songs.push(params.get('songs') ?? '')
     return route.fulfill(ok({
       artist: {
         ...artist,
         album: [
-          { id: `${id}-al-1`, name: `${artist?.name} の一枚目`, artist: artist?.name, songCount: 10, duration: 2400 },
-          { id: `${id}-al-2`, name: `${artist?.name} の二枚目`, artist: artist?.name, songCount: 12, duration: 2800 },
+          { id: `${id}-al-1`, name: `${artist?.name} の一枚目`, artist: artist?.name, artists: self, year: 2010, songCount: 10, duration: 2400 },
+          { id: `${id}-al-2`, name: `${artist?.name} の二枚目`, artist: artist?.name, artists: self, year: 2020, songCount: 12, duration: 2800 },
+          guest,
         ],
+        ...(params.get('songs') && {
+          song: [
+            { id: 's-1', title: '一曲目', artist: artist?.name, album: `${artist?.name} の一枚目`, albumId: `${id}-al-1`, track: 1, duration: 200 },
+            { id: 's-2', title: '二曲目', artist: artist?.name, album: `${artist?.name} の一枚目`, albumId: `${id}-al-1`, track: 2, duration: 210 },
+            { id: 's-3', title: '客演の曲', artist: `ほかの人 feat. ${artist?.name}`, album: guest.name, albumId: guest.id, track: 5, duration: 220 },
+          ],
+        }),
       },
     }))
   })
   await page.route(/\/rest\/getCoverArt(\?|$)/, route => route.fulfill({ status: 404 }))
-  return { index, calls, roles }
+  return { index, calls, roles, songs }
 }
