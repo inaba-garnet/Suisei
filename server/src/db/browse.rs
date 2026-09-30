@@ -50,47 +50,26 @@ pub async fn album_artists(pool: &Pool) -> Result<Vec<ArtistEntry>, sqlx::Error>
     .await
 }
 
-/// 曲のアーティストになっているアーティスト。アルバムの数は、曲で参加しているアルバムの数。
-pub async fn track_artists(pool: &Pool) -> Result<Vec<ArtistEntry>, sqlx::Error> {
-    sqlx::query_as!(
-        ArtistEntry,
-        r#"SELECT artist.id AS "id!", artist.name, artist.sort_name, artist.sort_key,
-                  COUNT(DISTINCT track.album_id) AS "album_count!: i64",
-                  (CASE WHEN EXISTS (SELECT 1 FROM album_artist
-                                     WHERE album_artist.artist_id = artist.id)
-                     THEN 'albumartist ' ELSE '' END
-                   || CASE WHEN EXISTS (SELECT 1 FROM track_artist
-                                        WHERE track_artist.artist_id = artist.id)
-                      THEN 'artist ' ELSE '' END
-                   || CASE WHEN EXISTS (SELECT 1 FROM track_contributor
-                                        WHERE track_contributor.artist_id = artist.id
-                                          AND track_contributor.role = 'composer')
-                      THEN 'composer ' ELSE '' END
-                   || CASE WHEN EXISTS (SELECT 1 FROM track_contributor
-                                        WHERE track_contributor.artist_id = artist.id
-                                          AND track_contributor.role = 'lyricist')
-                      THEN 'lyricist ' ELSE '' END
-                   || CASE WHEN EXISTS (SELECT 1 FROM track_contributor
-                                        WHERE track_contributor.artist_id = artist.id
-                                          AND track_contributor.role = 'arranger')
-                      THEN 'arranger ' ELSE '' END) AS "roles!: String",
-                  artist.starred_at, artist.rating
-           FROM artist
-             JOIN track_artist ON track_artist.artist_id = artist.id
-             JOIN track ON track.id = track_artist.track_id
-           GROUP BY artist.id
-           ORDER BY artist.sort_key, artist.id"#
-    )
-    .fetch_all(pool)
-    .await
+/// `getArtists` で求める役割。どれかの役割を持つアーティストを返す。
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct RoleFilter {
+    pub album_artist: bool,
+    pub artist: bool,
+    pub composer: bool,
+    pub lyricist: bool,
+    pub arranger: bool,
 }
 
-/// 作曲、作詞、編曲のどれかの役割を持つアーティスト。アルバムの数は、その役割で関わったアルバムの数。
-pub async fn contributors(pool: &Pool, role: &str) -> Result<Vec<ArtistEntry>, sqlx::Error> {
+/// `filter` のどれかの役割を持つアーティストを、並べ替えキーの順に返す。
+/// アルバムの数は、求めた役割のどれかで関わったアルバムの数。
+pub async fn artists_with_roles(
+    pool: &Pool,
+    filter: RoleFilter,
+) -> Result<Vec<ArtistEntry>, sqlx::Error> {
     sqlx::query_as!(
         ArtistEntry,
         r#"SELECT artist.id AS "id!", artist.name, artist.sort_name, artist.sort_key,
-                  COUNT(DISTINCT track.album_id) AS "album_count!: i64",
+                  COUNT(DISTINCT involved.album_id) AS "album_count!: i64",
                   (CASE WHEN EXISTS (SELECT 1 FROM album_artist
                                      WHERE album_artist.artist_id = artist.id)
                      THEN 'albumartist ' ELSE '' END
@@ -110,13 +89,26 @@ pub async fn contributors(pool: &Pool, role: &str) -> Result<Vec<ArtistEntry>, s
                                           AND track_contributor.role = 'arranger')
                       THEN 'arranger ' ELSE '' END) AS "roles!: String",
                   artist.starred_at, artist.rating
-           FROM artist
-             JOIN track_contributor ON track_contributor.artist_id = artist.id
-             JOIN track ON track.id = track_contributor.track_id
-           WHERE track_contributor.role = ?
+           FROM artist JOIN (
+               SELECT album_id, artist_id FROM album_artist WHERE ?1
+               UNION ALL
+               SELECT track.album_id, track_artist.artist_id FROM track_artist
+                 JOIN track ON track.id = track_artist.track_id
+               WHERE ?2
+               UNION ALL
+               SELECT track.album_id, track_contributor.artist_id FROM track_contributor
+                 JOIN track ON track.id = track_contributor.track_id
+               WHERE (track_contributor.role = 'composer' AND ?3)
+                  OR (track_contributor.role = 'lyricist' AND ?4)
+                  OR (track_contributor.role = 'arranger' AND ?5)
+           ) AS involved ON involved.artist_id = artist.id
            GROUP BY artist.id
            ORDER BY artist.sort_key, artist.id"#,
-        role
+        filter.album_artist,
+        filter.artist,
+        filter.composer,
+        filter.lyricist,
+        filter.arranger
     )
     .fetch_all(pool)
     .await
