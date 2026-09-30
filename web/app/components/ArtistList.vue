@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import type { Range } from '@tanstack/vue-virtual'
+import type { ArtistView } from '~/utils/artist'
 import type { ArtistIndex } from '~/utils/subsonic'
 import { defaultRangeExtractor, useVirtualizer } from '@tanstack/vue-virtual'
 import { useElementSize } from '@vueuse/core'
 
 /**
  * 読みの行の見出しで区切ったアーティストの行（docs/web.md の「一覧」）。
- * 画面に見える行だけを描き、今いる行の見出しは見出しの帯の下に残す。
+ * 画面に見える行だけを描き、今いる行の見出しは見出しの帯の下に残す。詳細は `view` の表示で開く。
  */
-const props = defineProps<{ index: ArtistIndex[] }>()
+const props = defineProps<{ index: ArtistIndex[], view: ArtistView }>()
 
 const HEADING = 32
 const ROW = 56
@@ -69,7 +70,7 @@ const active = computed(() => items.value.length ? headingOf(virtualizer.value.r
       </div>
       <NuxtLink
         v-else
-        :to="`/library/artists/${(rows[item.index] as { id: string }).id}`"
+        :to="{ path: `/library/artists/${(rows[item.index] as { id: string }).id}`, query: { view } }"
         class="absolute inset-x-0 top-0 flex items-center gap-3 border-b border-divider px-3 transition-colors hover:bg-surface-2"
         :style="{ height: `${ROW}px`, transform: `translateY(${item.start - virtualizer.options.scrollMargin}px)` }"
       >

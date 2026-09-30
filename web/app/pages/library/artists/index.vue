@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ArtistView } from '~/utils/artist'
 import { MicVocal } from 'lucide-vue-next'
 
 useHead({ title: 'アーティスト' })
@@ -20,6 +21,9 @@ watch(role, () => {
   }
 })
 
+// アルバムアーティストはアルバムだけを、曲のアーティストは曲を詳細に出す
+const views: Record<Role, ArtistView> = { albumartist: 'albums', artist: 'tracks' }
+
 const roles: { value: Role, label: string }[] = [
   { value: 'albumartist', label: 'アルバムアーティスト' },
   { value: 'artist', label: 'アーティスト' },
@@ -32,6 +36,6 @@ const roles: { value: Role, label: string }[] = [
       <SegmentedControl v-model="role" label="表示するアーティスト" :options="roles" />
     </PageHeader>
 
-    <ArtistBrowser :key="role" :role="role" :empty-icon="MicVocal" empty-title="アーティストがいません" />
+    <ArtistBrowser :key="role" :role="role" :view="views[role]" :empty-icon="MicVocal" empty-title="アーティストがいません" />
   </div>
 </template>
