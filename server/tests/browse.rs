@@ -352,6 +352,56 @@ async fn artist_includes_albums_with_guest_appearances() {
 }
 
 #[tokio::test]
+async fn artist_returns_songs_by_role() {
+    let titled = |path, title, album, year, track| Song {
+        title: Some(title),
+        year: Some(year),
+        track: Some(track),
+        ..song(path, "ClariS", album)
+    };
+    let server = server(&[
+        titled("new/2.flac", "新2", "新", 2020, 2),
+        titled("new/1.flac", "新1", "新", 2020, 1),
+        titled("old/1.flac", "旧1", "旧", 2010, 1),
+        Song {
+            album_artist: "やなぎなぎ",
+            ..titled("guest/1.flac", "客演", "c", 2015, 1)
+        },
+        Song {
+            album_artist: "やなぎなぎ",
+            artist: "やなぎなぎ",
+            ..titled("guest/2.flac", "ほか", "c", 2015, 2)
+        },
+    ])
+    .await;
+    let claris = server.id("artist", "name", "ClariS").await;
+
+    // 引数がなければ曲を返さない
+    let res = server.get("getArtist", &format!("&id={claris}")).await;
+    assert!(res["artist"].get("song").is_none());
+
+    // アルバムは年の古い順、アルバムの中はトラック番号の順
+    let res = server
+        .get("getArtist", &format!("&id={claris}&songs=artist"))
+        .await;
+    assert_eq!(
+        titles(&res["artist"]["song"]),
+        ["旧1", "客演", "新1", "新2"]
+    );
+    assert_eq!(res["artist"]["song"][1]["album"], "c");
+
+    let res = server
+        .get("getArtist", &format!("&id={claris}&songs=albumartist"))
+        .await;
+    assert_eq!(titles(&res["artist"]["song"]), ["旧1", "新1", "新2"]);
+
+    let res = server
+        .raw("getArtist", &format!("&id={claris}&songs=unknown"))
+        .await;
+    assert_eq!(res["subsonic-response"]["error"]["code"], 0);
+}
+
+#[tokio::test]
 async fn character_and_voice_actor_are_separate_artists() {
     let server = server(&[
         Song {
@@ -1763,6 +1813,39 @@ async fn artists_are_listed_by_several_roles() {
         .unwrap()
         .clone();
     assert_eq!(composer_b["albumCount"], 2);
+}
+
+#[tokio::test]
+async fn artist_returns_contributed_songs() {
+    let server = credited_server().await;
+    let composer = server.id("artist", "name", "作曲A").await;
+    let res = server
+        .get(
+            "getArtist",
+            &format!("&id={composer}&songs=composer,lyricist,arranger"),
+        )
+        .await;
+    let songs = &res["artist"]["song"];
+    assert_eq!(songs.as_array().unwrap().len(), 1);
+    assert_eq!(songs[0]["album"], "共作のアルバム");
+    assert_eq!(songs[0]["contributors"][0]["artist"]["name"], "作曲A");
+
+    // 渡した役割で関わっていなければ、曲は空
+    let res = server
+        .get("getArtist", &format!("&id={composer}&songs=lyricist"))
+        .await;
+    assert_eq!(res["artist"]["song"], serde_json::json!([]));
+
+    // 作曲して歌っているアーティストは、役割を足すと両方の曲を返す
+    let singer = server.id("artist", "name", "作曲B").await;
+    let res = server
+        .get("getArtist", &format!("&id={singer}&songs=artist"))
+        .await;
+    assert_eq!(res["artist"]["song"].as_array().unwrap().len(), 1);
+    let res = server
+        .get("getArtist", &format!("&id={singer}&songs=artist,composer"))
+        .await;
+    assert_eq!(res["artist"]["song"].as_array().unwrap().len(), 2);
 }
 
 #[tokio::test]
