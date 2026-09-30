@@ -4,12 +4,13 @@ import { ChevronLeft } from 'lucide-vue-next'
 
 /**
  * 画面の上端に残る見出しの帯（docs/web.md の「画面構成」）。スクロールしても今どの画面かが分かるようにする。
- * `back` があれば戻る矢印を出す。`detail` の画面は大きな見出しを自分で持ち、帯の名前は `titleVisible` のときだけ出す。
+ * `back` があれば戻る矢印を出す。`label` のない `back` は前にいた画面に戻り、前の画面がなければ `to` を開く。
+ * `detail` の画面は大きな見出しを自分で持ち、帯の名前は `titleVisible` のときだけ出す。
  */
 const props = defineProps<{
   title: string
   description?: string
-  back?: { to: string, label: string, mobileOnly?: boolean }
+  back?: { to: string, label?: string, mobileOnly?: boolean }
   detail?: boolean
   titleVisible?: boolean
 }>()
@@ -19,12 +20,13 @@ const scroller = useScroller()
 const { y } = useScroll(scroller)
 const scrolled = computed(() => y.value > 0)
 
-// 戻る先から来たなら「戻る」で戻り、一覧の位置を戻す。そうでなければ戻る先を開く
+// 戻る先（`label` がなければアプリの中の前の画面）から来たなら「戻る」で戻り、一覧の位置を戻す。そうでなければ戻る先を開く
 function goBack() {
   if (!props.back) {
     return
   }
-  if (window.history.state?.back === props.back.to) {
+  const previous = window.history.state?.back
+  if (props.back.label ? previous === props.back.to : previous) {
     router.back()
   }
   else {
@@ -43,7 +45,7 @@ function goBack() {
       <button
         v-if="back"
         type="button"
-        :aria-label="`${back.label}に戻る`"
+        :aria-label="back.label ? `${back.label}に戻る` : '戻る'"
         class="-ml-2.5 flex size-11 shrink-0 items-center justify-center rounded-full text-fg transition-colors hover:bg-surface-2"
         :class="{ 'md:hidden': back.mobileOnly }"
         @click="goBack"

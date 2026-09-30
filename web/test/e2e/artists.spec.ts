@@ -41,7 +41,7 @@ test('アーティストの詳細でアルバムを並べ、「戻る」と読�
   await expect(page.getByTestId('album-grid').getByRole('link')).toHaveCount(2)
   await expect(page.getByTestId('album-grid')).toContainText(`${name} の一枚目`)
 
-  await page.getByRole('button', { name: 'アーティストに戻る' }).click()
+  await page.getByRole('button', { name: '戻る', exact: true }).click()
   await expect(page).toHaveURL('/library/artists')
   await expect.poll(() => scrollTop(page)).toBe(before)
   expect(calls.artists).toBe(1)
@@ -62,7 +62,7 @@ test('アーティストの一覧でアルバムアーティストと曲のア�
 
   await link.click()
   await expect(page.getByTestId('album-grid')).toBeVisible()
-  await page.getByRole('button', { name: 'アーティストに戻る' }).click()
+  await page.getByRole('button', { name: '戻る', exact: true }).click()
   await expect(page.getByRole('radio', { name: 'アーティスト', exact: true })).toHaveAttribute('aria-checked', 'true')
   await expect(page.getByRole('link', { name: /^artist:アのアーティスト 0/ })).toBeVisible()
   expect(roles).toEqual(['albumartist', 'artist'])
@@ -84,6 +84,22 @@ test('作曲家の一覧は作曲、作詞、編曲をまとめて求め、詳�
 
   await link.click()
   await expect(page.getByTestId('album-grid')).toBeVisible()
-  await page.getByRole('button', { name: '作曲家に戻る' }).click()
+  await page.getByRole('button', { name: '戻る', exact: true }).click()
   await expect(page).toHaveURL('/library/composers')
+})
+
+test('アーティストの詳細から開いたアルバムの「戻る」は、アーティストの詳細に戻る', async ({ page }) => {
+  await mockApi(page, { loggedIn: true })
+  await mockArtists(page)
+  await page.route(/\/rest\/getAlbum(\?|$)/, (route) => {
+    const id = new URL(route.request().url()).searchParams.get('id')!
+    return route.fulfill({ json: { 'subsonic-response': { status: 'ok', version: '1.16.1', album: { id, name: 'そのアルバム', songCount: 0, duration: 0, song: [] } } } })
+  })
+  await page.goto('/library/artists/ar-ア-0')
+  await page.getByTestId('album-grid').getByRole('link').first().click()
+  await expect(page.getByRole('heading', { name: 'そのアルバム' })).toBeVisible()
+
+  await page.getByRole('button', { name: '戻る', exact: true }).click()
+  await expect(page).toHaveURL(/\/library\/artists\/ar-/)
+  await expect(page.getByRole('heading', { name: 'アのアーティスト 0' })).toBeVisible()
 })
