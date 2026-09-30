@@ -2,6 +2,7 @@
 //! ファイルをまたぐ集計（表示名や読みの多数決）はスキャンで行う。
 
 mod character;
+mod contributor;
 pub mod lyrics;
 mod match_key;
 mod raw;
@@ -54,6 +55,34 @@ impl Credit {
     }
 }
 
+/// 作曲、作詞、編曲の役割（docs/schema.md の「作曲、作詞、編曲」）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Role {
+    Composer,
+    Lyricist,
+    Arranger,
+}
+
+impl Role {
+    pub const ALL: [Self; 3] = [Self::Composer, Self::Lyricist, Self::Arranger];
+
+    /// OpenSubsonic の `contributors` と `roles` で使う名前。DB の track_contributor.role にも使う。
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Composer => "composer",
+            Self::Lyricist => "lyricist",
+            Self::Arranger => "arranger",
+        }
+    }
+}
+
+/// 曲に付く作曲者など。track_contributor の一行に対応する。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Contributor {
+    pub role: Role,
+    pub credit: Credit,
+}
+
 /// 曲に付くジャンル。track_genre の一行に対応する。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Genre {
@@ -82,6 +111,9 @@ pub struct TrackInfo {
     pub track_number: Option<u32>,
     pub year: Option<i32>,
     pub genres: Vec<Genre>,
+    pub contributors: Vec<Contributor>,
+    /// COMPOSER のまま。複数値は " / " でつなぐ
+    pub display_composer: Option<String>,
     pub match_key: String,
 }
 
@@ -118,6 +150,8 @@ impl TrackInfo {
             track_number: tags.track_number,
             year: tags.year,
             genres: genres(&tags.genres),
+            contributors: contributors(tags),
+            display_composer: (!tags.composers.is_empty()).then(|| tags.composers.join(" / ")),
             match_key,
         }
     }
@@ -243,6 +277,29 @@ fn split_characters(credits: Vec<Credit>, options: Options) -> Vec<Credit> {
 
 fn same_names(a: &[String], b: &[String]) -> bool {
     a.len() == b.len() && a.iter().zip(b).all(|(a, b)| normalize(a) == normalize(b))
+}
+
+/// 作曲、作詞、編曲の名前を役割ごとに一人ずつにする。同じ役割で同じ鍵の名前は先のものを残す。
+/// 誰の読みか分からないので、ソート用タグの値は付けない。
+fn contributors(tags: &RawTags) -> Vec<Contributor> {
+    let mut result: Vec<Contributor> = Vec::new();
+    for role in Role::ALL {
+        let values = match role {
+            Role::Composer => &tags.composers,
+            Role::Lyricist => &tags.lyricists,
+            Role::Arranger => &tags.arrangers,
+        };
+        for name in contributor::names(values) {
+            let credit = Credit::new(&name, None);
+            if !result
+                .iter()
+                .any(|c| c.role == role && c.credit.match_key == credit.match_key)
+            {
+                result.push(Contributor { role, credit });
+            }
+        }
+    }
+    result
 }
 
 /// 値を区切りで分ける。複数のジャンルを一つの値につないだタグがあるため（docs/schema.md の「ジャンル」）。

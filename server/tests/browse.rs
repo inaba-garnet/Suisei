@@ -9,7 +9,7 @@ use http_body_util::BodyExt;
 use lofty::config::WriteOptions;
 use lofty::file::{AudioFile, TaggedFileExt};
 use lofty::picture::{MimeType, Picture, PictureType};
-use lofty::tag::{Accessor, ItemKey, Tag};
+use lofty::tag::{Accessor, ItemKey, ItemValue, Tag, TagItem};
 use serde_json::Value;
 use suisei::scan::{Mode, Scanner};
 use suisei::{AppState, Credentials};
@@ -1611,4 +1611,160 @@ async fn stream_without_ffmpeg_is_original() {
     assert_eq!(status, 200);
     assert_eq!(headers["content-type"], "audio/flac");
     assert_eq!(body, std::fs::read(fixture("full.flac")).unwrap());
+}
+
+/// 作曲、作詞、編曲を書いた曲と、作曲者が歌う曲を並べる。
+async fn credited_server() -> Server {
+    let dir = tempfile::tempdir().unwrap();
+    let fixture = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/tags/notag.flac");
+    // (パス, アーティスト, アルバム, 作曲, 作詞, 編曲)
+    type Credited<'a> = (
+        &'a str,
+        &'a str,
+        &'a str,
+        &'a [&'a str],
+        &'a [&'a str],
+        &'a [&'a str],
+    );
+    let songs: [Credited; 2] = [
+        (
+            "a/1.flac",
+            "歌手",
+            "共作のアルバム",
+            &["作曲A、作曲B（所属）"],
+            &["作詞C", "作詞D"],
+            &["編曲E"],
+        ),
+        ("b/1.flac", "作曲B", "作曲者のアルバム", &[], &[], &[]),
+    ];
+    for (rel, artist, album, composers, lyricists, arrangers) in songs {
+        let path = dir.path().join(rel);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::copy(&fixture, &path).unwrap();
+        let mut file = lofty::read_from_path(&path).unwrap();
+        let mut tag = Tag::new(file.primary_tag_type());
+        tag.set_artist(artist.to_owned());
+        tag.set_title("曲".to_owned());
+        tag.set_album(album.to_owned());
+        for (key, values) in [
+            (ItemKey::Composer, composers),
+            (ItemKey::Lyricist, lyricists),
+            (ItemKey::Arranger, arrangers),
+        ] {
+            for value in values {
+                tag.push(TagItem::new(key, ItemValue::Text((*value).to_owned())));
+            }
+        }
+        file.insert_tag(tag);
+        file.save_to_path(&path, WriteOptions::default()).unwrap();
+    }
+    start(dir).await
+}
+
+fn artist_names(artists: &Value) -> Vec<&str> {
+    let mut names: Vec<&str> = artists
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|index| index["artist"].as_array().unwrap())
+        .map(|a| a["name"].as_str().unwrap())
+        .collect();
+    names.sort_unstable();
+    names
+}
+
+#[tokio::test]
+async fn songs_have_contributors_and_display_composer() {
+    let server = credited_server().await;
+    let album = server.id("album", "name", "共作のアルバム").await;
+    let res = server.get("getAlbum", &format!("&id={album}")).await;
+    let song = &res["album"]["song"][0];
+    assert_eq!(song["displayComposer"], "作曲A、作曲B（所属）");
+    let contributors: Vec<(&str, &str)> = song["contributors"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| {
+            (
+                c["role"].as_str().unwrap(),
+                c["artist"]["name"].as_str().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        contributors,
+        [
+            ("composer", "作曲A"),
+            ("composer", "作曲B"),
+            ("lyricist", "作詞C"),
+            ("lyricist", "作詞D"),
+            ("arranger", "編曲E"),
+        ]
+    );
+
+    // 所属の括弧を外した作曲者は、同じ名前で歌うアーティストと同じ人になる
+    let singer = server.id("artist", "name", "作曲B").await;
+    assert_eq!(song["contributors"][1]["artist"]["id"], singer.as_str());
+
+    // 作曲者などのない曲も、空の値を返す
+    let other = server.id("album", "name", "作曲者のアルバム").await;
+    let res = server.get("getAlbum", &format!("&id={other}")).await;
+    assert_eq!(res["album"]["song"][0]["displayComposer"], "");
+    assert_eq!(
+        res["album"]["song"][0]["contributors"],
+        serde_json::json!([])
+    );
+}
+
+#[tokio::test]
+async fn artists_are_listed_by_role() {
+    let server = credited_server().await;
+
+    // 既定はアルバムアーティストだけ
+    let res = server.get("getArtists", "").await;
+    assert_eq!(artist_names(&res["artists"]["index"]), ["作曲B", "歌手"]);
+
+    let res = server.get("getArtists", "&role=composer").await;
+    assert_eq!(artist_names(&res["artists"]["index"]), ["作曲A", "作曲B"]);
+    let res = server.get("getArtists", "&role=lyricist").await;
+    assert_eq!(artist_names(&res["artists"]["index"]), ["作詞C", "作詞D"]);
+    let res = server.get("getArtists", "&role=arranger").await;
+    assert_eq!(artist_names(&res["artists"]["index"]), ["編曲E"]);
+    let res = server.get("getArtists", "&role=artist").await;
+    assert_eq!(artist_names(&res["artists"]["index"]), ["作曲B", "歌手"]);
+
+    let res = server.raw("getArtists", "&role=producer").await;
+    assert_eq!(res["subsonic-response"]["status"], "failed");
+}
+
+#[tokio::test]
+async fn artists_have_roles_and_contributed_albums() {
+    let server = credited_server().await;
+    let res = server.get("getArtists", "").await;
+    let singer = res["artists"]["index"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|index| index["artist"].as_array().unwrap())
+        .find(|a| a["name"] == "作曲B")
+        .unwrap()
+        .clone();
+    assert_eq!(
+        singer["roles"],
+        serde_json::json!(["albumartist", "artist", "composer"])
+    );
+
+    // 作曲だけで関わったアーティストも、そのアルバムを返す
+    let composer = server.id("artist", "name", "作曲A").await;
+    let res = server.get("getArtist", &format!("&id={composer}")).await;
+    assert_eq!(res["artist"]["roles"], serde_json::json!(["composer"]));
+    assert_eq!(res["artist"]["albumCount"], 1);
+    assert_eq!(res["artist"]["album"][0]["name"], "共作のアルバム");
+
+    // 検索の結果にも役割を付ける
+    let res = server.get("search3", "&query=作曲A").await;
+    assert_eq!(
+        res["searchResult3"]["artist"][0]["roles"],
+        serde_json::json!(["composer"])
+    );
 }

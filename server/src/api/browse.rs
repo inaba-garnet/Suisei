@@ -17,7 +17,7 @@ pub async fn respond(
     state: &AppState,
 ) -> Option<Result<Map<String, Value>, Error>> {
     let result = match name {
-        "getArtists" => artists(state).await,
+        "getArtists" => artists(params, state).await,
         "getIndexes" => indexes(params, state).await,
         "getArtist" => artist(params, state).await,
         "getAlbum" => album(params, state).await,
@@ -50,10 +50,28 @@ async fn id_param(params: &Params, state: &AppState) -> Result<String, Error> {
     browse::resolve_alias(&state.db, id).await.map_err(db_error)
 }
 
-async fn artists(state: &AppState) -> Result<Map<String, Value>, Error> {
-    let entries = browse::album_artists(&state.db).await.map_err(db_error)?;
+/// 独自の引数 `role` で、その役割のアーティストを返す。既定はアルバムアーティスト（docs/schema.md の「日本語の並べ替え」）。
+async fn artists(params: &Params, state: &AppState) -> Result<Map<String, Value>, Error> {
+    let role = params.get("role").unwrap_or("albumartist");
+    let entries = match role {
+        "albumartist" => browse::album_artists(&state.db).await,
+        "artist" => browse::track_artists(&state.db).await,
+        "composer" | "lyricist" | "arranger" => browse::contributors(&state.db, role).await,
+        _ => {
+            return Err(Error::new(
+                ErrorCode::Generic,
+                format!("unknown role: {role}"),
+            ));
+        }
+    }
+    .map_err(db_error)?;
     let index = group(&entries, |a| {
-        let mut artist = json!({ "id": a.id, "name": a.name, "albumCount": a.album_count });
+        let mut artist = json!({
+            "id": a.id,
+            "name": a.name,
+            "albumCount": a.album_count,
+            "roles": browse::roles(&a.roles),
+        });
         if let Some(sort_name) = &a.sort_name {
             artist["sortName"] = json!(sort_name);
         }
@@ -130,6 +148,7 @@ async fn artist(params: &Params, state: &AppState) -> Result<Map<String, Value>,
         "id": artist.id,
         "name": artist.name,
         "albumCount": albums.len(),
+        "roles": browse::roles(&artist.roles),
         "album": list,
     });
     if let Some(sort_name) = artist.sort_name {
@@ -303,6 +322,16 @@ pub(super) async fn songs_json(
             .or_default()
             .push(credit);
     }
+    let mut contributors: HashMap<String, Vec<browse::Contributor>> = HashMap::new();
+    for contributor in browse::contributors_of_album(&state.db, album_id)
+        .await
+        .map_err(db_error)?
+    {
+        contributors
+            .entry(contributor.track_id.clone())
+            .or_default()
+            .push(contributor);
+    }
     let mut track_genres: HashMap<String, Vec<String>> = HashMap::new();
     for (track_id, genre) in browse::track_genres_of_album(&state.db, album_id)
         .await
@@ -315,7 +344,8 @@ pub(super) async fn songs_json(
         .map(|song| {
             let artists = track_artists.get(&song.id).map_or(&[][..], Vec::as_slice);
             let genres = track_genres.get(&song.id).map_or(&[][..], Vec::as_slice);
-            song_json(song, artists, &album_artists, genres)
+            let contributors = contributors.get(&song.id).map_or(&[][..], Vec::as_slice);
+            song_json(song, artists, &album_artists, genres, contributors)
         })
         .collect())
 }
@@ -326,6 +356,7 @@ fn song_json(
     artists: &[Credit],
     album_artists: &[Credit],
     genres: &[String],
+    contributors: &[browse::Contributor],
 ) -> Value {
     let mut value = json!({
         "id": song.id,
@@ -381,12 +412,23 @@ fn song_json(
     if let Some(sort_name) = &song.sort_name {
         value["sortName"] = json!(sort_name);
     }
+    // OpenSubsonic では、対応する項目は値がなくても空で返す
+    value["displayComposer"] = json!(song.display_composer.as_deref().unwrap_or_default());
+    value["contributors"] = contributors
+        .iter()
+        .map(|c| json!({ "role": c.role, "artist": { "id": c.artist_id, "name": c.name } }))
+        .collect();
     value
 }
 
 /// 検索とお気に入りの一覧に出す ArtistID3。
 pub(super) fn artist_summary_json(a: &ArtistSummary) -> Value {
-    let mut artist = json!({ "id": a.id, "name": a.name, "albumCount": a.album_count });
+    let mut artist = json!({
+        "id": a.id,
+        "name": a.name,
+        "albumCount": a.album_count,
+        "roles": browse::roles(&a.roles),
+    });
     if let Some(sort_name) = &a.sort_name {
         artist["sortName"] = json!(sort_name);
     }

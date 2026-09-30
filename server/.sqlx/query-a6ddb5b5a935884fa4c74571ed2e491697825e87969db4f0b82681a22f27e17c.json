@@ -1,0 +1,100 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT artist.id AS \"id!\", artist.name, artist.sort_name, artist.sort_key,\n                  COUNT(DISTINCT track.album_id) AS \"album_count!: i64\",\n                  (CASE WHEN EXISTS (SELECT 1 FROM album_artist\n                                     WHERE album_artist.artist_id = artist.id)\n                     THEN 'albumartist ' ELSE '' END\n                   || CASE WHEN EXISTS (SELECT 1 FROM track_artist\n                                        WHERE track_artist.artist_id = artist.id)\n                      THEN 'artist ' ELSE '' END\n                   || CASE WHEN EXISTS (SELECT 1 FROM track_contributor\n                                        WHERE track_contributor.artist_id = artist.id\n                                          AND track_contributor.role = 'composer')\n                      THEN 'composer ' ELSE '' END\n                   || CASE WHEN EXISTS (SELECT 1 FROM track_contributor\n                                        WHERE track_contributor.artist_id = artist.id\n                                          AND track_contributor.role = 'lyricist')\n                      THEN 'lyricist ' ELSE '' END\n                   || CASE WHEN EXISTS (SELECT 1 FROM track_contributor\n                                        WHERE track_contributor.artist_id = artist.id\n                                          AND track_contributor.role = 'arranger')\n                      THEN 'arranger ' ELSE '' END) AS \"roles!: String\",\n                  artist.starred_at, artist.rating\n           FROM artist\n             JOIN track_artist ON track_artist.artist_id = artist.id\n             JOIN track ON track.id = track_artist.track_id\n           GROUP BY artist.id\n           ORDER BY artist.sort_key, artist.id",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "name": "sort_name",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "sort_name"
+          }
+        }
+      },
+      {
+        "name": "sort_key",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "sort_key"
+          }
+        }
+      },
+      {
+        "name": "album_count!: i64",
+        "ordinal": 4,
+        "type_info": "Null",
+        "origin": "Expression"
+      },
+      {
+        "name": "roles!: String",
+        "ordinal": 5,
+        "type_info": "Null",
+        "origin": "Expression"
+      },
+      {
+        "name": "starred_at",
+        "ordinal": 6,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "starred_at"
+          }
+        }
+      },
+      {
+        "name": "rating",
+        "ordinal": 7,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "rating"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      false,
+      null,
+      null,
+      true,
+      true
+    ]
+  },
+  "hash": "a6ddb5b5a935884fa4c74571ed2e491697825e87969db4f0b82681a22f27e17c"
+}

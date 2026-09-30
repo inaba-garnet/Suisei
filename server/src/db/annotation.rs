@@ -100,7 +100,29 @@ pub async fn starred_artists(pool: &Pool) -> Result<Vec<ArtistSummary>, sqlx::Er
                       UNION
                       SELECT track.album_id FROM track
                         JOIN track_artist ON track_artist.track_id = track.id
-                        WHERE track_artist.artist_id = artist.id)) AS "album_count!: i64",
+                        WHERE track_artist.artist_id = artist.id
+                      UNION
+                      SELECT track.album_id FROM track
+                        JOIN track_contributor ON track_contributor.track_id = track.id
+                        WHERE track_contributor.artist_id = artist.id)) AS "album_count!: i64",
+                  (CASE WHEN EXISTS (SELECT 1 FROM album_artist
+                                     WHERE album_artist.artist_id = artist.id)
+                     THEN 'albumartist ' ELSE '' END
+                   || CASE WHEN EXISTS (SELECT 1 FROM track_artist
+                                        WHERE track_artist.artist_id = artist.id)
+                      THEN 'artist ' ELSE '' END
+                   || CASE WHEN EXISTS (SELECT 1 FROM track_contributor
+                                        WHERE track_contributor.artist_id = artist.id
+                                          AND track_contributor.role = 'composer')
+                      THEN 'composer ' ELSE '' END
+                   || CASE WHEN EXISTS (SELECT 1 FROM track_contributor
+                                        WHERE track_contributor.artist_id = artist.id
+                                          AND track_contributor.role = 'lyricist')
+                      THEN 'lyricist ' ELSE '' END
+                   || CASE WHEN EXISTS (SELECT 1 FROM track_contributor
+                                        WHERE track_contributor.artist_id = artist.id
+                                          AND track_contributor.role = 'arranger')
+                      THEN 'arranger ' ELSE '' END) AS "roles!: String",
                   artist.starred_at, artist.rating
            FROM artist WHERE artist.starred_at IS NOT NULL
            ORDER BY artist.starred_at DESC, artist.id"#
