@@ -167,6 +167,18 @@ async fn artist(params: &Params, state: &AppState) -> Result<Map<String, Value>,
     if let Some(sort_name) = artist.sort_name {
         value["sortName"] = json!(sort_name);
     }
+    // 独自の引数 `songs` の役割で関わった曲（docs/schema.md の「日本語の並べ替え」）
+    if let Some(roles) = params.get("songs") {
+        let songs = browse::songs_of_artist(&state.db, &id, role_filter(roles)?)
+            .await
+            .map_err(db_error)?;
+        let mut list = Vec::with_capacity(songs.len());
+        // 曲はアルバムごとにまとまって並ぶので、アルバムごとに付随する情報を引く
+        for chunk in songs.chunk_by(|a, b| a.album_id == b.album_id) {
+            list.extend(songs_json(state, &chunk[0].album_id, chunk).await?);
+        }
+        value["song"] = json!(list);
+    }
     annotate(&mut value, artist.starred_at, artist.rating);
     Ok(payload(json!({ "artist": value })))
 }

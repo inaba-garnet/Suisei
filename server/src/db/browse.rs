@@ -620,6 +620,56 @@ pub async fn songs_of_album(pool: &Pool, album_id: &str) -> Result<Vec<Song>, sq
     .await
 }
 
+/// `filter` のどれかの役割でアーティストが関わった曲。
+/// アルバムは `albums_of_artist` と同じ順、アルバムの中は `songs_of_album` と同じ順。
+pub async fn songs_of_artist(
+    pool: &Pool,
+    artist_id: &str,
+    filter: RoleFilter,
+) -> Result<Vec<Song>, sqlx::Error> {
+    sqlx::query_as!(
+        Song,
+        r#"SELECT track.id AS "id!", track.album_id, track.title, track.display_artist,
+                  track.sort_name, track.disc_number, track.track_number, track.year,
+                  track.created_at, track.starred_at, track.rating, track.display_composer,
+                  album.name AS album_name,
+                  album.display_artist AS album_display_artist,
+                  album.cover_path IS NOT NULL AS "album_has_cover!: bool", file.path, file.size,
+                  file.suffix, file.content_type, file.duration_ms, file.bit_rate,
+                  file.sample_rate, file.channels, file.bit_depth,
+                  (SELECT COUNT(*) FROM play_history WHERE play_history.track_id = track.id)
+                    AS "play_count!: i64",
+                  (SELECT MAX(played_at) FROM play_history WHERE play_history.track_id = track.id)
+                    AS "last_played: i64"
+           FROM track
+             JOIN album ON album.id = track.album_id
+             JOIN file ON file.id = track.primary_file_id
+           WHERE track.id IN (
+               SELECT track.id FROM track
+                 JOIN album_artist ON album_artist.album_id = track.album_id
+               WHERE album_artist.artist_id = ?1 AND ?2
+               UNION
+               SELECT track_id FROM track_artist WHERE artist_id = ?1 AND ?3
+               UNION
+               SELECT track_id FROM track_contributor
+               WHERE artist_id = ?1
+                 AND ((role = 'composer' AND ?4)
+                   OR (role = 'lyricist' AND ?5)
+                   OR (role = 'arranger' AND ?6)))
+           ORDER BY album.year IS NULL, album.year, album.sort_key, album.id,
+                    track.disc_number IS NULL, track.disc_number,
+                    track.track_number IS NULL, track.track_number, track.sort_key, track.id"#,
+        artist_id,
+        filter.album_artist,
+        filter.artist,
+        filter.composer,
+        filter.lyricist,
+        filter.arranger
+    )
+    .fetch_all(pool)
+    .await
+}
+
 pub async fn song(pool: &Pool, id: &str) -> Result<Option<Song>, sqlx::Error> {
     sqlx::query_as!(
         Song,
