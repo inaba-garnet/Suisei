@@ -21,7 +21,7 @@ pub async fn search3(params: &Params, state: &AppState) -> Result<Map<String, Va
         )
     })?;
     let words = words(query);
-    let sort = song_sort(params)?;
+    let sort = song_sort(params)?.unwrap_or_default();
     let page = |kind: &str| {
         let number = |key: String| params.get(&key).and_then(|v| v.parse::<i64>().ok());
         let count = number(format!("{kind}Count"))
@@ -66,12 +66,13 @@ pub async fn search3(params: &Params, state: &AppState) -> Result<Map<String, Va
     Ok(payload(json!({ "searchResult3": result })))
 }
 
-/// 独自の引数 `songSort` で曲の順を変える（docs/schema.md の「検索」）。
-pub(super) fn song_sort(params: &Params) -> Result<search::SongSort, Error> {
+/// 独自の引数 `songSort` で曲の順を変える（docs/schema.md の「検索」）。引数がなければ `None`。
+pub(super) fn song_sort(params: &Params) -> Result<Option<search::SongSort>, Error> {
     match params.get("songSort") {
-        None | Some("title") => Ok(search::SongSort::Title),
-        Some("album") => Ok(search::SongSort::Album),
-        Some("artist") => Ok(search::SongSort::Artist),
+        None => Ok(None),
+        Some("title") => Ok(Some(search::SongSort::Title)),
+        Some("album") => Ok(Some(search::SongSort::Album)),
+        Some("artist") => Ok(Some(search::SongSort::Artist)),
         Some(other) => Err(Error::new(
             ErrorCode::Generic,
             format!("unknown songSort: {other}"),

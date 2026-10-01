@@ -7,7 +7,7 @@ use serde_json::{Map, Value, json};
 use super::browse::{album_json, artist_summary_json, db_error};
 use super::search::songs;
 use super::{AppState, payload};
-use crate::db::{annotation, browse};
+use crate::db::{annotation, browse, search};
 use crate::subsonic::{Error, ErrorCode, Params};
 
 /// `id`（曲）、`albumId`、`artistId` を送られた順に集める。ID は種類をまたいで一意なので区別しない。
@@ -86,7 +86,9 @@ fn skipped(endpoint: &str, id: &str) {
 }
 
 /// お気に入りのアーティスト、アルバム、曲を、お気に入りにした新しい順に返す。
-pub async fn starred2(state: &AppState) -> Result<Map<String, Value>, Error> {
+/// 曲は独自の引数 `songSort` で並べ替えられる（docs/schema.md の「お気に入りと評価」）。
+pub async fn starred2(params: &Params, state: &AppState) -> Result<Map<String, Value>, Error> {
+    let sort = super::search::song_sort(params)?;
     let artists: Vec<Value> = annotation::starred_artists(&state.db)
         .await
         .map_err(db_error)?
@@ -102,9 +104,11 @@ pub async fn starred2(state: &AppState) -> Result<Map<String, Value>, Error> {
             albums.push(album_json(state, &album).await?);
         }
     }
-    let song_ids = annotation::starred_songs(&state.db)
-        .await
-        .map_err(db_error)?;
+    let song_ids = match sort {
+        Some(sort) => search::starred_songs(&state.db, sort).await,
+        None => annotation::starred_songs(&state.db).await,
+    }
+    .map_err(db_error)?;
     let songs = songs(state, &song_ids).await?;
 
     // 空の種類は、Navidrome と同じく項目ごと省く
