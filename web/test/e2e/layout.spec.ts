@@ -40,3 +40,14 @@ test('開発モードでなければ「開発」の項目を出さず、保存�
   const right = main.x + main.width - (content.x + content.width)
   expect(Math.abs(left - right)).toBeLessThan(2)
 })
+
+test('タブとホーム画面のアイコンを配る', async ({ page, request }) => {
+  await mockApi(page, { loggedIn: true })
+  await page.goto('/')
+  for (const selector of ['link[rel="icon"][sizes="32x32"]', 'link[rel="icon"][sizes="192x192"]', 'link[rel="apple-touch-icon"]']) {
+    const href = await page.locator(selector).getAttribute('href')
+    const res = await request.get(href!)
+    expect(res.status(), selector).toBe(200)
+    expect(res.headers()['content-type'], selector).toContain('image/png')
+  }
+})
