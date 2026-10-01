@@ -743,6 +743,52 @@ async fn search_matches_reading_and_all_words() {
 }
 
 #[tokio::test]
+async fn search_sorts_songs() {
+    let titled = |path, title, artist, album, track| Song {
+        title: Some(title),
+        track: Some(track),
+        ..song(path, artist, album)
+    };
+    let server = server(&[
+        titled("z/1.flac", "a", "A", "Z", 1),
+        titled("x/2.flac", "b", "B", "X", 2),
+        titled("x/1.flac", "c", "B", "X", 1),
+        titled("y/1.flac", "d", "A", "Y", 1),
+    ])
+    .await;
+    let sorted = |sort: &'static str| {
+        let server = &server;
+        async move {
+            let res = server
+                .get(
+                    "search3",
+                    &format!("&query=&artistCount=0&albumCount=0{sort}"),
+                )
+                .await;
+            titles(&res["searchResult3"]["song"])
+                .into_iter()
+                .map(str::to_owned)
+                .collect::<Vec<_>>()
+        }
+    };
+
+    assert_eq!(sorted("").await, ["a", "b", "c", "d"]);
+    assert_eq!(sorted("&songSort=title").await, ["a", "b", "c", "d"]);
+    // アルバム名の順、同じアルバムの中はトラック番号の順
+    assert_eq!(sorted("&songSort=album").await, ["c", "b", "d", "a"]);
+    // アーティストの順、同じアーティストの中はアルバムの順
+    assert_eq!(sorted("&songSort=artist").await, ["d", "a", "c", "b"]);
+    // 続きを読んでも順は崩れない
+    assert_eq!(
+        sorted("&songSort=artist&songCount=2&songOffset=2").await,
+        ["c", "b"]
+    );
+
+    let res = server.raw("search3", "&query=&songSort=unknown").await;
+    assert_eq!(res["subsonic-response"]["error"]["code"], 0);
+}
+
+#[tokio::test]
 async fn search_shapes_match_navidrome() {
     let server = search_server().await;
     let res = server
