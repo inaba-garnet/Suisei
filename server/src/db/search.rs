@@ -101,6 +101,32 @@ pub async fn songs(
         "SELECT track.id FROM track JOIN album ON album.id = track.album_id",
     );
     push_filter(&mut query, "track", words);
+    push_song_order(&mut query, sort);
+    push_limit(&mut query, count, offset);
+    query.build_query_scalar().fetch_all(pool).await
+}
+
+/// `genre`（表記ゆれをまとめたジャンル名）の曲の ID。
+pub async fn songs_by_genre(
+    pool: &Pool,
+    genre: &str,
+    sort: SongSort,
+    count: i64,
+    offset: i64,
+) -> Result<Vec<String>, sqlx::Error> {
+    let mut query = QueryBuilder::<Sqlite>::new(
+        "SELECT track.id FROM track JOIN album ON album.id = track.album_id
+         WHERE EXISTS (SELECT 1 FROM track_genre
+                       WHERE track_genre.track_id = track.id AND track_genre.genre = ",
+    );
+    query.push_bind(genre);
+    query.push(")");
+    push_song_order(&mut query, sort);
+    push_limit(&mut query, count, offset);
+    query.build_query_scalar().fetch_all(pool).await
+}
+
+fn push_song_order(query: &mut QueryBuilder<Sqlite>, sort: SongSort) {
     match sort {
         SongSort::Title => query.push(" ORDER BY track.sort_key, track.id"),
         SongSort::Album => query.push(format!(" ORDER BY {ALBUM_ORDER}")),
@@ -108,8 +134,6 @@ pub async fn songs(
             " ORDER BY {FIRST_ARTIST} IS NULL, {FIRST_ARTIST}, {ALBUM_ORDER}"
         )),
     };
-    push_limit(&mut query, count, offset);
-    query.build_query_scalar().fetch_all(pool).await
 }
 
 /// 語ごとに `search_text LIKE '%語%'` を AND でつなぐ。語がなければ全件。

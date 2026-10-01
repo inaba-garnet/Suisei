@@ -22,7 +22,6 @@ pub fn respond(
         }}),
         "getAlbumList" => json!({ "albumList": {} }),
         "getRandomSongs" => json!({ "randomSongs": {} }),
-        "getSongsByGenre" => json!({ "songsByGenre": {} }),
         "search2" => json!({ "searchResult2": {} }),
         "getStarred" => json!({ "starred": {} }),
         // 保存した再生キューがなければ、中身のない応答を返す（OpenSubsonic の仕様）。
