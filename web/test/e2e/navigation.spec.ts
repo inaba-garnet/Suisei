@@ -39,9 +39,6 @@ test('PC はサイドバーにライブラリの項目を展開して出す', as
   ])
   await expect(page.getByTestId('player-bar')).toBeVisible()
 
-  // 広い画面でも内容の幅は 640px まで
-  const box = await page.getByTestId('content').boundingBox()
-  expect(box?.width).toBe(640)
 
   await sidebar.getByRole('link', { name: 'トラック' }).click()
   await expect(page).toHaveURL('/library/tracks')

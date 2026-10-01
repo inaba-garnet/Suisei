@@ -4,6 +4,8 @@ import { mockApi } from './api'
 test('PC は開発モードのとき内容の配置を中央と左寄せから選べ、再読み込みの後も保つ', async ({ page, isMobile }) => {
   test.skip(isMobile, 'PC の画面だけ')
   await mockApi(page, { loggedIn: true, dev: true })
+  // 内容の幅が 640px までの画面で、左右に余りが出るようにする
+  await page.setViewportSize({ width: 1100, height: 800 })
   await page.goto('/settings')
   const content = page.getByTestId('content')
   const main = page.getByRole('main')
@@ -49,5 +51,35 @@ test('タブとホーム画面のアイコンを配る', async ({ page, request 
     const res = await request.get(href!)
     expect(res.status(), selector).toBe(200)
     expect(res.headers()['content-type'], selector).toContain('image/png')
+  }
+})
+
+test('画面の幅に合わせて内容の幅を広げ、広い画面では右の欄に再生プレイヤーを置く', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'PC の画面だけ')
+  await mockApi(page, { loggedIn: true })
+  await page.goto('/settings')
+  const content = page.getByTestId('content')
+  const panel = page.getByTestId('player-panel')
+  const bar = page.getByTestId('player-bar')
+  const width = async () => Math.round((await content.boundingBox())!.width)
+
+  for (const [viewport, contentWidth, hasPanel, panelWidth] of [
+    [1100, 640, false, 0],
+    [1300, 1040, false, 0],
+    [1500, 1040, true, 320],
+    [1800, 1040, true, 380],
+  ] as const) {
+    await page.setViewportSize({ width: viewport, height: 900 })
+    await expect.poll(width, String(viewport)).toBeLessThanOrEqual(contentWidth)
+    if (hasPanel) {
+      await expect(panel).toBeVisible()
+      await expect(bar).toBeHidden()
+      // 欄の幅から、外側の余白（右 20px）を除いた幅
+      await expect.poll(async () => Math.round((await panel.boundingBox())!.width) + 20, String(viewport)).toBe(panelWidth)
+    }
+    else {
+      await expect(panel).toBeHidden()
+      await expect(bar).toBeVisible()
+    }
   }
 })
