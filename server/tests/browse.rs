@@ -1157,6 +1157,36 @@ async fn star_and_unstar() {
     assert_eq!(res["starred2"], serde_json::json!({}));
 }
 
+#[tokio::test]
+async fn starred_songs_are_sorted_by_song_sort() {
+    let titled = |path, title, album| Song {
+        title: Some(title),
+        ..song(path, "A", album)
+    };
+    let server = server(&[
+        titled("z/1.flac", "a", "Z"),
+        titled("x/1.flac", "b", "X"),
+        titled("y/1.flac", "c", "Y"),
+    ])
+    .await;
+    for title in ["c", "a", "b"] {
+        let id = server.id("track", "title", title).await;
+        server.get("star", &format!("&id={id}")).await;
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+
+    // 引数がなければ、お気に入りにした新しい順
+    let res = server.get("getStarred2", "").await;
+    assert_eq!(titles(&res["starred2"]["song"]), ["b", "a", "c"]);
+    let res = server.get("getStarred2", "&songSort=title").await;
+    assert_eq!(titles(&res["starred2"]["song"]), ["a", "b", "c"]);
+    let res = server.get("getStarred2", "&songSort=album").await;
+    assert_eq!(titles(&res["starred2"]["song"]), ["b", "c", "a"]);
+
+    let res = server.raw("getStarred2", "&songSort=unknown").await;
+    assert_eq!(res["subsonic-response"]["error"]["code"], 0);
+}
+
 /// お気に入りにし直しても日時は変えない。
 #[tokio::test]
 async fn restar_keeps_date() {

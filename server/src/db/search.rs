@@ -126,6 +126,16 @@ pub async fn songs_by_genre(
     query.build_query_scalar().fetch_all(pool).await
 }
 
+/// お気に入りの曲の ID を `sort` の順に返す。
+pub async fn starred_songs(pool: &Pool, sort: SongSort) -> Result<Vec<String>, sqlx::Error> {
+    let mut query = QueryBuilder::<Sqlite>::new(
+        "SELECT track.id FROM track JOIN album ON album.id = track.album_id
+         WHERE track.starred_at IS NOT NULL",
+    );
+    push_song_order(&mut query, sort);
+    query.build_query_scalar().fetch_all(pool).await
+}
+
 fn push_song_order(query: &mut QueryBuilder<Sqlite>, sort: SongSort) {
     match sort {
         SongSort::Title => query.push(" ORDER BY track.sort_key, track.id"),

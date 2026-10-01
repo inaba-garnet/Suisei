@@ -227,7 +227,7 @@ async fn songs_by_genre(params: &Params, state: &AppState) -> Result<Map<String,
         .unwrap_or(LIST_SIZE_DEFAULT)
         .clamp(0, LIST_SIZE_MAX);
     let offset = number("offset").unwrap_or(0).max(0);
-    let sort = super::search::song_sort(params)?;
+    let sort = super::search::song_sort(params)?.unwrap_or_default();
     let mut result = Map::new();
     if let Some(name) = browse::genre_name(&state.db, genre)
         .await

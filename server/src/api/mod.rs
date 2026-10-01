@@ -123,7 +123,7 @@ async fn rest(
         "star" => reply(format, annotation::star(&params, &state).await),
         "unstar" => reply(format, annotation::unstar(&params, &state).await),
         "setRating" => reply(format, annotation::set_rating(&params, &state).await),
-        "getStarred2" => reply(format, annotation::starred2(&state).await),
+        "getStarred2" => reply(format, annotation::starred2(&params, &state).await),
         "getPlaylists" => reply(format, playlist::list(&state).await),
         "getPlaylist" => reply(format, playlist::get(&params, &state).await),
         "createPlaylist" => reply(format, playlist::create(&params, &state).await),
