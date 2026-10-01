@@ -51,12 +51,12 @@ export const sortOptions: Record<ArtistView, { value: ArtistSort, label: string 
   albums: [
     { value: 'newest', label: '新しい順' },
     { value: 'oldest', label: '古い順' },
-    { value: 'name', label: '名前順' },
+    { value: 'name', label: 'アルバム名順' },
   ],
   tracks: [
     { value: 'newest', label: '新しい順' },
     { value: 'oldest', label: '古い順' },
-    { value: 'name', label: '名前順' },
+    { value: 'name', label: 'アルバム名順' },
   ],
   composer: [
     { value: 'newest', label: '新しい順' },
