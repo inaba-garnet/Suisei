@@ -1,17 +1,36 @@
 <script setup lang="ts">
-import type { ArtistWithAlbums } from '~/utils/subsonic'
+import type { ArtistWithAlbums, Song } from '~/utils/subsonic'
 import { useScroll } from '@vueuse/core'
+import { Music } from 'lucide-vue-next'
+import { albumsAsAlbumArtist, artistView, groupByAlbum, songRoles } from '~/utils/artist'
+import { formatDuration } from '~/utils/subsonic'
 
 const route = useRoute()
 const subsonic = useSubsonic()
 const id = computed(() => String(route.params.id))
+// どの一覧から開いたか（docs/web.md の「一覧」）
+const view = computed(() => artistView(route.query.view))
 
 const { data: artist, status, refresh } = useAsyncData(
-  () => `artist:${id.value}`,
-  async () => (await subsonic<{ artist: ArtistWithAlbums }>('getArtist', { id: id.value })).artist,
+  () => `artist:${id.value}:${view.value}`,
+  async () => {
+    const songs = songRoles[view.value]
+    const params: Record<string, string> = songs ? { id: id.value, songs } : { id: id.value }
+    return (await subsonic<{ artist: ArtistWithAlbums }>('getArtist', params)).artist
+  },
 )
 
 useHead({ title: () => artist.value?.name ?? 'アーティスト' })
+
+const albums = computed(() => albumsAsAlbumArtist(artist.value?.album ?? [], id.value))
+const songs = computed(() => artist.value?.song ?? [])
+const groups = computed(() => groupByAlbum(songs.value))
+const summary = computed(() => view.value === 'albums' ? `アルバム ${albums.value.length} 枚` : `${songs.value.length} 曲`)
+
+/** 曲のアーティストがこのアーティストだけなら出さない。 */
+function songArtist(song: Song): string | undefined {
+  return song.artist && song.artist !== artist.value?.name ? song.artist : undefined
+}
 
 // 大きな見出しが帯の下に隠れたら、帯にアーティストの名前を出す
 const scroller = useScroller()
@@ -28,7 +47,7 @@ const titleVisible = computed(() => {
   <div>
     <PageHeader
       :title="artist?.name ?? 'アーティスト'"
-      :back="{ to: '/library/artists' }"
+      :back="{ to: view === 'composer' ? '/library/composers' : '/library/artists' }"
       detail
       :title-visible="titleVisible"
     />
@@ -52,12 +71,61 @@ const titleVisible = computed(() => {
             {{ artist.name }}
           </h1>
           <p class="text-body-sm text-fg-subtle">
-            アルバム {{ artist.albumCount }} 枚
+            {{ summary }}
           </p>
         </div>
       </header>
 
-      <AlbumGrid :albums="artist.album ?? []" :more="false" />
+      <AlbumGrid v-if="view === 'albums'" :albums="albums" :more="false" />
+
+      <template v-else-if="view === 'tracks'">
+        <section v-if="albums.length" class="mb-8">
+          <h2 class="mb-3 text-h2 font-semibold">
+            アルバム
+          </h2>
+          <AlbumShelf :albums="albums" />
+        </section>
+        <section>
+          <h2 class="mb-3 text-h2 font-semibold">
+            曲
+          </h2>
+          <ol data-testid="songs">
+            <template v-for="group in groups" :key="group.albumId">
+              <li>
+                <NuxtLink
+                  :to="`/library/albums/${group.albumId}`"
+                  class="flex items-center gap-4 border-b border-divider px-3 pt-5 pb-3 transition-colors hover:text-fg"
+                  data-testid="song-group"
+                >
+                  <CoverArt :id="group.coverArt" :size="64" :alt="group.album" class="size-16 shrink-0" />
+                  <span class="min-w-0 line-clamp-2 break-words text-body-lg font-semibold">{{ group.album }}</span>
+                </NuxtLink>
+              </li>
+              <li v-for="song in group.songs" :key="song.id" class="flex h-12 items-center gap-3 border-b border-divider px-3">
+                <span class="w-6 shrink-0 text-right text-body-sm text-fg-subtle tabular-nums">{{ song.track ?? '' }}</span>
+                <span class="min-w-0 flex-1">
+                  <span class="block truncate text-body">{{ song.title }}</span>
+                  <span v-if="songArtist(song)" class="block truncate text-body-sm text-fg-subtle">{{ songArtist(song) }}</span>
+                </span>
+                <span class="shrink-0 text-body-sm text-fg-subtle tabular-nums">{{ formatDuration(song.duration) }}</span>
+              </li>
+            </template>
+          </ol>
+        </section>
+      </template>
+
+      <ol v-else data-testid="songs">
+        <li v-for="song in songs" :key="song.id" class="flex h-14 items-center gap-3 border-b border-divider px-3">
+          <CoverArt :id="song.coverArt" :size="40" :alt="song.album" class="size-10 shrink-0" />
+          <span class="min-w-0 flex-1">
+            <span class="block truncate text-body">{{ song.title }}</span>
+            <span class="block truncate text-body-sm text-fg-subtle">{{ [song.artist, song.album].filter(Boolean).join(' · ') }}</span>
+          </span>
+          <span class="shrink-0 text-body-sm text-fg-subtle tabular-nums">{{ formatDuration(song.duration) }}</span>
+        </li>
+      </ol>
+
+      <EmptyState v-if="view !== 'albums' && status !== 'pending' && songs.length === 0" :icon="Music" title="曲がありません" />
     </template>
   </div>
 </template>

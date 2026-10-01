@@ -19,6 +19,8 @@ export interface ArtistIndex {
 
 export interface ArtistWithAlbums extends Artist {
   album?: Album[]
+  /** 独自の引数 `songs` を渡したときだけ返る、その役割で関わった曲。 */
+  song?: Song[]
 }
 
 export interface Album {
@@ -37,6 +39,10 @@ export interface Song {
   id: string
   title: string
   artist?: string
+  artists?: ArtistRef[]
+  album?: string
+  albumId?: string
+  coverArt?: string
   track?: number
   discNumber?: number
   duration: number

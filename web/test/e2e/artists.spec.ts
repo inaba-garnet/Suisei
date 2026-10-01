@@ -27,7 +27,7 @@ test('アーティストを読みの行の見出しで区切って並べ、今�
 
 test('アーティストの詳細でアルバムを並べ、「戻る」と読み直さずに元の位置に戻る', async ({ page }) => {
   await mockApi(page, { loggedIn: true })
-  const { calls } = await mockArtists(page)
+  const { calls, songs } = await mockArtists(page)
   await page.goto('/library/artists')
   await expect(page.getByRole('link', { name: /アのアーティスト 0/ })).toBeVisible()
 
@@ -38,13 +38,18 @@ test('アーティストの詳細でアルバムを並べ、「戻る」と読�
   await link.dispatchEvent('click')
 
   await expect(page.getByRole('heading', { name })).toBeVisible()
+  await expect(page).toHaveURL(/\?view=albums$/)
+  // アルバムアーティストになっているアルバムだけを並べる
   await expect(page.getByTestId('album-grid').getByRole('link')).toHaveCount(2)
   await expect(page.getByTestId('album-grid')).toContainText(`${name} の一枚目`)
+  await expect(page.getByTestId('album-grid')).not.toContainText('客演のアルバム')
+  await expect(page.getByTestId('songs')).toHaveCount(0)
 
   await page.getByRole('button', { name: '戻る', exact: true }).click()
   await expect(page).toHaveURL('/library/artists')
   await expect.poll(() => scrollTop(page)).toBe(before)
   expect(calls.artists).toBe(1)
+  expect(songs).toEqual([''])
 })
 
 test('アーティストの一覧でアルバムアーティストと曲のアーティストを切り替え、戻ると選んでいた方に戻る', async ({ page }) => {
@@ -61,7 +66,7 @@ test('アーティストの一覧でアルバムアーティストと曲のア�
   expect(roles).toEqual(['albumartist', 'artist'])
 
   await link.click()
-  await expect(page.getByTestId('album-grid')).toBeVisible()
+  await expect(page.getByTestId('songs')).toBeVisible()
   await page.getByRole('button', { name: '戻る', exact: true }).click()
   await expect(page.getByRole('radio', { name: 'アーティスト', exact: true })).toHaveAttribute('aria-checked', 'true')
   await expect(page.getByRole('link', { name: /^artist:アのアーティスト 0/ })).toBeVisible()
@@ -73,9 +78,9 @@ test('アーティストの一覧でアルバムアーティストと曲のア�
   await expect(page.getByRole('radio', { name: 'アルバムアーティスト' })).toHaveAttribute('aria-checked', 'true')
 })
 
-test('作曲家の一覧は作曲、作詞、編曲をまとめて求め、詳細から作曲家の一覧に戻る', async ({ page }) => {
+test('作曲家の一覧は作曲、作詞、編曲をまとめて求め、詳細は曲をアルバムで区切らずに並べ、作曲家の一覧に戻る', async ({ page }) => {
   await mockApi(page, { loggedIn: true })
-  const { roles } = await mockArtists(page)
+  const { roles, songs } = await mockArtists(page)
   await page.goto('/library/composers')
   await expect(page.getByRole('heading', { name: '作曲家' })).toBeVisible()
   const link = page.getByRole('link', { name: /^composer,lyricist,arranger:アのアーティスト 0/ })
@@ -83,7 +88,13 @@ test('作曲家の一覧は作曲、作詞、編曲をまとめて求め、詳�
   expect(roles).toEqual(['composer,lyricist,arranger'])
 
   await link.click()
-  await expect(page.getByTestId('album-grid')).toBeVisible()
+  await expect(page).toHaveURL(/\?view=composer$/)
+  await expect(page.getByTestId('songs').getByRole('listitem')).toHaveCount(3)
+  await expect(page.getByTestId('songs')).toContainText('客演のアルバム')
+  await expect(page.getByTestId('song-group')).toHaveCount(0)
+  await expect(page.getByTestId('album-grid')).toHaveCount(0)
+  expect(songs).toEqual(['composer,lyricist,arranger'])
+
   await page.getByRole('button', { name: '戻る', exact: true }).click()
   await expect(page).toHaveURL('/library/composers')
 })
@@ -102,4 +113,29 @@ test('アーティストの詳細から開いたアルバムの「戻る」は�
   await page.getByRole('button', { name: '戻る', exact: true }).click()
   await expect(page).toHaveURL(/\/library\/artists\/ar-/)
   await expect(page.getByRole('heading', { name: 'アのアーティスト 0' })).toBeVisible()
+})
+
+test('アーティストの一覧から開いた詳細は、アルバムを横に並べ、曲をアルバムごとの見出しで区切る', async ({ page }) => {
+  await mockApi(page, { loggedIn: true })
+  const { songs } = await mockArtists(page)
+  await page.goto('/library/artists')
+  await page.getByRole('radio', { name: 'アーティスト', exact: true }).click()
+  await page.getByRole('link', { name: /^artist:アのアーティスト 0/ }).click()
+  await expect(page).toHaveURL(/\?view=tracks$/)
+
+  // アルバムアーティストになっているアルバムだけを横に並べる
+  const shelf = page.getByTestId('album-shelf')
+  await expect(shelf.getByRole('link')).toHaveCount(2)
+  await expect(shelf).not.toContainText('客演のアルバム')
+
+  // 曲はアルバムごとの見出しで区切る
+  const groups = page.getByTestId('song-group')
+  await expect(groups).toHaveCount(2)
+  await expect(groups.nth(1)).toContainText('客演のアルバム')
+  await expect(page.getByTestId('songs')).toContainText('ほかの人 feat.')
+  expect(songs).toEqual(['artist'])
+
+  // 再読み込みしても同じ表示にする
+  await page.reload()
+  await expect(page.getByTestId('song-group')).toHaveCount(2)
 })
