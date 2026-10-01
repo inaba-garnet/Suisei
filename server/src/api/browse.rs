@@ -7,6 +7,7 @@ use serde_json::{Map, Value, json};
 
 use super::{AppState, payload};
 use crate::db::browse::{self, Album, AlbumOrder, ArtistEntry, ArtistSummary, Credit, Song};
+use crate::db::search;
 use crate::subsonic::{Error, ErrorCode, Params};
 use crate::tags::index_heading;
 
@@ -24,6 +25,7 @@ pub async fn respond(
         "getSong" => song(params, state).await,
         "getAlbumList2" => album_list(params, state).await,
         "getGenres" => genres(state).await,
+        "getSongsByGenre" => songs_by_genre(params, state).await,
         "search3" => super::search::search3(params, state).await,
         _ => return None,
     };
@@ -211,6 +213,36 @@ async fn song(params: &Params, state: &AppState) -> Result<Map<String, Value>, E
 /// Subsonic の `size` の既定値と上限。
 const LIST_SIZE_DEFAULT: i64 = 10;
 const LIST_SIZE_MAX: i64 = 500;
+
+/// そのジャンルの曲。知らないジャンルなら空を返す（docs/schema.md の「検索」）。
+async fn songs_by_genre(params: &Params, state: &AppState) -> Result<Map<String, Value>, Error> {
+    let genre = params.get("genre").ok_or_else(|| {
+        Error::new(
+            ErrorCode::MissingParameter,
+            "required parameter is missing: genre",
+        )
+    })?;
+    let number = |key: &str| params.get(key).and_then(|v| v.parse::<i64>().ok());
+    let count = number("count")
+        .unwrap_or(LIST_SIZE_DEFAULT)
+        .clamp(0, LIST_SIZE_MAX);
+    let offset = number("offset").unwrap_or(0).max(0);
+    let sort = super::search::song_sort(params)?;
+    let mut result = Map::new();
+    if let Some(name) = browse::genre_name(&state.db, genre)
+        .await
+        .map_err(db_error)?
+    {
+        let ids = search::songs_by_genre(&state.db, &name, sort, count, offset)
+            .await
+            .map_err(db_error)?;
+        let songs = super::search::songs(state, &ids).await?;
+        if !songs.is_empty() {
+            result.insert("song".into(), Value::Array(songs));
+        }
+    }
+    Ok(payload(json!({ "songsByGenre": result })))
+}
 
 async fn album_list(params: &Params, state: &AppState) -> Result<Map<String, Value>, Error> {
     let kind = params.get("type").ok_or_else(|| {
