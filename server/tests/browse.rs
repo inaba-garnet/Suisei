@@ -789,6 +789,48 @@ async fn search_sorts_songs() {
 }
 
 #[tokio::test]
+async fn songs_by_genre_are_sorted_and_paged() {
+    let song_in = |path, title, album, track, genre| Song {
+        title: Some(title),
+        track: Some(track),
+        genre: Some(genre),
+        ..song(path, "A", album)
+    };
+    let server = server(&[
+        song_in("y/1.flac", "a", "Y", 1, "Rock"),
+        song_in("x/2.flac", "b", "X", 2, "Rock"),
+        song_in("x/1.flac", "c", "X", 1, "Rock"),
+        song_in("z/1.flac", "d", "Z", 1, "Pop"),
+    ])
+    .await;
+    let titles_of = |res: &Value| {
+        titles(&res["songsByGenre"]["song"])
+            .into_iter()
+            .map(str::to_owned)
+            .collect::<Vec<_>>()
+    };
+
+    // ジャンル名は表記ゆれをまとめた名前と照らす
+    let res = server.get("getSongsByGenre", "&genre=rock").await;
+    assert_eq!(titles_of(&res), ["a", "b", "c"]);
+    let res = server
+        .get("getSongsByGenre", "&genre=Rock&songSort=album")
+        .await;
+    assert_eq!(titles_of(&res), ["c", "b", "a"]);
+    let res = server
+        .get("getSongsByGenre", "&genre=Rock&count=1&offset=1")
+        .await;
+    assert_eq!(titles_of(&res), ["b"]);
+
+    // 知らないジャンルは空
+    let res = server.get("getSongsByGenre", "&genre=Jazz").await;
+    assert_eq!(res["songsByGenre"], serde_json::json!({}));
+
+    let res = server.raw("getSongsByGenre", "").await;
+    assert_eq!(res["subsonic-response"]["error"]["code"], 10);
+}
+
+#[tokio::test]
 async fn search_shapes_match_navidrome() {
     let server = search_server().await;
     let res = server
