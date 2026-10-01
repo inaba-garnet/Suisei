@@ -34,7 +34,7 @@ const hues = computed(() => genreHues(items.value))
       </div>
     </PageHeader>
 
-    <ul class="grid grid-cols-2 gap-2 md:grid-cols-3" data-testid="genres">
+    <ul class="grid grid-cols-2 gap-2 md:grid-cols-3 4xl:grid-cols-4" data-testid="genres">
       <li v-for="genre in genres" :key="genre.value">
         <NuxtLink
           :to="`/library/genres/${encodeURIComponent(genre.value)}`"

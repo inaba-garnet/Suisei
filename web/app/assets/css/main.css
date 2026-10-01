@@ -5,11 +5,15 @@
 /* data-theme は html に付ける（nuxt.config.ts の起動時のスクリプト） */
 @custom-variant dark (&:where(:root:not([data-theme='light']) *));
 
-/* 画面の幅の区切り（docs/web.md の「画面構成」）。xl で内容の幅を広げ、2xl で右の欄に再生プレイヤーを出し、3xl でその欄を広げる */
+/*
+  画面の幅の区切り（docs/web.md の「画面構成」）。xl で内容の幅を広げ、2xl で右の欄に再生プレイヤーを出し、
+  3xl でその欄を広げ、4xl で内容と欄をさらに広げる
+*/
 @theme {
   --breakpoint-xl: 75rem;
   --breakpoint-2xl: 90rem;
   --breakpoint-3xl: 105rem;
+  --breakpoint-4xl: 120rem;
 }
 
 /* Design のトークンを Tailwind のユーティリティとして使う */

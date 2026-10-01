@@ -18,7 +18,7 @@ watch(() => route.fullPath, () => {
 </script>
 
 <template>
-  <div class="flex h-dvh flex-col md:grid md:grid-cols-[240px_1fr] md:grid-rows-[1fr_72px] 2xl:grid-cols-[240px_1fr_320px] 2xl:grid-rows-[1fr] 3xl:grid-cols-[240px_1fr_380px]">
+  <div class="flex h-dvh flex-col md:grid md:grid-cols-[240px_1fr] md:grid-rows-[1fr_72px] 2xl:grid-cols-[240px_1fr_320px] 2xl:grid-rows-[1fr] 3xl:grid-cols-[240px_1fr_380px] 4xl:grid-cols-[240px_1fr_400px]">
     <!--
       PC（md 以上）はサイドバー、内容、下端の再生バー。スマホは内容、再生バー、下のタブ（docs/web.md）。
       2xl 以上は下端の再生バーの代わりに、右の欄に再生プレイヤーを置く。
@@ -33,7 +33,7 @@ watch(() => route.fullPath, () => {
     -->
     <main class="min-h-0 flex-1 md:py-3 md:pr-5 md:pl-5">
       <div ref="scroller" data-testid="scroller" class="relative h-full overflow-y-auto px-4 pb-6 md:rounded-xl md:border md:border-divider md:bg-surface-1 md:px-5 md:pb-5">
-        <div class="max-w-[640px] xl:max-w-[1040px]" :class="{ 'mx-auto': centered }" data-testid="content">
+        <div class="max-w-[640px] xl:max-w-[1040px] 4xl:max-w-[1440px]" :class="{ 'mx-auto': centered }" data-testid="content">
           <slot />
         </div>
       </div>
