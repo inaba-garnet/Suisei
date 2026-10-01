@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ArtistWithAlbums, Song } from '~/utils/subsonic'
-import { useLocalStorage, useScroll } from '@vueuse/core'
+import { useElementSize, useLocalStorage, useScroll } from '@vueuse/core'
 import { Music } from 'lucide-vue-next'
 import { albumsAsAlbumArtist, artistSort, artistView, groupByAlbum, songRoles, sortAlbums, sortGroups, sortOptions, sortSongs } from '~/utils/artist'
 import { formatDuration } from '~/utils/subsonic'
@@ -50,6 +50,13 @@ function songArtist(song: Song): string | undefined {
 const scroller = useScroller()
 const { y } = useScroll(scroller)
 const heading = ref<HTMLElement>()
+// 並び順の選択は、スクロールしても見出しの帯のすぐ下に残す
+const bar = shallowRef<HTMLElement>()
+onMounted(() => {
+  bar.value = scroller.value?.querySelector<HTMLElement>('[data-testid="page-header"]') ?? undefined
+})
+const { height: barHeight } = useElementSize(bar, undefined, { box: 'border-box' })
+
 const titleVisible = computed(() => {
   const el = heading.value
   const bar = scroller.value?.querySelector<HTMLElement>('[data-testid="page-header"]')
@@ -90,8 +97,12 @@ const titleVisible = computed(() => {
         </div>
       </header>
 
-      <div class="mb-4 flex justify-end">
-        <SortSelect v-model="sort" :options="sortOptions[view]" />
+      <div
+        class="pointer-events-none sticky z-[6] mb-4 flex justify-end"
+        :style="{ top: `${barHeight + 8}px` }"
+        data-testid="artist-sort"
+      >
+        <SortSelect v-model="sort" :options="sortOptions[view]" class="pointer-events-auto shadow-md" />
       </div>
 
       <AlbumGrid v-if="view === 'albums'" :albums="albums" :more="false" />
