@@ -156,3 +156,27 @@ export async function mockTracks(page: Page, { count = 250 } = {}) {
   await page.route(/\/rest\/getCoverArt(\?|$)/, route => route.fulfill({ status: 404 }))
   return { requests }
 }
+
+/** ジャンルと、ジャンルごとの曲の偽物。呼ばれた `getSongsByGenre` の引数を `requests` に残す。 */
+export async function mockGenres(page: Page) {
+  const genres = [
+    { value: 'ロック', songCount: 3, albumCount: 1 },
+    { value: 'アニソン', songCount: 12, albumCount: 2 },
+    { value: 'J-Pop', songCount: 3, albumCount: 1 },
+  ]
+  const requests: URLSearchParams[] = []
+  const ok = (body: object) => ({ json: { 'subsonic-response': { status: 'ok', version: '1.16.1', ...body } } })
+  await page.route(/\/rest\/getGenres(\?|$)/, route => route.fulfill(ok({ genres: { genre: genres } })))
+  await page.route(/\/rest\/getSongsByGenre(\?|$)/, (route) => {
+    const params = new URL(route.request().url()).searchParams
+    requests.push(params)
+    const genre = params.get('genre') ?? ''
+    const sort = params.get('songSort') ?? 'title'
+    const song = Number(params.get('offset') ?? 0) > 0
+      ? []
+      : [1, 2, 3].map(i => ({ id: `${genre}-${i}`, title: `${sort}:${genre} の曲 ${i}`, artist: 'だれか', album: `${genre} のアルバム`, duration: 200 }))
+    return route.fulfill(ok({ songsByGenre: { song } }))
+  })
+  await page.route(/\/rest\/getCoverArt(\?|$)/, route => route.fulfill({ status: 404 }))
+  return { genres, requests }
+}

@@ -36,6 +36,13 @@ export interface Album {
   duration: number
 }
 
+/** `getGenres` のジャンル。 */
+export interface Genre {
+  value: string
+  songCount: number
+  albumCount: number
+}
+
 export interface Song {
   id: string
   title: string
