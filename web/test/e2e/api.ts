@@ -58,7 +58,9 @@ export async function mockLibrary(page: Page, { count = 250, songs = 2, name = (
     requests.push(params)
     const offset = Number(params.get('offset') ?? 0)
     const size = Number(params.get('size') ?? 10)
-    return route.fulfill(ok({ albumList2: { album: albums.slice(offset, offset + size) } }))
+    // お気に入りは 3 枚ごとに 1 枚
+    const list = params.get('type') === 'starred' ? albums.filter((_, i) => i % 3 === 0) : albums
+    return route.fulfill(ok({ albumList2: { album: list.slice(offset, offset + size) } }))
   })
   await page.route(/\/rest\/getAlbum(\?|$)/, (route) => {
     const id = new URL(route.request().url()).searchParams.get('id')
@@ -92,7 +94,7 @@ export async function mockLibrary(page: Page, { count = 250, songs = 2, name = (
 export async function mockArtists(page: Page, { rows = ['ア', 'カ', 'サ', 'タ', 'A', 'B'], perRow = 12 } = {}) {
   const index = rows.map(row => ({
     name: row,
-    artist: Array.from({ length: perRow }, (_, i) => ({ id: `ar-${row}-${i}`, name: `${row}のアーティスト ${i}`, albumCount: 2 })),
+    artist: Array.from({ length: perRow }, (_, i) => ({ id: `ar-${row}-${i}`, name: `${row}のアーティスト ${i}`, albumCount: 2, ...(row === 'カ' && i < 2 && { starred: '2026-01-01T00:00:00Z' }) })),
   }))
   const calls = { artists: 0 }
   const roles: string[] = []

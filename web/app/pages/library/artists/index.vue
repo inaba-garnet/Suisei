@@ -4,22 +4,10 @@ import { MicVocal } from 'lucide-vue-next'
 
 useHead({ title: 'アーティスト' })
 
-// アルバムアーティストか、曲のアーティスト全員か（docs/web.md の「一覧」）。
-// 「戻る」で戻ったときは選んでいた方に、開き直したときはアルバムアーティストに戻す
+// アルバムアーティストか、曲のアーティスト全員か。開き直したときはアルバムアーティストに戻す（docs/web.md の「一覧」）
 type Role = 'albumartist' | 'artist'
-const role = useState<Role>('artists-role', () => 'albumartist')
-if (!usePopped().value) {
-  role.value = 'albumartist'
-}
-// 切り替えたときは、残した位置を使わずに先頭から出す
-const popped = usePopped()
-const scroller = useScroller()
-watch(role, () => {
-  popped.value = false
-  if (scroller.value) {
-    scroller.value.scrollTop = 0
-  }
-})
+const role = useListOption<Role>('artists-role', 'albumartist')
+const favorite = useListOption('artists-favorite', false)
 
 // アルバムアーティストはアルバムだけを、曲のアーティストは曲を詳細に出す
 const views: Record<Role, ArtistView> = { albumartist: 'albums', artist: 'tracks' }
@@ -33,9 +21,12 @@ const roles: { value: Role, label: string }[] = [
 <template>
   <div>
     <PageHeader title="アーティスト" :back="{ to: '/library', label: 'ライブラリ', mobileOnly: true }">
-      <SegmentedControl v-model="role" label="表示するアーティスト" :options="roles" />
+      <div class="flex flex-wrap items-center gap-2">
+        <SegmentedControl v-model="role" label="表示するアーティスト" :options="roles" />
+        <FavoriteToggle v-model="favorite" />
+      </div>
     </PageHeader>
 
-    <ArtistBrowser :key="role" :role="role" :view="views[role]" :empty-icon="MicVocal" empty-title="アーティストがいません" />
+    <ArtistBrowser :key="role" :role="role" :view="views[role]" :favorite="favorite" :empty-icon="MicVocal" empty-title="アーティストがいません" />
   </div>
 </template>

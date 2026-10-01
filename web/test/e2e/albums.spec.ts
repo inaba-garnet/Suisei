@@ -80,7 +80,35 @@ test('表示の切り替えと並び順は開発モードのときだけ出す',
   await mockLibrary(page, { count: 3 })
   await page.goto('/library/albums')
   await expect(page.getByRole('link', { name: 'アルバム 000' })).toBeVisible()
-  await expect(page.getByTestId('album-controls')).toHaveCount(0)
+  await expect(page.getByRole('radio', { name: 'グリッド' })).toHaveCount(0)
+  await expect(page.getByRole('combobox', { name: '並び順' })).toHaveCount(0)
+})
+
+test('お気に入りに絞り込むとお気に入りのアルバムを読み直し、開き直すと絞り込みを外す', async ({ page }) => {
+  await mockApi(page, { loggedIn: true })
+  const { requests } = await mockLibrary(page, { count: 9 })
+  await page.goto('/library/albums')
+  const grid = page.getByTestId('album-grid')
+  await expect(grid.getByRole('link')).toHaveCount(9)
+
+  const favorite = page.getByRole('button', { name: 'お気に入り' })
+  await expect(favorite).toHaveAttribute('aria-pressed', 'false')
+  await favorite.click()
+  await expect(favorite).toHaveAttribute('aria-pressed', 'true')
+  await expect(grid.getByRole('link')).toHaveCount(3)
+  expect(requests.at(-1)?.get('type')).toBe('starred')
+
+  // 詳細から戻ると絞り込みを保つ
+  await grid.getByRole('link').first().click()
+  await page.getByRole('button', { name: '戻る', exact: true }).click()
+  await expect(favorite).toHaveAttribute('aria-pressed', 'true')
+  await expect(grid.getByRole('link')).toHaveCount(3)
+
+  // ライブラリから開き直すと外す
+  await page.goto('/library')
+  await page.getByRole('main').getByRole('link', { name: 'アルバム' }).click()
+  await expect(favorite).toHaveAttribute('aria-pressed', 'false')
+  await expect(grid.getByRole('link')).toHaveCount(9)
 })
 
 test('開発モードでは未実装の表示と並び順を押せない状態で出す', async ({ page }) => {

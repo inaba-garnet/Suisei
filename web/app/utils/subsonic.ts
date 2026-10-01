@@ -9,6 +9,8 @@ export interface Artist {
   id: string
   name: string
   albumCount: number
+  /** お気に入りにした日時。お気に入りでなければない */
+  starred?: string
 }
 
 /** `getArtists` の、読みの行ごとの見出しとアーティスト。 */
