@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { trackSortOptions } from '~/utils/tracks'
+import { trackSort, trackSortOptions } from '~/utils/tracks'
 
 useHead({ title: 'トラック' })
 
-const sort = useTrackSort('suisei-track-sort')
+const sort = useStoredSort('suisei-track-sort', trackSort)
 </script>
 
 <template>

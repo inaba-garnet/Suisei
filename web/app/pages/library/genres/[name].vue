@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { trackSortOptions } from '~/utils/tracks'
+import { trackSort, trackSortOptions } from '~/utils/tracks'
 
 const route = useRoute()
 const name = String(route.params.name)
@@ -7,7 +7,7 @@ const name = String(route.params.name)
 useHead({ title: name })
 
 // そのジャンルの曲を、トラックの一覧と同じ並び順で読み足す（docs/web.md の「一覧」）
-const sort = useTrackSort('suisei-genre-song-sort')
+const sort = useStoredSort('suisei-genre-song-sort', trackSort)
 </script>
 
 <template>
