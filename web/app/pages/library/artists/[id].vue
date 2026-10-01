@@ -85,7 +85,7 @@ const titleVisible = computed(() => {
       </Button>
     </div>
     <template v-else>
-      <header class="mb-4 flex items-center gap-4">
+      <header class="mb-2 flex items-center gap-4">
         <ArtistInitial :name="artist.name" class="size-20 text-h1 sm:size-24" />
         <div class="flex min-w-0 flex-col gap-1">
           <h1 ref="heading" class="line-clamp-2 break-words text-h1 font-semibold" :title="artist.name">
@@ -98,11 +98,11 @@ const titleVisible = computed(() => {
       </header>
 
       <div
-        class="pointer-events-none sticky z-[6] mb-4 flex justify-end"
-        :style="{ top: `${barHeight + 8}px` }"
+        class="sticky z-[6] mb-2 flex justify-end bg-surface-0 py-2 md:bg-surface-1"
+        :style="{ top: `${barHeight}px` }"
         data-testid="artist-sort"
       >
-        <SortSelect v-model="sort" :options="sortOptions[view]" class="pointer-events-auto shadow-md" />
+        <SortSelect v-model="sort" :options="sortOptions[view]" />
       </div>
 
       <AlbumGrid v-if="view === 'albums'" :albums="albums" :more="false" />
