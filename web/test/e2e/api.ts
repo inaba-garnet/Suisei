@@ -113,7 +113,7 @@ export async function mockArtists(page: Page, { rows = ['ア', 'カ', 'サ', '�
     const id = params.get('id')!
     const artist = index.flatMap(group => group.artist).find(a => a.id === id)
     const self = [{ id, name: artist?.name ?? '' }]
-    const guest = { id: `${id}-al-g`, name: '客演のアルバム', artist: 'ほかの人', artists: [{ id: 'ar-other', name: 'ほかの人' }], songCount: 8, duration: 2000 }
+    const guest = { id: `${id}-al-g`, name: '客演のアルバム', artist: 'ほかの人', artists: [{ id: 'ar-other', name: 'ほかの人' }], year: 2015, songCount: 8, duration: 2000 }
     songs.push(params.get('songs') ?? '')
     return route.fulfill(ok({
       artist: {
@@ -125,9 +125,9 @@ export async function mockArtists(page: Page, { rows = ['ア', 'カ', 'サ', '�
         ],
         ...(params.get('songs') && {
           song: [
-            { id: 's-1', title: '一曲目', artist: artist?.name, album: `${artist?.name} の一枚目`, albumId: `${id}-al-1`, track: 1, duration: 200 },
-            { id: 's-2', title: '二曲目', artist: artist?.name, album: `${artist?.name} の一枚目`, albumId: `${id}-al-1`, track: 2, duration: 210 },
-            { id: 's-3', title: '客演の曲', artist: `ほかの人 feat. ${artist?.name}`, album: guest.name, albumId: guest.id, track: 5, duration: 220 },
+            { id: 's-1', title: '一曲目', artist: artist?.name, album: `${artist?.name} の一枚目`, albumId: `${id}-al-1`, year: 2010, track: 1, duration: 200 },
+            { id: 's-2', title: '二曲目', artist: artist?.name, album: `${artist?.name} の一枚目`, albumId: `${id}-al-1`, year: 2010, track: 2, duration: 210 },
+            { id: 's-3', title: '客演の曲', artist: `ほかの人 feat. ${artist?.name}`, album: guest.name, albumId: guest.id, year: 2015, track: 5, duration: 220 },
           ],
         }),
       },

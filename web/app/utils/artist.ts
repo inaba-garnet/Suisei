@@ -42,3 +42,81 @@ export function groupByAlbum(songs: Song[]): SongGroup[] {
   }
   return groups
 }
+
+/** 並び順。`name` はアルバム名、作曲家の表示では曲名の順。 */
+export type ArtistSort = 'newest' | 'oldest' | 'name'
+
+/** 表示ごとの並び順の選択肢。先頭が既定。 */
+export const sortOptions: Record<ArtistView, { value: ArtistSort, label: string }[]> = {
+  albums: [
+    { value: 'newest', label: '新しい順' },
+    { value: 'oldest', label: '古い順' },
+    { value: 'name', label: 'アルバム名順' },
+  ],
+  tracks: [
+    { value: 'newest', label: '新しい順' },
+    { value: 'oldest', label: '古い順' },
+    { value: 'name', label: 'アルバム名順' },
+  ],
+  composer: [
+    { value: 'newest', label: '新しい順' },
+    { value: 'oldest', label: '古い順' },
+    { value: 'name', label: '曲名順' },
+  ],
+}
+
+export function artistSort(value: unknown): ArtistSort {
+  return value === 'oldest' || value === 'name' ? value : 'newest'
+}
+
+const collator = new Intl.Collator('ja')
+
+/** 年で比べる。年のないものは、どちらの向きでも最後に回す。 */
+function byYear(a: number | undefined, b: number | undefined, sort: ArtistSort): number {
+  if (a === b) {
+    return 0
+  }
+  if (a === undefined) {
+    return 1
+  }
+  if (b === undefined) {
+    return -1
+  }
+  return sort === 'newest' ? b - a : a - b
+}
+
+interface Sortable {
+  year?: number
+  /** 名前順に使う名前（読みがあれば読み） */
+  key: string
+}
+
+function compare(a: Sortable, b: Sortable, sort: ArtistSort): number {
+  if (sort === 'name') {
+    return collator.compare(a.key, b.key)
+  }
+  return byYear(a.year, b.year, sort) || collator.compare(a.key, b.key)
+}
+
+export function sortAlbums(albums: Album[], sort: ArtistSort): Album[] {
+  const key = (album: Album) => ({ year: album.year, key: album.sortName ?? album.name })
+  return [...albums].sort((a, b) => compare(key(a), key(b), sort))
+}
+
+/** 見出しの順を、`albums` にある同じアルバムの年と読みで並べ替える。見出しの中はトラック番号の順のまま。 */
+export function sortGroups(groups: SongGroup[], sort: ArtistSort, albums: Album[]): SongGroup[] {
+  const byId = new Map(albums.map(album => [album.id, album]))
+  const key = (group: SongGroup) => {
+    const album = byId.get(group.albumId)
+    return { year: album?.year ?? group.songs[0]?.year, key: album?.sortName ?? group.album }
+  }
+  return [...groups].sort((a, b) => compare(key(a), key(b), sort))
+}
+
+/** 年の順では、同じ年の曲はサーバーの順（アルバムごと、トラック番号の順）のまま並べる。 */
+export function sortSongs(songs: Song[], sort: ArtistSort): Song[] {
+  if (sort === 'name') {
+    return [...songs].sort((a, b) => collator.compare(a.sortName ?? a.title, b.sortName ?? b.title))
+  }
+  return [...songs].sort((a, b) => byYear(a.year, b.year, sort))
+}

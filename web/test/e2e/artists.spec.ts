@@ -131,11 +131,41 @@ test('アーティストの一覧から開いた詳細は、アルバムを横�
   // 曲はアルバムごとの見出しで区切る
   const groups = page.getByTestId('song-group')
   await expect(groups).toHaveCount(2)
-  await expect(groups.nth(1)).toContainText('客演のアルバム')
+  await expect(groups.nth(0)).toContainText('客演のアルバム')
   await expect(page.getByTestId('songs')).toContainText('ほかの人 feat.')
   expect(songs).toEqual(['artist'])
 
   // 再読み込みしても同じ表示にする
   await page.reload()
   await expect(page.getByTestId('song-group')).toHaveCount(2)
+})
+
+test('アーティストの詳細の並び順は既定で新しい順にし、選んだ順を表示ごとに残す', async ({ page }) => {
+  await mockApi(page, { loggedIn: true })
+  const { index } = await mockArtists(page)
+  const name = index[0]!.artist[0]!.name
+  const shelf = page.getByTestId('album-shelf').getByRole('link')
+  const groups = page.getByTestId('song-group')
+  const sort = page.getByRole('combobox', { name: '並び順' })
+
+  await page.goto('/library/artists/ar-ア-0?view=tracks')
+  await expect(sort).toHaveValue('newest')
+  await expect(shelf.first()).toContainText(`${name} の二枚目`)
+  await expect(groups.first()).toContainText('客演のアルバム')
+
+  // 古い順にすると、横に並べたアルバムと曲の見出しを同じ順で入れ替える
+  await sort.selectOption('oldest')
+  await expect(shelf.first()).toContainText(`${name} の一枚目`)
+  await expect(groups.first()).toContainText(`${name} の一枚目`)
+
+  // 開き直しても選んだ順を保ち、ほかの表示には持ち込まない
+  await page.reload()
+  await expect(sort).toHaveValue('oldest')
+  await page.goto('/library/artists/ar-ア-0?view=composer')
+  await expect(sort).toHaveValue('newest')
+  const titles = page.getByTestId('songs').getByRole('listitem')
+  await expect(titles.first()).toContainText('客演の曲')
+  await sort.selectOption('name')
+  await expect(titles.first()).toContainText('一曲目')
+  await expect(sort.getByRole('option', { name: '曲名順' })).toHaveCount(1)
 })

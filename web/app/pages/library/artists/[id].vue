@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { ArtistWithAlbums, Song } from '~/utils/subsonic'
-import { useScroll } from '@vueuse/core'
+import { useElementSize, useLocalStorage, useScroll } from '@vueuse/core'
 import { Music } from 'lucide-vue-next'
-import { albumsAsAlbumArtist, artistView, groupByAlbum, songRoles } from '~/utils/artist'
+import { albumsAsAlbumArtist, artistSort, artistView, groupByAlbum, songRoles, sortAlbums, sortGroups, sortOptions, sortSongs } from '~/utils/artist'
 import { formatDuration } from '~/utils/subsonic'
 
 const route = useRoute()
@@ -22,9 +22,23 @@ const { data: artist, status, refresh } = useAsyncData(
 
 useHead({ title: () => artist.value?.name ?? 'アーティスト' })
 
-const albums = computed(() => albumsAsAlbumArtist(artist.value?.album ?? [], id.value))
+// 選んだ並び順は表示ごとに残す（docs/web.md の「一覧」）
+const stored = {
+  albums: useLocalStorage('suisei-artist-sort-albums', 'newest'),
+  tracks: useLocalStorage('suisei-artist-sort-tracks', 'newest'),
+  composer: useLocalStorage('suisei-artist-sort-composer', 'newest'),
+}
+const sort = computed({
+  get: () => artistSort(stored[view.value].value),
+  set: (value) => {
+    stored[view.value].value = value
+  },
+})
+
+const albums = computed(() => sortAlbums(albumsAsAlbumArtist(artist.value?.album ?? [], id.value), sort.value))
 const songs = computed(() => artist.value?.song ?? [])
-const groups = computed(() => groupByAlbum(songs.value))
+const sortedSongs = computed(() => sortSongs(songs.value, sort.value))
+const groups = computed(() => sortGroups(groupByAlbum(songs.value), sort.value, artist.value?.album ?? []))
 const summary = computed(() => view.value === 'albums' ? `アルバム ${albums.value.length} 枚` : `${songs.value.length} 曲`)
 
 /** 曲のアーティストがこのアーティストだけなら出さない。 */
@@ -36,6 +50,13 @@ function songArtist(song: Song): string | undefined {
 const scroller = useScroller()
 const { y } = useScroll(scroller)
 const heading = ref<HTMLElement>()
+// 並び順の選択は、スクロールしても見出しの帯のすぐ下に残す
+const bar = shallowRef<HTMLElement>()
+onMounted(() => {
+  bar.value = scroller.value?.querySelector<HTMLElement>('[data-testid="page-header"]') ?? undefined
+})
+const { height: barHeight } = useElementSize(bar, undefined, { box: 'border-box' })
+
 const titleVisible = computed(() => {
   const el = heading.value
   const bar = scroller.value?.querySelector<HTMLElement>('[data-testid="page-header"]')
@@ -64,7 +85,7 @@ const titleVisible = computed(() => {
       </Button>
     </div>
     <template v-else>
-      <header class="mb-6 flex items-center gap-4">
+      <header class="mb-2 flex items-center gap-4">
         <ArtistInitial :name="artist.name" class="size-20 text-h1 sm:size-24" />
         <div class="flex min-w-0 flex-col gap-1">
           <h1 ref="heading" class="line-clamp-2 break-words text-h1 font-semibold" :title="artist.name">
@@ -75,6 +96,14 @@ const titleVisible = computed(() => {
           </p>
         </div>
       </header>
+
+      <div
+        class="sticky z-[6] mb-2 flex justify-end bg-surface-0 py-2 md:bg-surface-1"
+        :style="{ top: `${barHeight}px` }"
+        data-testid="artist-sort"
+      >
+        <SortSelect v-model="sort" :options="sortOptions[view]" />
+      </div>
 
       <AlbumGrid v-if="view === 'albums'" :albums="albums" :more="false" />
 
@@ -115,7 +144,7 @@ const titleVisible = computed(() => {
       </template>
 
       <ol v-else data-testid="songs">
-        <li v-for="song in songs" :key="song.id" class="flex h-14 items-center gap-3 border-b border-divider px-3">
+        <li v-for="song in sortedSongs" :key="song.id" class="flex h-14 items-center gap-3 border-b border-divider px-3">
           <CoverArt :id="song.coverArt" :size="40" :alt="song.album" class="size-10 shrink-0" />
           <span class="min-w-0 flex-1">
             <span class="block truncate text-body">{{ song.title }}</span>

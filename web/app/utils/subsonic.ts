@@ -26,6 +26,7 @@ export interface ArtistWithAlbums extends Artist {
 export interface Album {
   id: string
   name: string
+  sortName?: string
   artist?: string
   artists?: ArtistRef[]
   coverArt?: string
@@ -38,6 +39,8 @@ export interface Album {
 export interface Song {
   id: string
   title: string
+  sortName?: string
+  year?: number
   artist?: string
   artists?: ArtistRef[]
   album?: string
