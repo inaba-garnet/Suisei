@@ -21,6 +21,18 @@ pub async fn search3(params: &Params, state: &AppState) -> Result<Map<String, Va
         )
     })?;
     let words = words(query);
+    // 独自の引数 `songSort` で曲の順を変える（docs/schema.md の「検索」）
+    let sort = match params.get("songSort") {
+        None | Some("title") => search::SongSort::Title,
+        Some("album") => search::SongSort::Album,
+        Some("artist") => search::SongSort::Artist,
+        Some(other) => {
+            return Err(Error::new(
+                ErrorCode::Generic,
+                format!("unknown songSort: {other}"),
+            ));
+        }
+    };
     let page = |kind: &str| {
         let number = |key: String| params.get(&key).and_then(|v| v.parse::<i64>().ok());
         let count = number(format!("{kind}Count"))
@@ -56,7 +68,7 @@ pub async fn search3(params: &Params, state: &AppState) -> Result<Map<String, Va
 
     let (count, offset) = page("song");
     if count > 0 {
-        let ids = search::songs(&state.db, &words, count, offset)
+        let ids = search::songs(&state.db, &words, sort, count, offset)
             .await
             .map_err(db_error)?;
         insert(&mut result, "song", songs(state, &ids).await?);
