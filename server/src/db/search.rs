@@ -66,16 +66,49 @@ pub async fn albums(
     query.build_query_scalar().fetch_all(pool).await
 }
 
+/// 曲の結果の並び順（docs/schema.md の「検索」）。
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum SongSort {
+    /// 曲名の読みの順
+    #[default]
+    Title,
+    /// アルバム名の読みの順。アルバムの中はディスク番号、トラック番号の順
+    Album,
+    /// 曲のアーティストの一人目の読みの順。同じアーティストの中はアルバムの順
+    Artist,
+}
+
+/// アルバムの順。ID で順序を確定させる。
+const ALBUM_ORDER: &str = "album.sort_key, album.id,
+    track.disc_number IS NULL, track.disc_number,
+    track.track_number IS NULL, track.track_number, track.sort_key, track.id";
+
+/// 曲のアーティストの一人目の並べ替えキー。
+const FIRST_ARTIST: &str = "(SELECT artist.sort_key FROM track_artist
+    JOIN artist ON artist.id = track_artist.artist_id
+    WHERE track_artist.track_id = track.id
+    ORDER BY track_artist.position LIMIT 1)";
+
 /// 曲名、読み、表示用アーティスト、アルバム名にすべての語を含む曲の ID。
 pub async fn songs(
     pool: &Pool,
     words: &[String],
+    sort: SongSort,
     count: i64,
     offset: i64,
 ) -> Result<Vec<String>, sqlx::Error> {
-    let mut query = QueryBuilder::<Sqlite>::new("SELECT track.id FROM track");
+    let mut query = QueryBuilder::<Sqlite>::new(
+        "SELECT track.id FROM track JOIN album ON album.id = track.album_id",
+    );
     push_filter(&mut query, "track", words);
-    push_page(&mut query, "track", count, offset);
+    match sort {
+        SongSort::Title => query.push(" ORDER BY track.sort_key, track.id"),
+        SongSort::Album => query.push(format!(" ORDER BY {ALBUM_ORDER}")),
+        SongSort::Artist => query.push(format!(
+            " ORDER BY {FIRST_ARTIST} IS NULL, {FIRST_ARTIST}, {ALBUM_ORDER}"
+        )),
+    };
+    push_limit(&mut query, count, offset);
     query.build_query_scalar().fetch_all(pool).await
 }
 
@@ -92,7 +125,12 @@ fn push_filter(query: &mut QueryBuilder<Sqlite>, table: &str, words: &[String]) 
 
 /// 並べ替えキーの順。ID で順序を確定させ、offset で続きを取っても抜けや重なりが出ないようにする。
 fn push_page(query: &mut QueryBuilder<Sqlite>, table: &str, count: i64, offset: i64) {
-    query.push(format!(" ORDER BY {table}.sort_key, {table}.id LIMIT "));
+    query.push(format!(" ORDER BY {table}.sort_key, {table}.id"));
+    push_limit(query, count, offset);
+}
+
+fn push_limit(query: &mut QueryBuilder<Sqlite>, count: i64, offset: i64) {
+    query.push(" LIMIT ");
     query.push_bind(count);
     query.push(" OFFSET ");
     query.push_bind(offset);
