@@ -3,12 +3,25 @@ import type { TrackSort } from '~/utils/tracks'
 import type { Song } from '~/utils/subsonic'
 import { Music } from 'lucide-vue-next'
 
-/** 全曲を `sort` の順に読み足す一覧（docs/web.md の「一覧」）。読み込んだ一覧と位置は並び順ごとに残す。 */
-const props = defineProps<{ sort: TrackSort }>()
+/**
+ * 曲を `sort` の順に読み足す一覧（docs/web.md の「一覧」）。`genre` があればそのジャンルの曲、なければ全曲。
+ * 読み込んだ一覧と位置は並び順ごとに残す。
+ */
+const props = defineProps<{ sort: TrackSort, genre?: string }>()
 
 const subsonic = useSubsonic()
 
-const { items, done, loading, error, loadMore } = useInfiniteList<Song>(`tracks:${props.sort}`, async (offset, size) => {
+const key = props.genre === undefined ? `tracks:${props.sort}` : `genre:${props.genre}:${props.sort}`
+const { items, done, loading, error, loadMore } = useInfiniteList<Song>(key, async (offset, size) => {
+  if (props.genre !== undefined) {
+    const res = await subsonic<{ songsByGenre: { song?: Song[] } }>('getSongsByGenre', {
+      genre: props.genre,
+      count: size,
+      offset,
+      songSort: props.sort,
+    })
+    return res.songsByGenre.song ?? []
+  }
   const res = await subsonic<{ searchResult3: { song?: Song[] } }>('search3', {
     query: '',
     artistCount: 0,
