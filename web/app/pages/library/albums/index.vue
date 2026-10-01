@@ -39,15 +39,7 @@ const sort = ref('name')
       <template v-if="dev" #default>
         <div class="flex flex-wrap items-center gap-2" data-testid="album-controls">
           <SegmentedControl v-model="view" label="表示" :options="views" icon-only />
-          <select
-            v-model="sort"
-            aria-label="並び順"
-            class="ml-auto h-8 rounded-md border border-border-subtle bg-surface-1 px-2 text-body-sm text-fg-muted"
-          >
-            <option v-for="option in sorts" :key="option.value" :value="option.value" :disabled="option.disabled">
-              {{ option.label }}
-            </option>
-          </select>
+          <SortSelect v-model="sort" :options="sorts" class="ml-auto" />
         </div>
       </template>
     </PageHeader>

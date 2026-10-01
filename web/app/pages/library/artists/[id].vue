@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { ArtistWithAlbums, Song } from '~/utils/subsonic'
-import { useScroll } from '@vueuse/core'
+import { useLocalStorage, useScroll } from '@vueuse/core'
 import { Music } from 'lucide-vue-next'
-import { albumsAsAlbumArtist, artistView, groupByAlbum, songRoles } from '~/utils/artist'
+import { albumsAsAlbumArtist, artistSort, artistView, groupByAlbum, songRoles, sortAlbums, sortGroups, sortOptions, sortSongs } from '~/utils/artist'
 import { formatDuration } from '~/utils/subsonic'
 
 const route = useRoute()
@@ -22,9 +22,23 @@ const { data: artist, status, refresh } = useAsyncData(
 
 useHead({ title: () => artist.value?.name ?? 'アーティスト' })
 
-const albums = computed(() => albumsAsAlbumArtist(artist.value?.album ?? [], id.value))
+// 選んだ並び順は表示ごとに残す（docs/web.md の「一覧」）
+const stored = {
+  albums: useLocalStorage('suisei-artist-sort-albums', 'newest'),
+  tracks: useLocalStorage('suisei-artist-sort-tracks', 'newest'),
+  composer: useLocalStorage('suisei-artist-sort-composer', 'newest'),
+}
+const sort = computed({
+  get: () => artistSort(stored[view.value].value),
+  set: (value) => {
+    stored[view.value].value = value
+  },
+})
+
+const albums = computed(() => sortAlbums(albumsAsAlbumArtist(artist.value?.album ?? [], id.value), sort.value))
 const songs = computed(() => artist.value?.song ?? [])
-const groups = computed(() => groupByAlbum(songs.value))
+const sortedSongs = computed(() => sortSongs(songs.value, sort.value))
+const groups = computed(() => sortGroups(groupByAlbum(songs.value), sort.value, artist.value?.album ?? []))
 const summary = computed(() => view.value === 'albums' ? `アルバム ${albums.value.length} 枚` : `${songs.value.length} 曲`)
 
 /** 曲のアーティストがこのアーティストだけなら出さない。 */
@@ -50,7 +64,11 @@ const titleVisible = computed(() => {
       :back="{ to: view === 'composer' ? '/library/composers' : '/library/artists' }"
       detail
       :title-visible="titleVisible"
-    />
+    >
+      <template #actions>
+        <SortSelect v-model="sort" :options="sortOptions[view]" />
+      </template>
+    </PageHeader>
 
     <p v-if="status === 'pending' && !artist" class="py-6 text-center text-body-sm text-fg-subtle">
       読み込み中…
@@ -115,7 +133,7 @@ const titleVisible = computed(() => {
       </template>
 
       <ol v-else data-testid="songs">
-        <li v-for="song in songs" :key="song.id" class="flex h-14 items-center gap-3 border-b border-divider px-3">
+        <li v-for="song in sortedSongs" :key="song.id" class="flex h-14 items-center gap-3 border-b border-divider px-3">
           <CoverArt :id="song.coverArt" :size="40" :alt="song.album" class="size-10 shrink-0" />
           <span class="min-w-0 flex-1">
             <span class="block truncate text-body">{{ song.title }}</span>
