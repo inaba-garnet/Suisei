@@ -6,7 +6,6 @@ import { ChevronLeft } from 'lucide-vue-next'
  * 画面の上端に残る見出しの帯（docs/web.md の「画面構成」）。スクロールしても今どの画面かが分かるようにする。
  * `back` があれば戻る矢印を出す。`label` のない `back` は前にいた画面に戻り、前の画面がなければ `to` を開く。
  * `detail` の画面は大きな見出しを自分で持ち、帯の名前は `titleVisible` のときだけ出す。
- * `actions` は帯の右端に、既定のスロットは帯の下の段に出す。
  */
 const props = defineProps<{
   title: string
@@ -64,9 +63,6 @@ function goBack() {
           {{ title }}
         </h1>
         <span v-if="description" class="text-body-sm text-fg-subtle">{{ description }}</span>
-      </div>
-      <div v-if="$slots.actions" class="ml-auto shrink-0">
-        <slot name="actions" />
       </div>
     </div>
     <div v-if="$slots.default" class="mt-3">

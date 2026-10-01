@@ -64,11 +64,7 @@ const titleVisible = computed(() => {
       :back="{ to: view === 'composer' ? '/library/composers' : '/library/artists' }"
       detail
       :title-visible="titleVisible"
-    >
-      <template #actions>
-        <SortSelect v-model="sort" :options="sortOptions[view]" />
-      </template>
-    </PageHeader>
+    />
 
     <p v-if="status === 'pending' && !artist" class="py-6 text-center text-body-sm text-fg-subtle">
       読み込み中…
@@ -82,7 +78,7 @@ const titleVisible = computed(() => {
       </Button>
     </div>
     <template v-else>
-      <header class="mb-6 flex items-center gap-4">
+      <header class="mb-4 flex items-center gap-4">
         <ArtistInitial :name="artist.name" class="size-20 text-h1 sm:size-24" />
         <div class="flex min-w-0 flex-col gap-1">
           <h1 ref="heading" class="line-clamp-2 break-words text-h1 font-semibold" :title="artist.name">
@@ -93,6 +89,10 @@ const titleVisible = computed(() => {
           </p>
         </div>
       </header>
+
+      <div class="mb-4 flex justify-end">
+        <SortSelect v-model="sort" :options="sortOptions[view]" />
+      </div>
 
       <AlbumGrid v-if="view === 'albums'" :albums="albums" :more="false" />
 
