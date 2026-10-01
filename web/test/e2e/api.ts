@@ -136,3 +136,23 @@ export async function mockArtists(page: Page, { rows = ['ア', 'カ', 'サ', '�
   await page.route(/\/rest\/getCoverArt(\?|$)/, route => route.fulfill({ status: 404 }))
   return { index, calls, roles, songs }
 }
+
+/** `search3` で全曲を返す偽物。並び順（`songSort`）を曲名の頭に付け、呼ばれた引数を `requests` に残す。 */
+export async function mockTracks(page: Page, { count = 250 } = {}) {
+  const requests: URLSearchParams[] = []
+  const ok = (body: object) => ({ json: { 'subsonic-response': { status: 'ok', version: '1.16.1', ...body } } })
+  await page.route(/\/rest\/search3(\?|$)/, (route) => {
+    const params = new URL(route.request().url()).searchParams
+    requests.push(params)
+    const sort = params.get('songSort') ?? 'title'
+    const offset = Number(params.get('songOffset') ?? 0)
+    const size = Number(params.get('songCount') ?? 20)
+    const song = Array.from({ length: Math.max(0, Math.min(size, count - offset)) }, (_, i) => {
+      const n = String(offset + i).padStart(3, '0')
+      return { id: `tr-${n}`, title: `${sort}:曲 ${n}`, artist: `アーティスト ${n}`, album: `アルバム ${n}`, albumId: `al-${n}`, duration: 200 }
+    })
+    return route.fulfill(ok({ searchResult3: song.length ? { song } : {} }))
+  })
+  await page.route(/\/rest\/getCoverArt(\?|$)/, route => route.fulfill({ status: 404 }))
+  return { requests }
+}

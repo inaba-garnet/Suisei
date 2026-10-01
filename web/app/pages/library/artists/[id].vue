@@ -143,16 +143,7 @@ const titleVisible = computed(() => {
         </section>
       </template>
 
-      <ol v-else data-testid="songs">
-        <li v-for="song in sortedSongs" :key="song.id" class="flex h-14 items-center gap-3 border-b border-divider px-3">
-          <CoverArt :id="song.coverArt" :size="40" :alt="song.album" class="size-10 shrink-0" />
-          <span class="min-w-0 flex-1">
-            <span class="block truncate text-body">{{ song.title }}</span>
-            <span class="block truncate text-body-sm text-fg-subtle">{{ [song.artist, song.album].filter(Boolean).join(' · ') }}</span>
-          </span>
-          <span class="shrink-0 text-body-sm text-fg-subtle tabular-nums">{{ formatDuration(song.duration) }}</span>
-        </li>
-      </ol>
+      <SongList v-else :songs="sortedSongs" :more="false" />
 
       <EmptyState v-if="view !== 'albums' && status !== 'pending' && songs.length === 0" :icon="Music" title="曲がありません" />
     </template>
