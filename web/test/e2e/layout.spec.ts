@@ -68,6 +68,7 @@ test('画面の幅に合わせて内容の幅を広げ、広い画面では右�
     [1300, 1040, false, 0],
     [1500, 1040, true, 320],
     [1800, 1040, true, 380],
+    [2560, 1440, true, 400],
   ] as const) {
     await page.setViewportSize({ width: viewport, height: 900 })
     await expect.poll(width, String(viewport)).toBeLessThanOrEqual(contentWidth)

@@ -48,5 +48,6 @@ describe('gridColumns', () => {
     expect(gridColumns(640)).toBe(4)
     expect(gridColumns(860)).toBe(5)
     expect(gridColumns(1040)).toBe(6)
+    expect(gridColumns(1400)).toBe(8)
   })
 })
