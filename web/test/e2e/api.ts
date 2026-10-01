@@ -180,3 +180,18 @@ export async function mockGenres(page: Page) {
   await page.route(/\/rest\/getCoverArt(\?|$)/, route => route.fulfill({ status: 404 }))
   return { genres, requests }
 }
+
+/** お気に入りの曲の偽物。`songSort` があれば曲名の頭に付け、呼ばれた引数を `requests` に残す。 */
+export async function mockFavorites(page: Page) {
+  const requests: URLSearchParams[] = []
+  const ok = (body: object) => ({ json: { 'subsonic-response': { status: 'ok', version: '1.16.1', ...body } } })
+  await page.route(/\/rest\/getStarred2(\?|$)/, (route) => {
+    const params = new URL(route.request().url()).searchParams
+    requests.push(params)
+    const sort = params.get('songSort') ?? 'starred'
+    const song = [1, 2, 3].map(i => ({ id: `fav-${i}`, title: `${sort}:お気に入り ${i}`, artist: 'だれか', album: 'どこか', duration: 200 }))
+    return route.fulfill(ok({ starred2: { song } }))
+  })
+  await page.route(/\/rest\/getCoverArt(\?|$)/, route => route.fulfill({ status: 404 }))
+  return { requests }
+}
