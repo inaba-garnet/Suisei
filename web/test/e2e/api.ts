@@ -71,6 +71,8 @@ export async function mockLibrary(page: Page, { count = 250, songs = 2, name = (
     return route.fulfill(ok({
       album: {
         ...album,
+        coverArt: album.id,
+        artists: [{ id: 'ar-1', name: album.artist }],
         year: 2024,
         genres: [{ name: 'Pop' }],
         song: [
@@ -196,4 +198,18 @@ export async function mockFavorites(page: Page) {
   })
   await page.route(/\/rest\/getCoverArt(\?|$)/, route => route.fulfill({ status: 404 }))
   return { requests }
+}
+
+/** お気に入りの付け外しの偽物。呼ばれた引数を `calls` に残し、`fail` のときは失敗を返す。 */
+export async function mockStar(page: Page, { fail = false } = {}) {
+  const calls: { endpoint: string, params: URLSearchParams }[] = []
+  await page.route(/\/rest\/(star|unstar)(\?|$)/, (route) => {
+    const url = new URL(route.request().url())
+    calls.push({ endpoint: url.pathname.split('/').at(-1)!, params: url.searchParams })
+    const body = fail
+      ? { status: 'failed', version: '1.16.1', error: { code: 0, message: 'failed' } }
+      : { status: 'ok', version: '1.16.1' }
+    return route.fulfill({ json: { 'subsonic-response': body } })
+  })
+  return { calls }
 }
