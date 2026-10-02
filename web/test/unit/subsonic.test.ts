@@ -43,8 +43,11 @@ describe('formatDuration', () => {
 })
 
 describe('gridColumns', () => {
-  it('狭い画面は 2 列、広い画面は 4 列', () => {
+  it('内容の幅に合わせて 2〜6 列にする', () => {
     expect(gridColumns(360)).toBe(2)
     expect(gridColumns(640)).toBe(4)
+    expect(gridColumns(860)).toBe(5)
+    expect(gridColumns(1040)).toBe(6)
+    expect(gridColumns(1400)).toBe(8)
   })
 })
