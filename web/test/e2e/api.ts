@@ -264,3 +264,29 @@ export async function mockStream(page: Page, { seconds = 30, fail = false } = {}
   })
   return { ids }
 }
+
+/** `scrobble` の偽物。呼ばれた引数を `calls` に残す。 */
+export async function mockScrobble(page: Page) {
+  const calls: URLSearchParams[] = []
+  await page.route(/\/rest\/scrobble(\?|$)/, (route) => {
+    calls.push(new URL(route.request().url()).searchParams)
+    return route.fulfill({ json: { 'subsonic-response': { status: 'ok', version: '1.16.1' } } })
+  })
+  return { calls }
+}
+
+/**
+ * Media Session に渡したハンドラを `window.mediaSessionHandlers` に残す。
+ * テストから OS のロック画面の操作の代わりに呼ぶため。
+ */
+export async function recordMediaSession(page: Page) {
+  await page.addInitScript(() => {
+    const handlers: Record<string, ((details: object) => void) | null> = {}
+    ;(window as unknown as { mediaSessionHandlers: typeof handlers }).mediaSessionHandlers = handlers
+    const original = navigator.mediaSession.setActionHandler.bind(navigator.mediaSession)
+    navigator.mediaSession.setActionHandler = (action, handler) => {
+      handlers[action] = handler as typeof handlers[string]
+      original(action, handler)
+    }
+  })
+}
