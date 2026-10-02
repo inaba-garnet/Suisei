@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test'
 import { expect, test } from '@playwright/test'
-import { mockApi, mockTracks } from './api'
+import { mockApi, mockStar, mockTracks } from './api'
 
 const scrollTop = (page: Page) => page.getByTestId('scroller').evaluate(el => el.scrollTop)
 const scrollTo = (page: Page, top: number) => page.getByTestId('scroller').evaluate((el, top) => {
@@ -49,4 +49,24 @@ test('並び順を切り替えるとサーバーに順を頼んで先頭から�
   await expect(sort).toHaveValue('album')
   await expect(page.getByText('album:曲 000')).toBeVisible()
   await expect(sort.getByRole('option')).toHaveText(['曲名順', 'アルバム順', 'アーティスト順'])
+})
+
+test('曲のハートで付け外しし、行が描き直されても付け外しを保つ', async ({ page }) => {
+  await mockApi(page, { loggedIn: true })
+  await mockTracks(page)
+  const { calls } = await mockStar(page)
+  await page.goto('/library/tracks')
+
+  const heart = page.getByRole('button', { name: 'title:曲 000をお気に入りにする' })
+  await expect(heart).toHaveAttribute('aria-pressed', 'false')
+  await heart.click()
+  await expect(heart).toHaveAttribute('aria-pressed', 'true')
+  expect(calls.at(-1)?.endpoint).toBe('star')
+  expect(calls.at(-1)?.params.get('id')).toBe('tr-000')
+
+  // 見えない所まで送って行を消し、戻って描き直す
+  await scrollTo(page, 1e6)
+  await expect(heart).toHaveCount(0)
+  await scrollTo(page, 0)
+  await expect(heart).toHaveAttribute('aria-pressed', 'true')
 })

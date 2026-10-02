@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { mockApi, mockFavorites } from './api'
+import { mockApi, mockFavorites, mockStar } from './api'
 
 test('お気に入りの曲を新しい順に並べ、古い順は逆にし、それ以外はサーバーに順を頼む', async ({ page }) => {
   await mockApi(page, { loggedIn: true })
@@ -24,4 +24,23 @@ test('お気に入りの曲を新しい順に並べ、古い順は逆にし、�
   await page.reload()
   await expect(sort).toHaveValue('artist')
   await expect(sort.getByRole('option')).toHaveText(['新しい順', '古い順', 'タイトル順', 'アーティスト順', 'アルバム順'])
+})
+
+test('お気に入りの画面でハートを外しても行は残し、付け直せる', async ({ page }) => {
+  await mockApi(page, { loggedIn: true })
+  await mockFavorites(page)
+  const { calls } = await mockStar(page)
+  await page.goto('/library/favorites')
+
+  const songs = page.getByTestId('songs').getByRole('listitem')
+  const heart = page.getByRole('button', { name: 'starred:お気に入り 1をお気に入りにする' })
+  await expect(heart).toHaveAttribute('aria-pressed', 'true')
+  await heart.click()
+  await expect(heart).toHaveAttribute('aria-pressed', 'false')
+  expect(calls.at(-1)?.endpoint).toBe('unstar')
+  await expect(songs).toHaveCount(3)
+
+  await heart.click()
+  await expect(heart).toHaveAttribute('aria-pressed', 'true')
+  expect(calls.at(-1)?.endpoint).toBe('star')
 })

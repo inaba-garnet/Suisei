@@ -193,7 +193,7 @@ export async function mockFavorites(page: Page) {
     const params = new URL(route.request().url()).searchParams
     requests.push(params)
     const sort = params.get('songSort') ?? 'starred'
-    const song = [1, 2, 3].map(i => ({ id: `fav-${i}`, title: `${sort}:お気に入り ${i}`, artist: 'だれか', album: 'どこか', duration: 200 }))
+    const song = [1, 2, 3].map(i => ({ id: `fav-${i}`, title: `${sort}:お気に入り ${i}`, artist: 'だれか', album: 'どこか', duration: 200, starred: '2026-01-01T00:00:00Z' }))
     return route.fulfill(ok({ starred2: { song } }))
   })
   await page.route(/\/rest\/getCoverArt(\?|$)/, route => route.fulfill({ status: 404 }))
