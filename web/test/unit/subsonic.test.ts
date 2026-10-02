@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { gridColumns } from '~/utils/grid'
-import { coverArtUrl, formatDuration, SubsonicError, unwrap } from '~/utils/subsonic'
+import { coverArtUrl, formatDuration, streamUrl, SubsonicError, unwrap } from '~/utils/subsonic'
 
 describe('unwrap', () => {
   it('成功の応答から中身を取り出す', () => {
@@ -22,6 +22,16 @@ describe('unwrap', () => {
   it('形の違う応答もエラーにする', () => {
     expect(() => unwrap({})).toThrow(SubsonicError)
     expect(() => unwrap(null)).toThrow(SubsonicError)
+  })
+})
+
+describe('streamUrl', () => {
+  it('ID だけを渡し、変換の引数を付けない', () => {
+    const url = new URL(streamUrl('so 1'), 'http://x')
+    expect(url.pathname).toBe('/rest/stream')
+    expect(url.searchParams.get('id')).toBe('so 1')
+    expect(url.searchParams.has('format')).toBe(false)
+    expect(url.searchParams.has('maxBitRate')).toBe(false)
   })
 })
 
