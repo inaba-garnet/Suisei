@@ -6,6 +6,7 @@ import { ChevronLeft } from 'lucide-vue-next'
  * 画面の上端に残る見出しの帯（docs/web.md の「画面構成」）。スクロールしても今どの画面かが分かるようにする。
  * `back` があれば戻る矢印を出す。`label` のない `back` は前にいた画面に戻り、前の画面がなければ `to` を開く。
  * `detail` の画面は大きな見出しを自分で持ち、帯の名前は `titleVisible` のときだけ出す。
+ * `overlay` なら、スクロールするまで背景を透かし、画面の背景（ヒーロー）を見せる。
  */
 const props = defineProps<{
   title: string
@@ -13,6 +14,7 @@ const props = defineProps<{
   back?: { to: string, label?: string, mobileOnly?: boolean }
   detail?: boolean
   titleVisible?: boolean
+  overlay?: boolean
 }>()
 
 const router = useRouter()
@@ -37,8 +39,8 @@ function goBack() {
 
 <template>
   <header
-    class="sticky top-0 z-10 mb-4 border-b bg-surface-0 pt-[calc(env(safe-area-inset-top)+8px)] pb-3 transition-colors md:bg-surface-1 md:pt-5"
-    :class="scrolled ? 'border-divider' : 'border-transparent'"
+    class="sticky top-0 z-10 mb-4 border-b pt-[calc(env(safe-area-inset-top)+8px)] pb-3 transition-colors md:pt-5"
+    :class="[scrolled ? 'border-divider' : 'border-transparent', overlay && !scrolled ? 'bg-transparent' : 'bg-surface-0 md:bg-surface-1']"
     data-testid="page-header"
   >
     <div class="flex min-h-11 items-center gap-1">

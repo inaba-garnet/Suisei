@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import type { AlbumWithSongs, Song } from '~/utils/subsonic'
 import { useScroll } from '@vueuse/core'
-import { formatDuration } from '~/utils/subsonic'
+import { Ellipsis, Play } from 'lucide-vue-next'
+import { coverArtUrl, formatDuration } from '~/utils/subsonic'
 
 const route = useRoute()
 const subsonic = useSubsonic()
+const dev = useDev()
 const id = computed(() => String(route.params.id))
 
 const { data: album, status, refresh } = useAsyncData(
@@ -57,17 +59,29 @@ const titleVisible = computed(() => {
 
 <template>
   <div>
+    <!-- ジャケットをぼかした背景。パネルの幅いっぱいに敷き、内容と一緒にスクロールする（docs/web.md の「一覧」） -->
+    <div
+      v-if="album?.coverArt"
+      aria-hidden="true"
+      class="pointer-events-none absolute inset-x-0 top-0 h-96 overflow-hidden"
+      data-testid="album-hero"
+    >
+      <img :src="coverArtUrl(album.coverArt, 300)" alt="" class="size-full scale-125 object-cover opacity-50 blur-2xl">
+      <div class="absolute inset-0 bg-gradient-to-b from-surface-0/30 to-surface-0 md:from-surface-1/30 md:to-surface-1" />
+    </div>
+
     <PageHeader
       :title="album?.name ?? 'アルバム'"
       :back="{ to: '/library/albums' }"
       detail
+      overlay
       :title-visible="titleVisible"
     />
 
-    <p v-if="status === 'pending' && !album" class="py-6 text-center text-body-sm text-fg-subtle">
+    <p v-if="status === 'pending' && !album" class="relative py-6 text-center text-body-sm text-fg-subtle">
       読み込み中…
     </p>
-    <div v-else-if="!album" class="flex flex-col items-center gap-3 py-6">
+    <div v-else-if="!album" class="relative flex flex-col items-center gap-3 py-6">
       <p class="text-body text-danger">
         アルバムを読み込めませんでした
       </p>
@@ -75,19 +89,40 @@ const titleVisible = computed(() => {
         もう一度読み込む
       </Button>
     </div>
-    <template v-else>
-      <header class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end">
-        <CoverArt :id="album.coverArt" :size="200" :alt="album.name" class="w-40 shrink-0 sm:w-48" />
-        <div class="flex min-w-0 flex-col gap-1">
-          <h1 ref="heading" class="line-clamp-2 text-h1 font-semibold break-words" :title="album.name">
+    <div v-else class="relative">
+      <header class="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end">
+        <CoverArt :id="album.coverArt" :size="240" :alt="album.name" class="w-44 shrink-0 shadow-[0_8px_32px_rgb(0_0_0/0.35)] sm:w-56" />
+        <div class="flex min-w-0 flex-col gap-1.5">
+          <h1 ref="heading" class="line-clamp-2 text-display font-semibold break-words" :title="album.name">
             {{ album.name }}
           </h1>
-          <p class="text-body-lg text-fg-muted">
-            {{ album.artist }}
+          <p class="truncate text-body-lg text-fg-muted">
+            <template v-if="album.artists?.length">
+              <template v-for="(artist, i) in album.artists" :key="artist.id">
+                <span v-if="i > 0">、</span>
+                <NuxtLink :to="{ path: `/library/artists/${artist.id}`, query: { view: 'albums' } }" class="hover:text-fg hover:underline">
+                  {{ artist.name }}
+                </NuxtLink>
+              </template>
+            </template>
+            <template v-else>
+              {{ album.artist }}
+            </template>
           </p>
           <p class="text-body-sm text-fg-subtle">
             {{ details }}
           </p>
+          <div class="mt-3 flex items-center gap-3">
+            <!-- 再生とメニューの中身ができるまでは、開発モードのときだけ押せない状態で出す（docs/web.md の「開発」） -->
+            <Button v-if="dev" size="lg" disabled>
+              <Play class="size-4" />
+              すべて再生
+            </Button>
+            <HeartButton :id="album.id" target="album" :starred="!!album.starred" label="アルバムをお気に入りにする" size="lg" />
+            <Button v-if="dev" variant="secondary" size="icon-lg" disabled aria-label="メニュー">
+              <Ellipsis class="size-5" />
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -96,16 +131,17 @@ const titleVisible = computed(() => {
           <li v-if="discHeading(index)" class="border-b border-divider px-3 pt-4 pb-2 text-caption font-medium text-fg-subtle">
             ディスク {{ discHeading(index) }}
           </li>
-          <li class="flex h-12 items-center gap-3 border-b border-divider px-3">
+          <li class="flex h-14 items-center gap-3 border-b border-divider px-3">
             <span class="w-6 shrink-0 text-right text-body-sm text-fg-subtle tabular-nums">{{ song.track ?? '' }}</span>
             <span class="min-w-0 flex-1">
               <span class="block truncate text-body">{{ song.title }}</span>
               <span v-if="songArtist(song)" class="block truncate text-body-sm text-fg-subtle">{{ songArtist(song) }}</span>
             </span>
-            <span class="shrink-0 text-body-sm text-fg-subtle tabular-nums">{{ formatDuration(song.duration) }}</span>
+            <HeartButton :id="song.id" target="song" :starred="!!song.starred" :label="`${song.title}をお気に入りにする`" />
+            <span class="w-12 shrink-0 text-right text-body-sm text-fg-subtle tabular-nums">{{ formatDuration(song.duration) }}</span>
           </li>
         </template>
       </ol>
-    </template>
+    </div>
   </div>
 </template>

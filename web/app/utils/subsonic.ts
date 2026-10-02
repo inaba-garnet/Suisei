@@ -29,6 +29,8 @@ export interface Album {
   id: string
   name: string
   sortName?: string
+  /** お気に入りにした日時。お気に入りでなければない */
+  starred?: string
   artist?: string
   artists?: ArtistRef[]
   coverArt?: string
@@ -49,6 +51,8 @@ export interface Song {
   id: string
   title: string
   sortName?: string
+  /** お気に入りにした日時。お気に入りでなければない */
+  starred?: string
   year?: number
   artist?: string
   artists?: ArtistRef[]
