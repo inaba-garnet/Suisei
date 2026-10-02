@@ -61,8 +61,8 @@ test('曲のハートで付け外しし、行が描き直されても付け外�
   await expect(heart).toHaveAttribute('aria-pressed', 'false')
   await heart.click()
   await expect(heart).toHaveAttribute('aria-pressed', 'true')
-  expect(calls.at(-1)?.endpoint).toBe('star')
-  expect(calls.at(-1)?.params.get('id')).toBe('tr-000')
+  await expect.poll(() => calls.at(-1)?.endpoint).toBe('star')
+  await expect.poll(() => calls.at(-1)?.params.get('id')).toBe('tr-000')
 
   // 見えない所まで送って行を消し、戻って描き直す
   await scrollTo(page, 1e6)
