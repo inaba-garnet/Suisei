@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from '@playwright/test'
-import { mockApi, mockLibrary } from './api'
+import { mockApi, mockLibrary, mockStar } from './api'
 
 const scrollTop = (page: Page) => page.getByTestId('scroller').evaluate(el => el.scrollTop)
 const scrollTo = (page: Page, top: number) => page.getByTestId('scroller').evaluate((el, top) => {
@@ -181,4 +181,51 @@ test('長いアルバム名は、はみ出した分を…で省く', async ({ pa
   await expect(bar).toHaveCSS('opacity', '1')
   await expect(bar).toHaveCSS('text-overflow', 'ellipsis')
   expect(await clipped(bar)).toBe(true)
+})
+
+test('アルバムの詳細はジャケットの背景を敷き、アーティストからその詳細に移れる', async ({ page }) => {
+  await mockApi(page, { loggedIn: true })
+  await mockLibrary(page, { count: 3 })
+  await page.goto('/library/albums/al-1')
+  await expect(page.getByRole('heading', { name: 'アルバム 001' })).toBeVisible()
+  await expect(page.getByTestId('album-hero')).toHaveCount(1)
+  // 再生とメニューは開発モードのときだけ
+  await expect(page.getByRole('button', { name: 'すべて再生' })).toHaveCount(0)
+
+  await page.getByRole('link', { name: 'アーティスト 1' }).click()
+  await expect(page).toHaveURL('/library/artists/ar-1?view=albums')
+})
+
+test('アルバムと曲のハートでお気に入りを付け外しする', async ({ page }) => {
+  await mockApi(page, { loggedIn: true })
+  await mockLibrary(page, { count: 3 })
+  const { calls } = await mockStar(page)
+  await page.goto('/library/albums/al-1')
+
+  const album = page.getByRole('button', { name: 'アルバムをお気に入りにする' })
+  await expect(album).toHaveAttribute('aria-pressed', 'false')
+  await album.click()
+  await expect(album).toHaveAttribute('aria-pressed', 'true')
+  expect(calls.at(-1)?.endpoint).toBe('star')
+  expect(calls.at(-1)?.params.get('albumId')).toBe('al-1')
+
+  const song = page.getByRole('button', { name: '一曲目をお気に入りにする' })
+  await song.click()
+  await expect(song).toHaveAttribute('aria-pressed', 'true')
+  expect(calls.at(-1)?.params.get('id')).toBe('al-1-1')
+  await song.click()
+  await expect(song).toHaveAttribute('aria-pressed', 'false')
+  expect(calls.at(-1)?.endpoint).toBe('unstar')
+})
+
+test('お気に入りの付け外しに失敗したら元に戻す', async ({ page }) => {
+  await mockApi(page, { loggedIn: true })
+  await mockLibrary(page, { count: 3 })
+  const { calls } = await mockStar(page, { fail: true })
+  await page.goto('/library/albums/al-1')
+
+  const album = page.getByRole('button', { name: 'アルバムをお気に入りにする' })
+  await album.click()
+  await expect.poll(() => calls.length).toBe(1)
+  await expect(album).toHaveAttribute('aria-pressed', 'false')
 })
