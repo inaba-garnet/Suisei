@@ -91,7 +91,7 @@ test('お気に入りに絞り込むとお気に入りのアルバムを読み�
   const grid = page.getByTestId('album-grid')
   await expect(grid.getByRole('link')).toHaveCount(9)
 
-  const favorite = page.getByRole('button', { name: 'お気に入り' })
+  const favorite = page.getByRole('button', { name: 'お気に入り', exact: true })
   await expect(favorite).toHaveAttribute('aria-pressed', 'false')
   await favorite.click()
   await expect(favorite).toHaveAttribute('aria-pressed', 'true')
