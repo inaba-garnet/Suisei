@@ -233,15 +233,34 @@ function silence(seconds: number): Buffer {
   return wav
 }
 
-/** `stream` の偽物。どの曲にも `seconds` 秒の無音を返し、頼まれた曲の ID を `ids` に残す。`fail` なら 404 を返す。 */
+/**
+ * `stream` の偽物。どの曲にも `seconds` 秒の無音を返し、頼まれた曲の ID を `ids` に残す。`fail` なら 404 を返す。
+ * シークで途中から読み直す要求と、ブラウザが同じ曲を続けて頭から読み直す要求は、同じ曲なので `ids` に残さない。
+ */
 export async function mockStream(page: Page, { seconds = 30, fail = false } = {}) {
   const ids: string[] = []
   const body = silence(seconds)
   await page.route(/\/rest\/stream(\?|$)/, (route) => {
-    ids.push(new URL(route.request().url()).searchParams.get('id')!)
-    return fail
-      ? route.fulfill({ status: 404 })
-      : route.fulfill({ status: 200, contentType: 'audio/wav', body })
+    // サーバーと同じく Range に応じる。応じないとブラウザがシークできない
+    const range = /bytes=(\d+)-(\d*)/.exec(route.request().headers().range ?? '')
+    const id = new URL(route.request().url()).searchParams.get('id')!
+    if ((!range || Number(range[1]) === 0) && ids.at(-1) !== id) {
+      ids.push(id)
+    }
+    if (fail) {
+      return route.fulfill({ status: 404 })
+    }
+    if (!range) {
+      return route.fulfill({ status: 200, contentType: 'audio/wav', headers: { 'Accept-Ranges': 'bytes' }, body })
+    }
+    const start = Number(range[1])
+    const end = range[2] ? Math.min(Number(range[2]), body.length - 1) : body.length - 1
+    return route.fulfill({
+      status: 206,
+      contentType: 'audio/wav',
+      headers: { 'Accept-Ranges': 'bytes', 'Content-Range': `bytes ${start}-${end}/${body.length}` },
+      body: body.subarray(start, end + 1),
+    })
   })
   return { ids }
 }
