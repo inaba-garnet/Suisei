@@ -4,6 +4,8 @@ const { attach, detach, handlers } = usePlayerAudio()
 // 残した音量はスマホでも当てる
 usePlayerVolume()
 const el = ref<HTMLAudioElement>()
+usePlayerScrobble(el)
+usePlayerMediaSession(el)
 
 onMounted(() => attach(el.value!))
 onBeforeUnmount(detach)
