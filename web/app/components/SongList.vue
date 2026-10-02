@@ -43,7 +43,8 @@ watch([items, () => props.more], ([visible, more]) => {
         <span class="block truncate text-body">{{ songs[item.index]!.title }}</span>
         <span class="block truncate text-body-sm text-fg-subtle">{{ [songs[item.index]!.artist, songs[item.index]!.album].filter(Boolean).join(' · ') }}</span>
       </span>
-      <span class="shrink-0 text-body-sm text-fg-subtle tabular-nums">{{ formatDuration(songs[item.index]!.duration) }}</span>
+      <HeartButton :id="songs[item.index]!.id" target="song" :starred="!!songs[item.index]!.starred" :label="`${songs[item.index]!.title}をお気に入りにする`" />
+      <span class="w-12 shrink-0 text-right text-body-sm text-fg-subtle tabular-nums">{{ formatDuration(songs[item.index]!.duration) }}</span>
     </li>
   </ol>
 </template>
