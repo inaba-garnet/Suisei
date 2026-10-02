@@ -3,11 +3,16 @@ import type { Song } from '~/utils/subsonic'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { formatDuration } from '~/utils/subsonic'
 
-/** 曲の行。画面に見える行だけを描き、末尾に近づいたら `more` を出す（docs/web.md の「一覧」）。 */
+/**
+ * 曲の行。画面に見える行だけを描き、末尾に近づいたら `more` を出す（docs/web.md の「一覧」）。
+ * 行を押すと、その曲から一覧の曲を順に鳴らす（docs/web.md の「再生」）。
+ */
 const props = defineProps<{ songs: Song[], more: boolean }>()
 const emit = defineEmits<{ more: [] }>()
 
 const ROW = 56
+
+const { current, start } = usePlayer()
 
 const scroller = useScroller()
 const root = ref<HTMLElement>()
@@ -38,11 +43,13 @@ watch([items, () => props.more], ([visible, more]) => {
       class="absolute inset-x-0 top-0 flex items-center gap-3 border-b border-divider px-3"
       :style="{ height: `${ROW}px`, transform: `translateY(${item.start - virtualizer.options.scrollMargin}px)` }"
     >
-      <CoverArt :id="songs[item.index]!.coverArt" :size="40" :alt="songs[item.index]!.album" class="size-10 shrink-0" />
-      <span class="min-w-0 flex-1">
-        <span class="block truncate text-body">{{ songs[item.index]!.title }}</span>
-        <span class="block truncate text-body-sm text-fg-subtle">{{ [songs[item.index]!.artist, songs[item.index]!.album].filter(Boolean).join(' · ') }}</span>
-      </span>
+      <button type="button" class="flex min-w-0 flex-1 items-center gap-3 self-stretch text-left" @click="start(songs, item.index)">
+        <CoverArt :id="songs[item.index]!.coverArt" :size="40" :alt="songs[item.index]!.album" class="size-10 shrink-0" />
+        <span class="min-w-0 flex-1">
+          <span class="block truncate text-body" :class="{ 'text-accent-base': current?.id === songs[item.index]!.id }">{{ songs[item.index]!.title }}</span>
+          <span class="block truncate text-body-sm text-fg-subtle">{{ [songs[item.index]!.artist, songs[item.index]!.album].filter(Boolean).join(' · ') }}</span>
+        </span>
+      </button>
       <HeartButton :id="songs[item.index]!.id" target="song" :starred="!!songs[item.index]!.starred" :label="`${songs[item.index]!.title}をお気に入りにする`" />
       <span class="w-12 shrink-0 text-right text-body-sm text-fg-subtle tabular-nums">{{ formatDuration(songs[item.index]!.duration) }}</span>
     </li>

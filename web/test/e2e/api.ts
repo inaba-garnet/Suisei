@@ -81,7 +81,7 @@ export async function mockLibrary(page: Page, { count = 250, songs = 2, name = (
           ...Array.from({ length: Math.max(0, songs - 2) }, (_, i) => (
             { id: `${id}-${i + 3}`, title: `曲 ${i + 3}`, artist: album.artist, track: i + 3, discNumber: 1, duration: 200 }
           )),
-        ],
+        ].map(song => ({ ...song, album: album.name, albumId: album.id, coverArt: album.id })),
       },
     }))
   })
@@ -212,4 +212,36 @@ export async function mockStar(page: Page, { fail = false } = {}) {
     return route.fulfill({ json: { 'subsonic-response': body } })
   })
   return { calls }
+}
+
+/** 無音の WAV（8kHz、8 bit、モノラル）を `seconds` 秒ぶん作る。 */
+function silence(seconds: number): Buffer {
+  const samples = Math.round(8000 * seconds)
+  const wav = Buffer.alloc(44 + samples, 128)
+  wav.write('RIFF', 0)
+  wav.writeUInt32LE(36 + samples, 4)
+  wav.write('WAVEfmt ', 8)
+  wav.writeUInt32LE(16, 16)
+  wav.writeUInt16LE(1, 20)
+  wav.writeUInt16LE(1, 22)
+  wav.writeUInt32LE(8000, 24)
+  wav.writeUInt32LE(8000, 28)
+  wav.writeUInt16LE(1, 32)
+  wav.writeUInt16LE(8, 34)
+  wav.write('data', 36)
+  wav.writeUInt32LE(samples, 40)
+  return wav
+}
+
+/** `stream` の偽物。どの曲にも `seconds` 秒の無音を返し、頼まれた曲の ID を `ids` に残す。`fail` なら 404 を返す。 */
+export async function mockStream(page: Page, { seconds = 30, fail = false } = {}) {
+  const ids: string[] = []
+  const body = silence(seconds)
+  await page.route(/\/rest\/stream(\?|$)/, (route) => {
+    ids.push(new URL(route.request().url()).searchParams.get('id')!)
+    return fail
+      ? route.fulfill({ status: 404 })
+      : route.fulfill({ status: 200, contentType: 'audio/wav', body })
+  })
+  return { ids }
 }
