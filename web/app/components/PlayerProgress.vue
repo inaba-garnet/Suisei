@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** 再生中の曲の進み具合。シークは後から入れるので、今は表示だけ（docs/web.md の「再生」）。高さと角丸は置く側で決める。 */
+/** 再生中の曲の進み具合。表示だけで、スマホの小さな再生バーに使う（docs/web.md の「再生」）。高さと角丸は置く側で決める。 */
 const { state, current } = usePlayer()
 
 const ratio = computed(() => {

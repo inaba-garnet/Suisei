@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ChevronDown, Repeat, Shuffle, SkipBack, SkipForward } from 'lucide-vue-next'
-import { coverArtUrl, formatDuration } from '~/utils/subsonic'
+import { ChevronDown, SkipBack, SkipForward } from 'lucide-vue-next'
+import { coverArtUrl } from '~/utils/subsonic'
 
 /**
  * 再生プレイヤー（docs/web.md の「画面構成」「再生」）。広い画面の右の欄に置き、
@@ -10,7 +10,6 @@ defineProps<{ sheet?: boolean }>()
 defineEmits<{ close: [] }>()
 
 const { state, current, canPrevious, canNext, previous, next } = usePlayer()
-const dev = useDev()
 </script>
 
 <template>
@@ -85,18 +84,9 @@ const dev = useDev()
       <p v-else class="truncate text-body-lg text-fg-muted">
         再生していません
       </p>
-      <div v-if="current" class="flex flex-col gap-1.5">
-        <PlayerProgress class="h-1 rounded-full" />
-        <div class="flex justify-between text-caption text-fg-subtle tabular-nums">
-          <span>{{ formatDuration(state.position) }}</span>
-          <span>{{ formatDuration(current.duration) }}</span>
-        </div>
-      </div>
+      <PlayerSeek v-if="current" times />
       <div class="flex items-center justify-center gap-4" :class="{ 'mb-auto': sheet }">
-        <!-- シャッフルとリピートはまだ使えないので、開発モードのときだけ押せない状態で出す（docs/web.md の「開発」） -->
-        <Button v-if="dev" variant="ghost" size="icon" disabled aria-label="シャッフル">
-          <Shuffle class="size-4" />
-        </Button>
+        <PlayerModes mode="shuffle" />
         <Button variant="ghost" size="icon" :disabled="!canPrevious" aria-label="前の曲" @click="previous">
           <SkipBack class="size-4" />
         </Button>
@@ -104,10 +94,10 @@ const dev = useDev()
         <Button variant="ghost" size="icon" :disabled="!canNext" aria-label="次の曲" @click="next">
           <SkipForward class="size-4" />
         </Button>
-        <Button v-if="dev" variant="ghost" size="icon" disabled aria-label="リピート">
-          <Repeat class="size-4" />
-        </Button>
+        <PlayerModes mode="repeat" />
       </div>
+      <!-- 音量は PC だけ（スマホは本体のボタンで変える） -->
+      <PlayerVolume v-if="!sheet" class="justify-center" />
     </div>
   </section>
 </template>
