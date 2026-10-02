@@ -207,16 +207,16 @@ test('アルバムと曲のハートでお気に入りを付け外しする', as
   await expect(album).toHaveAttribute('aria-pressed', 'false')
   await album.click()
   await expect(album).toHaveAttribute('aria-pressed', 'true')
-  expect(calls.at(-1)?.endpoint).toBe('star')
-  expect(calls.at(-1)?.params.get('albumId')).toBe('al-1')
+  await expect.poll(() => calls.at(-1)?.endpoint).toBe('star')
+  await expect.poll(() => calls.at(-1)?.params.get('albumId')).toBe('al-1')
 
   const song = page.getByRole('button', { name: '一曲目をお気に入りにする' })
   await song.click()
   await expect(song).toHaveAttribute('aria-pressed', 'true')
-  expect(calls.at(-1)?.params.get('id')).toBe('al-1-1')
+  await expect.poll(() => calls.at(-1)?.params.get('id')).toBe('al-1-1')
   await song.click()
   await expect(song).toHaveAttribute('aria-pressed', 'false')
-  expect(calls.at(-1)?.endpoint).toBe('unstar')
+  await expect.poll(() => calls.at(-1)?.endpoint).toBe('unstar')
 })
 
 test('お気に入りの付け外しに失敗したら元に戻す', async ({ page }) => {

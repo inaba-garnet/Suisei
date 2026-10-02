@@ -37,10 +37,10 @@ test('お気に入りの画面でハートを外しても行は残し、付け�
   await expect(heart).toHaveAttribute('aria-pressed', 'true')
   await heart.click()
   await expect(heart).toHaveAttribute('aria-pressed', 'false')
-  expect(calls.at(-1)?.endpoint).toBe('unstar')
+  await expect.poll(() => calls.at(-1)?.endpoint).toBe('unstar')
   await expect(songs).toHaveCount(3)
 
   await heart.click()
   await expect(heart).toHaveAttribute('aria-pressed', 'true')
-  expect(calls.at(-1)?.endpoint).toBe('star')
+  await expect.poll(() => calls.at(-1)?.endpoint).toBe('star')
 })
