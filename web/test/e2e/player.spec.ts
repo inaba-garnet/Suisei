@@ -63,7 +63,7 @@ test('前後の曲に移り、前の曲は先まで進んでいれば曲の頭�
 
   await bar.getByRole('button', { name: '前の曲' }).click()
   await expect(bar).toContainText('二曲目')
-  expect(ids).toEqual(['al-1-2', 'al-1-3', 'al-1-2'])
+  await expect.poll(() => ids).toEqual(['al-1-2', 'al-1-3', 'al-1-2'])
 
   // 3 秒より先まで進んでいれば、前の曲には移らず頭に戻す
   await expect(bar).toContainText('0:04 /', { timeout: 10_000 })
