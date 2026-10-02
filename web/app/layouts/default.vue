@@ -45,6 +45,7 @@ watch(() => route.fullPath, () => {
       <PlayerBar />
     </div>
     <AppTabBar class="md:hidden" />
+    <PlayerSheet />
     <PlayerAudio />
   </div>
 </template>
