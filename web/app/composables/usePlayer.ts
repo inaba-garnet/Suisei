@@ -19,6 +19,8 @@ export interface PlayerState {
   /** シャッフルする前のキュー。オフに戻すときに使う */
   original: Song[]
   repeat: RepeatMode
+  /** 曲を頭から鳴らし始めた回数。1 曲のリピートや曲の頭に戻したときも増やし、再生回数を数え直す合図にする */
+  started: number
 }
 
 /** 前の曲を押したとき、この秒数より先まで進んでいれば曲の頭に戻す。 */
@@ -42,7 +44,7 @@ function shuffled(songs: Song[], first: number): Song[] {
 const audio = shallowRef<HTMLAudioElement>()
 
 function initial(): PlayerState {
-  return { queue: [], index: -1, playing: false, position: 0, failed: false, shuffle: false, original: [], repeat: 'off' }
+  return { queue: [], index: -1, playing: false, position: 0, failed: false, shuffle: false, original: [], repeat: 'off', started: 0 }
 }
 
 export function usePlayer() {
@@ -59,6 +61,7 @@ export function usePlayer() {
     state.value.index = index
     state.value.position = 0
     state.value.failed = false
+    state.value.started++
     el.src = streamUrl(song.id)
     resume()
   }
@@ -111,6 +114,7 @@ export function usePlayer() {
     }
     if (state.value.index === 0 || el.currentTime > RESTART_AFTER) {
       el.currentTime = 0
+      state.value.started++
       return
     }
     load(state.value.index - 1)
@@ -206,6 +210,7 @@ export function usePlayerAudio() {
     ended: () => {
       if (state.value.repeat === 'one' && audio.value) {
         audio.value.currentTime = 0
+        state.value.started++
         audio.value.play().catch(() => {})
         return
       }
