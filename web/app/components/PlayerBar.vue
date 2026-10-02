@@ -44,6 +44,7 @@ const wide = useMediaQuery('(min-width: 48rem)')
       {{ formatDuration(state.position) }} / {{ formatDuration(current.duration) }}
     </span>
     <div class="flex items-center gap-1.5">
+      <PlayerModes mode="shuffle" class="hidden md:inline-flex" />
       <Button variant="ghost" size="icon" class="hidden md:inline-flex" :disabled="!canPrevious" aria-label="前の曲" @click="previous">
         <SkipBack class="size-4" />
       </Button>
@@ -51,8 +52,11 @@ const wide = useMediaQuery('(min-width: 48rem)')
       <Button variant="ghost" size="icon" class="hidden md:inline-flex" :disabled="!canNext" aria-label="次の曲" @click="next">
         <SkipForward class="size-4" />
       </Button>
+      <PlayerModes mode="repeat" class="hidden md:inline-flex" />
     </div>
-    <!-- スマホは帯の下端、PC は再生バーの上の区切り線に重ねる -->
-    <PlayerProgress v-if="current" class="absolute inset-x-3 bottom-0 h-0.5 md:-inset-x-4 md:-top-2.5 md:bottom-auto" />
+    <PlayerVolume class="hidden md:flex" />
+    <!-- スマホは帯の下端に表示だけ、PC は再生バーの上の区切り線に重ねて、つまんで動かせるようにする -->
+    <PlayerProgress v-if="current" class="absolute inset-x-3 bottom-0 h-0.5 md:hidden" />
+    <PlayerSeek v-if="current" class="absolute -inset-x-4 -top-[17px] hidden md:flex" />
   </div>
 </template>

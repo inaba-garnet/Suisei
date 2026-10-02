@@ -1,6 +1,8 @@
 <script setup lang="ts">
 /** 再生に使う `<audio>`。layout に一つだけ置き、画面を移っても作り直さない（docs/web.md の「再生」）。 */
 const { attach, detach, handlers } = usePlayerAudio()
+// 残した音量はスマホでも当てる
+usePlayerVolume()
 const el = ref<HTMLAudioElement>()
 
 onMounted(() => attach(el.value!))

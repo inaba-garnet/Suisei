@@ -107,8 +107,8 @@ test('広い画面では右の欄に再生中の曲を出して操作する', as
 
   const panel = page.getByTestId('player-panel')
   await expect(panel).toContainText('再生していません')
-  // シャッフルとリピートは開発モードのときだけ
-  await expect(panel.getByRole('button', { name: 'シャッフル' })).toHaveCount(0)
+  // 何も再生していなければシャッフルは押せない
+  await expect(panel.getByRole('button', { name: 'シャッフル' })).toBeDisabled()
 
   await page.getByRole('button', { name: 'すべて再生' }).click()
   await expect(panel).toContainText('一曲目')
@@ -214,4 +214,105 @@ test('スマホの再生画面だけ、再生中の曲のジャケットをぼ�
   }
   await page.getByRole('button', { name: '再生画面を開く' }).click()
   await expect(backdrop).toHaveAttribute('src', /getCoverArt\?id=al-1&/)
+})
+
+test('進み具合のバーで好きな位置に移り、キーでも動かせる', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'つまむ操作は PC で確かめる')
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await mockApi(page, { loggedIn: true })
+  await mockLibrary(page, { count: 3 })
+  await mockStream(page, { seconds: 200 })
+  await page.goto('/library/albums/al-1')
+  await page.getByRole('button', { name: 'すべて再生' }).click()
+
+  const panel = page.getByTestId('player-panel')
+  await panel.getByRole('button', { name: '一時停止' }).click()
+  const seek = panel.getByRole('slider', { name: '再生位置' })
+  const box = (await seek.boundingBox())!
+  // 曲の長さは 200 秒（3:20）。半分の位置で離すと 1:40 に移る
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+  await expect(panel).toContainText('1:40')
+  await expect.poll(() => page.getByTestId('audio').evaluate(el => Math.round((el as HTMLAudioElement).currentTime))).toBe(100)
+
+  await seek.focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(panel).toContainText('1:45')
+})
+
+test('シャッフルで残りの曲を混ぜ、オフで元の並びに戻る', async ({ page, isMobile }) => {
+  test.skip(isMobile, '右の欄は広い画面だけ')
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await mockApi(page, { loggedIn: true })
+  await mockLibrary(page, { count: 3, songs: 3 })
+  const { ids } = await mockStream(page)
+  await page.goto('/library/albums/al-1')
+  await page.getByRole('button', { name: 'すべて再生' }).click()
+
+  const panel = page.getByTestId('player-panel')
+  const shuffle = panel.getByRole('button', { name: 'シャッフル' })
+  await shuffle.click()
+  await expect(shuffle).toHaveAttribute('aria-pressed', 'true')
+  // 再生中の曲はそのまま鳴らし続け、次の曲は残りの二曲のどちらか
+  await expect(panel).toContainText('一曲目')
+  await panel.getByRole('button', { name: '次の曲' }).click()
+  await expect.poll(() => ids.length).toBe(2)
+  expect(['al-1-2', 'al-1-3']).toContain(ids[1])
+
+  // オフにすると元の並びに戻り、再生中の曲の次から続ける
+  await shuffle.click()
+  await expect(shuffle).toHaveAttribute('aria-pressed', 'false')
+  const playing = ids[1]
+  const canNext = panel.getByRole('button', { name: '次の曲' })
+  if (playing === 'al-1-3') {
+    await expect(canNext).toBeDisabled()
+  }
+  else {
+    await canNext.click()
+    await expect.poll(() => ids.at(-1)).toBe('al-1-3')
+  }
+})
+
+test('リピートはなし、キュー全体、1 曲の順に切り替わり、キュー全体なら最後の曲の後に先頭へ戻る', async ({ page, isMobile }) => {
+  test.skip(isMobile, '右の欄は広い画面だけ')
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await mockApi(page, { loggedIn: true })
+  await mockLibrary(page, { count: 3 })
+  const { ids } = await mockStream(page, { seconds: 0.5 })
+  await page.goto('/library/albums/al-1')
+
+  const panel = page.getByTestId('player-panel')
+  await page.getByRole('button', { name: 'すべて再生' }).click()
+  await panel.getByRole('button', { name: 'リピート（なし）' }).click()
+  await expect(panel.getByRole('button', { name: 'リピート（キュー全体）' })).toHaveAttribute('aria-pressed', 'true')
+  // 二曲のキューを鳴らし終えると、先頭に戻って鳴らし続ける
+  await expect.poll(() => ids.slice(0, 3)).toEqual(['al-1-1', 'al-1-2', 'al-1-1'])
+
+  await panel.getByRole('button', { name: 'リピート（キュー全体）' }).click()
+  await expect(panel.getByRole('button', { name: 'リピート（1 曲）' })).toBeVisible()
+  await panel.getByRole('button', { name: 'リピート（1 曲）' }).click()
+  await expect(panel.getByRole('button', { name: 'リピート（なし）' })).toHaveAttribute('aria-pressed', 'false')
+})
+
+test('PC では音量を変えられ、選んだ音量を残す', async ({ page, isMobile }) => {
+  test.skip(isMobile, '音量は PC だけ')
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await mockApi(page, { loggedIn: true })
+  await mockLibrary(page, { count: 3 })
+  await mockStream(page)
+  await page.goto('/library/albums/al-1')
+
+  const panel = page.getByTestId('player-panel')
+  const volume = panel.getByRole('slider', { name: '音量' })
+  const audioVolume = () => page.getByTestId('audio').evaluate(el => (el as HTMLAudioElement).volume)
+  const box = (await volume.boundingBox())!
+  await page.mouse.click(box.x + box.width / 4, box.y + box.height / 2)
+  await expect.poll(audioVolume).toBeCloseTo(0.25, 1)
+
+  await panel.getByRole('button', { name: '消音' }).click()
+  await expect.poll(audioVolume).toBe(0)
+  await panel.getByRole('button', { name: '消音を解除' }).click()
+  await expect.poll(audioVolume).toBeCloseTo(0.25, 1)
+
+  await page.reload()
+  await expect.poll(audioVolume).toBeCloseTo(0.25, 1)
 })
