@@ -63,11 +63,12 @@ const titleVisible = computed(() => {
     <div
       v-if="album?.coverArt"
       aria-hidden="true"
-      class="pointer-events-none absolute inset-x-0 top-0 h-96 overflow-hidden"
+      class="pointer-events-none absolute inset-x-0 top-0 h-[30rem] overflow-hidden md:h-96"
       data-testid="album-hero"
     >
-      <img :src="coverArtUrl(album.coverArt, 300)" alt="" class="size-full scale-125 object-cover opacity-50 blur-2xl">
-      <div class="absolute inset-0 bg-gradient-to-b from-surface-0/30 to-surface-0 md:from-surface-1/30 md:to-surface-1" />
+      <!-- スマホは幅が狭く、ぼかすと色が薄まりやすいので、濃く出して暗くする範囲を下に寄せる -->
+      <img :src="coverArtUrl(album.coverArt, 300)" alt="" class="size-full scale-125 object-cover opacity-90 blur-xl md:opacity-50 md:blur-2xl">
+      <div class="absolute inset-0 bg-gradient-to-b from-surface-0/20 via-surface-0/55 to-surface-0 md:from-surface-1/30 md:via-surface-1/65 md:to-surface-1" />
     </div>
 
     <PageHeader
