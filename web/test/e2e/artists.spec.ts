@@ -177,7 +177,7 @@ test('お気に入りに絞り込むと、お気に入りのアーティスト�
   const list = page.getByTestId('artist-list')
   await expect(list.getByRole('link', { name: /アのアーティスト 0/ })).toBeVisible()
 
-  await page.getByRole('button', { name: 'お気に入り' }).click()
+  await page.getByRole('button', { name: 'お気に入り', exact: true }).click()
   await expect(list.getByRole('link')).toHaveCount(2)
   await expect(list.getByRole('heading')).toHaveText(['カ'])
   // 読み直さずに絞り込む
@@ -185,6 +185,6 @@ test('お気に入りに絞り込むと、お気に入りのアーティスト�
 
   // 作曲家の一覧にも同じ切り替えがある
   await page.goto('/library/composers')
-  await page.getByRole('button', { name: 'お気に入り' }).click()
+  await page.getByRole('button', { name: 'お気に入り', exact: true }).click()
   await expect(list.getByRole('link')).toHaveCount(2)
 })
