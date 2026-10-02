@@ -97,6 +97,11 @@ export function coverArtUrl(id: string, size: number): string {
   return `/rest/getCoverArt?${new URLSearchParams({ id, size: String(size), c: CLIENT, v: API_VERSION })}`
 }
 
+/** 曲の音声の URL。元のファイルのまま受け取り、認証は Cookie のセッションに任せる（docs/web.md の「再生」）。 */
+export function streamUrl(id: string): string {
+  return `/rest/stream?${new URLSearchParams({ id, c: CLIENT, v: API_VERSION })}`
+}
+
 /** 秒を `3:05` や `1:02:03` の形にする。 */
 export function formatDuration(seconds: number): string {
   const total = Math.max(0, Math.round(seconds))

@@ -7,6 +7,7 @@ import { coverArtUrl, formatDuration } from '~/utils/subsonic'
 const route = useRoute()
 const subsonic = useSubsonic()
 const dev = useDev()
+const { current, start } = usePlayer()
 const id = computed(() => String(route.params.id))
 
 const { data: album, status, refresh } = useAsyncData(
@@ -114,12 +115,12 @@ const titleVisible = computed(() => {
             {{ details }}
           </p>
           <div class="mt-3 flex items-center gap-3">
-            <!-- 再生とメニューの中身ができるまでは、開発モードのときだけ押せない状態で出す（docs/web.md の「開発」） -->
-            <Button v-if="dev" size="lg" disabled>
+            <Button size="lg" :disabled="!songs.length" @click="start(songs)">
               <Play class="size-4" />
               すべて再生
             </Button>
             <HeartButton :id="album.id" target="album" :starred="!!album.starred" label="アルバムをお気に入りにする" size="lg" />
+            <!-- メニューの中身ができるまでは、開発モードのときだけ押せない状態で出す（docs/web.md の「開発」） -->
             <Button v-if="dev" variant="secondary" size="icon-lg" disabled aria-label="メニュー">
               <Ellipsis class="size-5" />
             </Button>
@@ -133,11 +134,13 @@ const titleVisible = computed(() => {
             ディスク {{ discHeading(index) }}
           </li>
           <li class="flex h-14 items-center gap-3 border-b border-divider px-3">
-            <span class="w-6 shrink-0 text-right text-body-sm text-fg-subtle tabular-nums">{{ song.track ?? '' }}</span>
-            <span class="min-w-0 flex-1">
-              <span class="block truncate text-body">{{ song.title }}</span>
-              <span v-if="songArtist(song)" class="block truncate text-body-sm text-fg-subtle">{{ songArtist(song) }}</span>
-            </span>
+            <button type="button" class="flex min-w-0 flex-1 items-center gap-3 self-stretch text-left" @click="start(songs, index)">
+              <span class="w-6 shrink-0 text-right text-body-sm text-fg-subtle tabular-nums">{{ song.track ?? '' }}</span>
+              <span class="min-w-0 flex-1">
+                <span class="block truncate text-body" :class="{ 'text-accent-base': current?.id === song.id }">{{ song.title }}</span>
+                <span v-if="songArtist(song)" class="block truncate text-body-sm text-fg-subtle">{{ songArtist(song) }}</span>
+              </span>
+            </button>
             <HeartButton :id="song.id" target="song" :starred="!!song.starred" :label="`${song.title}をお気に入りにする`" />
             <span class="w-12 shrink-0 text-right text-body-sm text-fg-subtle tabular-nums">{{ formatDuration(song.duration) }}</span>
           </li>
