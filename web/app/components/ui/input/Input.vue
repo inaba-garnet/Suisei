@@ -20,12 +20,12 @@ const modelValue = useVModel(props, 'modelValue', emits, {
 </script>
 
 <template>
-  <!-- 見た目は Design の Input に合わせる（docs/web.md） -->
+  <!-- 見た目は Design の Input に合わせる（docs/web.md）。iPhone の Safari は 16px 未満の入力欄に触れると拡大するので、スマホでは 16px にする -->
   <input
     v-model="modelValue"
     data-slot="input"
     :class="cn(
-      'h-10 w-full min-w-0 rounded-md border border-border-subtle bg-surface-1 px-3 text-body-lg text-fg transition-all outline-none placeholder:text-fg-subtle hover:border-border-default focus-visible:border-glow-strong focus-visible:shadow-glow-soft disabled:pointer-events-none disabled:opacity-40 aria-invalid:border-danger/60',
+      'h-10 w-full min-w-0 rounded-md border border-border-subtle bg-surface-1 px-3 text-[length:var(--text-h3)] text-fg md:text-body-lg transition-all outline-none placeholder:text-fg-subtle hover:border-border-default focus-visible:border-glow-strong focus-visible:shadow-glow-soft disabled:pointer-events-none disabled:opacity-40 aria-invalid:border-danger/60',
       props.class,
     )"
   >
