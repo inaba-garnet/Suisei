@@ -236,22 +236,35 @@ function silence(seconds: number): Buffer {
 /**
  * `stream` の偽物。どの曲にも `seconds` 秒の無音を返し、頼まれた曲の ID を `ids` に残す。`fail` なら 404 を返す。
  * シークで途中から読み直す要求と、ブラウザが同じ曲を続けて頭から読み直す要求は、同じ曲なので `ids` に残さない。
+ * `unplayable` なら、元のファイルにはブラウザが鳴らせない中身を返し、`format` を付けた変換の要求にだけ無音を返す。
+ * 変換の要求を含め、曲、形式、頭出しの位置が変わった要求を `requests` に残す。
  */
-export async function mockStream(page: Page, { seconds = 30, fail = false } = {}) {
+export async function mockStream(page: Page, { seconds = 30, fail = false, unplayable = false } = {}) {
   const ids: string[] = []
+  const requests: { id: string, format: string | null, timeOffset: string | null }[] = []
   const body = silence(seconds)
   await page.route(/\/rest\/stream(\?|$)/, (route) => {
     // サーバーと同じく Range に応じる。応じないとブラウザがシークできない
     const range = /bytes=(\d+)-(\d*)/.exec(route.request().headers().range ?? '')
-    const id = new URL(route.request().url()).searchParams.get('id')!
+    const params = new URL(route.request().url()).searchParams
+    const id = params.get('id')!
+    const request = { id, format: params.get('format'), timeOffset: params.get('timeOffset') }
+    const last = requests.at(-1)
+    if (!last || last.id !== request.id || last.format !== request.format || last.timeOffset !== request.timeOffset) {
+      requests.push(request)
+    }
     if ((!range || Number(range[1]) === 0) && ids.at(-1) !== id) {
       ids.push(id)
     }
     if (fail) {
       return route.fulfill({ status: 404 })
     }
-    if (!range) {
-      return route.fulfill({ status: 200, contentType: 'audio/wav', headers: { 'Accept-Ranges': 'bytes' }, body })
+    if (unplayable && !request.format) {
+      return route.fulfill({ status: 200, contentType: 'audio/x-ape', body: Buffer.from('MAC not really audio') })
+    }
+    // 変換した音声は、サーバーと同じく Range に応じない
+    if (!range || request.format) {
+      return route.fulfill({ status: 200, contentType: 'audio/wav', headers: { 'Accept-Ranges': request.format ? 'none' : 'bytes' }, body })
     }
     const start = Number(range[1])
     const end = range[2] ? Math.min(Number(range[2]), body.length - 1) : body.length - 1
@@ -262,7 +275,7 @@ export async function mockStream(page: Page, { seconds = 30, fail = false } = {}
       body: body.subarray(start, end + 1),
     })
   })
-  return { ids }
+  return { ids, requests }
 }
 
 /** `scrobble` の偽物。呼ばれた引数を `calls` に残す。 */

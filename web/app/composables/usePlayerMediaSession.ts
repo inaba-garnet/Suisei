@@ -55,20 +55,26 @@ export function usePlayerMediaSession(el: Ref<HTMLAudioElement | undefined>) {
   watchEffect(() => handle('previoustrack', canPrevious.value ? previous : null))
   watchEffect(() => handle('nexttrack', canNext.value ? next : null))
 
-  /** ロック画面の進み具合のバーを合わせる。長さが分からない間は出さない。 */
+  /**
+   * ロック画面の進み具合のバーを合わせる。長さが分からない間は出さない。
+   * 変換して鳴らしている曲は、`<audio>` の長さと位置が頭出しした位置から数えたものなので、曲の長さと再生位置を使う。
+   */
   function updatePosition() {
     const audio = el.value
     if (!audio || !('setPositionState' in session)) {
       return
     }
-    if (!Number.isFinite(audio.duration) || audio.duration <= 0) {
+    const transcoding = state.value.transcoding
+    const duration = transcoding ? current.value?.duration ?? 0 : audio.duration
+    if (!Number.isFinite(duration) || duration <= 0) {
       session.setPositionState()
       return
     }
+    const position = transcoding ? state.value.position : audio.currentTime
     session.setPositionState({
-      duration: audio.duration,
+      duration,
       playbackRate: audio.playbackRate || 1,
-      position: Math.min(Math.max(0, audio.currentTime), audio.duration),
+      position: Math.min(Math.max(0, position), duration),
     })
   }
   for (const event of ['durationchange', 'seeked', 'play', 'pause', 'ratechange', 'emptied']) {
