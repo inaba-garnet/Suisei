@@ -5,11 +5,25 @@ import { coverArtUrl } from '~/utils/subsonic'
 /**
  * 再生プレイヤー（docs/web.md の「画面構成」「再生」）。広い画面の右の欄に置き、
  * `sheet` ならスマホの下から引き出す再生画面として、枠を付けずに閉じる矢印を出す。
+ * キューを開くと、ジャケットと曲名の場所をキューに入れ替える。下の操作の段はそのまま残す。
  */
-defineProps<{ sheet?: boolean }>()
+const props = defineProps<{ sheet?: boolean }>()
 defineEmits<{ close: [] }>()
 
 const { state, current, canPrevious, canNext, previous, next } = usePlayer()
+const queue = usePlayerQueueOpen()
+const showQueue = computed(() => queue.value && !!current.value)
+
+/**
+ * 余白と間隔。キューを出している間は、下の操作の段の間隔と下の余白を詰めて下に寄せ、キューを大きく見せる。
+ * 操作の段はジャケットの表示と同じものを残す。
+ */
+const layout = computed(() => {
+  if (props.sheet) {
+    return showQueue.value ? 'gap-3 px-6 pt-6 pb-[calc(env(safe-area-inset-bottom)+8px)]' : 'gap-5 px-6 pt-6 pb-[calc(env(safe-area-inset-bottom)+24px)]'
+  }
+  return showQueue.value ? 'gap-3 px-5 pt-5 pb-3' : 'gap-5 p-5'
+})
 </script>
 
 <template>
@@ -38,11 +52,12 @@ const { state, current, canPrevious, canNext, previous, next } = usePlayer()
           class="absolute inset-0 size-full scale-125 object-cover opacity-90 blur-xl"
         >
       </Transition>
-      <div class="absolute inset-0 bg-gradient-to-b from-surface-0/20 via-surface-0/45 to-surface-0/80" />
+      <!-- 曲名、キュー、操作の段の文字は背景に直接乗るので、明るいジャケットでも薄い文字が読めるよう、全体を暗くする -->
+      <div class="absolute inset-0 bg-gradient-to-b from-surface-0/70 to-surface-0/85" />
     </div>
     <div
-      class="flex h-full flex-col gap-5 overflow-y-auto"
-      :class="sheet ? 'px-6 pt-6 pb-[calc(env(safe-area-inset-bottom)+24px)]' : 'p-5'"
+      class="flex h-full flex-col"
+      :class="[layout, { 'overflow-y-auto': !showQueue }]"
     >
       <div v-if="sheet" class="flex min-h-11 items-center">
         <button
@@ -54,13 +69,15 @@ const { state, current, canPrevious, canNext, previous, next } = usePlayer()
           <ChevronDown class="size-6" />
         </button>
         <h2 class="flex-1 text-center text-body font-semibold">
-          再生中
+          {{ showQueue ? 'キュー' : '再生中' }}
         </h2>
         <span class="size-11 shrink-0" />
       </div>
       <h2 v-else class="text-body font-semibold">
-        再生中
+        {{ showQueue ? 'キュー' : '再生中' }}
       </h2>
+      <PlayerQueue v-if="showQueue" :sheet="sheet" class="-mx-1 min-h-0 flex-1 px-1" />
+      <template v-else>
       <!-- ジャケットは枠を付けず、再生のボタンと同じく再生中は強く、止めているときは弱く光らせる -->
       <CoverArt
         :id="current?.coverArt"
@@ -84,8 +101,9 @@ const { state, current, canPrevious, canNext, previous, next } = usePlayer()
       <p v-else class="truncate text-body-lg text-fg-muted">
         再生していません
       </p>
+      </template>
       <PlayerSeek v-if="current" times />
-      <div class="flex items-center justify-center gap-4" :class="{ 'mb-auto': sheet }">
+      <div class="flex items-center justify-center gap-4" :class="{ 'mb-auto': sheet && !showQueue }">
         <PlayerModes mode="shuffle" />
         <Button variant="ghost" size="icon" :disabled="!canPrevious" aria-label="前の曲" @click="previous">
           <SkipBack class="size-4" />
@@ -98,6 +116,10 @@ const { state, current, canPrevious, canNext, previous, next } = usePlayer()
       </div>
       <!-- 音量は PC だけ（スマホは本体のボタンで変える） -->
       <PlayerVolume v-if="!sheet" class="justify-center" />
+      <!-- 表示を切り替えるボタンの段。どちらの表示でも下端に置き、後で歌詞のボタンも同じ段に並べる -->
+      <div class="flex items-center justify-end" :class="{ 'mt-auto': !sheet }">
+        <PlayerQueueButton />
+      </div>
     </div>
   </section>
 </template>

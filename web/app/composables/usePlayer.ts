@@ -147,6 +147,52 @@ export function usePlayer() {
     }
   }
 
+  /** キューの `index` 番目の曲に移って鳴らす。 */
+  function jump(index: number) {
+    if (index !== state.value.index) {
+      load(index)
+    }
+  }
+
+  /**
+   * キューの `from` 番目の曲を `to` 番目に移す。再生中の曲は鳴らし続け、その位置を合わせる。
+   * シャッフル前の並び（`original`）は変えないので、シャッフルをオフにすると元の並びに戻る。
+   */
+  function move(from: number, to: number) {
+    const queue = state.value.queue
+    const playing = state.value.index
+    if (from === to || !queue[from] || to < 0 || to >= queue.length) {
+      return
+    }
+    const [song] = queue.splice(from, 1)
+    queue.splice(to, 0, song!)
+    if (from === playing) {
+      state.value.index = to
+    }
+    else if (from < playing && to >= playing) {
+      state.value.index--
+    }
+    else if (from > playing && to <= playing) {
+      state.value.index++
+    }
+  }
+
+  /** キューの `index` 番目の曲を消す。再生中の曲は消さない。シャッフル前の並びからも消す。 */
+  function remove(index: number) {
+    const song = state.value.queue[index]
+    if (!song || index === state.value.index) {
+      return
+    }
+    state.value.queue.splice(index, 1)
+    if (index < state.value.index) {
+      state.value.index--
+    }
+    const i = state.value.original.indexOf(song)
+    if (i >= 0) {
+      state.value.original.splice(i, 1)
+    }
+  }
+
   /** リピートを「なし」「キュー全体」「1 曲」の順に切り替える。 */
   function cycleRepeat() {
     const order: RepeatMode[] = ['off', 'all', 'one']
@@ -166,6 +212,9 @@ export function usePlayer() {
     seek,
     toggleShuffle,
     cycleRepeat,
+    jump,
+    move,
+    remove,
   }
 }
 
