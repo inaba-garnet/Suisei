@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import type { Album } from '~/utils/subsonic'
 
-/** アルバムのジャケットを横スクロールで一列に並べる（docs/web.md の「一覧」）。スマホでは画面の端まで広げる。 */
-defineProps<{ albums: Album[] }>()
+/**
+ * アルバムのジャケットを横スクロールで一列に並べる（docs/web.md の「一覧」）。スマホでは画面の端まで広げる。
+ * 名前の下には `caption` を出す。既定は年（アーティストの詳細ではアーティストが分かっているため）。
+ */
+withDefaults(defineProps<{ albums: Album[], caption?: 'year' | 'artist' }>(), { caption: 'year' })
 </script>
 
 <template>
@@ -17,7 +20,7 @@ defineProps<{ albums: Album[] }>()
         />
         <span class="min-w-0">
           <span class="block truncate text-body font-medium">{{ album.name }}</span>
-          <span class="block truncate text-body-sm text-fg-subtle">{{ album.year ?? '' }}</span>
+          <span class="block truncate text-body-sm text-fg-subtle">{{ (caption === 'artist' ? album.artist : album.year) ?? '' }}</span>
         </span>
       </NuxtLink>
     </li>
