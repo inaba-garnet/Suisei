@@ -55,6 +55,7 @@ const wide = useMediaQuery('(min-width: 48rem)')
       <PlayerModes mode="repeat" class="hidden md:inline-flex" />
     </div>
     <PlayerVolume class="hidden md:flex" />
+    <PlayerQueueButton class="hidden md:inline-flex" />
     <!-- スマホは帯の下端に表示だけ、PC は再生バーの上の区切り線に重ねて、つまんで動かせるようにする -->
     <PlayerProgress v-if="current" class="absolute inset-x-3 bottom-0 h-0.5 md:hidden" />
     <PlayerSeek v-if="current" class="absolute -inset-x-4 -top-[17px] hidden md:flex" />

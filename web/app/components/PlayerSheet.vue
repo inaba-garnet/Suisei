@@ -6,6 +6,7 @@ import { onKeyStroke } from '@vueuse/core'
  * パネルのどこでも下に引くか、後ろの画面を押すと閉じる。上の取っ手は引けることを示す目印。
  */
 const open = usePlayerSheet()
+const queue = usePlayerQueueOpen()
 const { current } = usePlayer()
 
 /** 取っ手をこれより下まで引いて離したら閉じる（px）。 */
@@ -19,6 +20,12 @@ function close() {
 const route = useRoute()
 watch(() => route.fullPath, close)
 onKeyStroke('Escape', close)
+// 閉じたら、次に開いたときはジャケットの表示から始める
+watch(open, (value) => {
+  if (!value) {
+    queue.value = false
+  }
+})
 watch(current, (song) => {
   if (!song) {
     close()
@@ -29,7 +36,7 @@ watch(current, (song) => {
 const START_DISTANCE = 8
 
 // パネルのどこでも、下に引いている間は指に付いて動かし、離したら閉じるか元に戻す。
-// 中身がスクロールしていれば先にスクロールし、`data-sheet-no-drag` の上（シークのバーなど）で始めた操作は引かない
+// 中身（キュー）がスクロールしていれば先にスクロールし、`data-sheet-no-drag` の上（シークのバー、並べ替えの取っ手など）で始めた操作は引かない
 const sheet = ref<HTMLElement>()
 const drag = ref<{ start: number, offset: number, active: boolean }>()
 
