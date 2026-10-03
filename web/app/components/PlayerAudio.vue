@@ -20,6 +20,7 @@ onBeforeUnmount(detach)
     @pause="handlers.pause"
     @timeupdate="handlers.timeupdate"
     @ended="handlers.ended"
+    @playing="handlers.playing"
     @error="handlers.error"
   />
 </template>

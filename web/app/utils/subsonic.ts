@@ -62,6 +62,9 @@ export interface Song {
   track?: number
   discNumber?: number
   duration: number
+  /** 元のファイルの拡張子と形式。ブラウザが鳴らせない形式を覚えるのに使う（docs/web.md の「再生」） */
+  suffix?: string
+  contentType?: string
 }
 
 export interface AlbumWithSongs extends Album {
@@ -97,9 +100,22 @@ export function coverArtUrl(id: string, size: number): string {
   return `/rest/getCoverArt?${new URLSearchParams({ id, size: String(size), c: CLIENT, v: API_VERSION })}`
 }
 
-/** 曲の音声の URL。元のファイルのまま受け取り、認証は Cookie のセッションに任せる（docs/web.md の「再生」）。 */
-export function streamUrl(id: string): string {
-  return `/rest/stream?${new URLSearchParams({ id, c: CLIENT, v: API_VERSION })}`
+/** ブラウザが鳴らせない形式を変換させるときの形式。どのブラウザでも鳴り、サーバーは 320kbps で書き出す。 */
+export const TRANSCODE_FORMAT = 'mp3'
+
+/**
+ * 曲の音声の URL。認証は Cookie のセッションに任せる（docs/web.md の「再生」）。
+ * ふだんは元のファイルのまま受け取る。`transcode` なら MP3 に変換させ、`offset` 秒から頭出しさせる。
+ */
+export function streamUrl(id: string, transcode?: { offset: number }): string {
+  const params = new URLSearchParams({ id, c: CLIENT, v: API_VERSION })
+  if (transcode) {
+    params.set('format', TRANSCODE_FORMAT)
+    if (transcode.offset > 0) {
+      params.set('timeOffset', transcode.offset.toFixed(3))
+    }
+  }
+  return `/rest/stream?${params}`
 }
 
 /** 秒を `3:05` や `1:02:03` の形にする。 */

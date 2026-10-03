@@ -42,8 +42,9 @@ export function usePlayerScrobble(el: Ref<HTMLAudioElement | undefined>) {
       listened += now - last
     }
     last = now
-    // 実際に鳴らす長さを先に見る。タグの長さが実際より長いと、最後まで聴いても半分に届かないことがあるため
-    const duration = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : song.duration
+    // 実際に鳴らす長さを先に見る。タグの長さが実際より長いと、最後まで聴いても半分に届かないことがあるため。
+    // 変換して鳴らしている曲は、`<audio>` の長さが頭出しした位置からの残りになるので、曲の長さを使う
+    const duration = !state.value.transcoding && Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : song.duration
     if (listened < Math.min(duration / 2, SCROBBLE_AFTER)) {
       return
     }

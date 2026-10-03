@@ -21,6 +21,10 @@ export interface PlayerState {
   repeat: RepeatMode
   /** 曲を頭から鳴らし始めた回数。1 曲のリピートや曲の頭に戻したときも増やし、再生回数を数え直す合図にする */
   started: number
+  /** 再生中の曲を、ブラウザが鳴らせないので変換して鳴らしているか */
+  transcoding: boolean
+  /** 変換して鳴らしているとき、頭出しした位置（秒）。再生位置は、これに `<audio>` で進んだ長さを足したもの */
+  offset: number
 }
 
 /** 前の曲を押したとき、この秒数より先まで進んでいれば曲の頭に戻す。 */
@@ -43,8 +47,27 @@ function shuffled(songs: Song[], first: number): Song[] {
 /** layout に一つだけ置く `<audio>`（PlayerAudio）。SPA なので、モジュールに持っても利用者の間で混ざらない。 */
 const audio = shallowRef<HTMLAudioElement>()
 
+/** ブラウザが鳴らせないと分かった形式。ページを読み直すまで覚え、同じ形式の曲は最初から変換する。 */
+const unplayable = new Set<string>()
+/** 鳴らせなかったので変換で読み直している曲の形式。変換で鳴ったら `unplayable` に足す */
+let fallingBack: string | undefined
+
+/**
+ * 覚えない形式。`audio/mp4` は鳴らせない ALAC と鳴らせる AAC のどちらでもあり、ALAC で覚えると AAC まで変換してしまうため。
+ * この形式の曲は、毎回まず元のファイルを試す。
+ */
+const AMBIGUOUS_TYPES = new Set(['audio/mp4'])
+
+/** 形式を見分ける鍵。覚えない形式なら undefined。 */
+function formatKey(song: Song) {
+  if (AMBIGUOUS_TYPES.has(song.contentType ?? '')) {
+    return undefined
+  }
+  return `${song.contentType ?? ''}|${song.suffix ?? ''}`
+}
+
 function initial(): PlayerState {
-  return { queue: [], index: -1, playing: false, position: 0, failed: false, shuffle: false, original: [], repeat: 'off', started: 0 }
+  return { queue: [], index: -1, playing: false, position: 0, failed: false, shuffle: false, original: [], repeat: 'off', started: 0, transcoding: false, offset: 0 }
 }
 
 export function usePlayer() {
@@ -62,8 +85,54 @@ export function usePlayer() {
     state.value.position = 0
     state.value.failed = false
     state.value.started++
-    el.src = streamUrl(song.id)
-    resume()
+    fallingBack = undefined
+    const key = formatKey(song)
+    openSong(song, key !== undefined && unplayable.has(key), 0, true)
+  }
+
+  /** 曲を `<audio>` に渡す。`transcode` なら MP3 に変換させ、`offset` 秒から頭出しさせる。 */
+  function openSong(song: Song, transcode: boolean, offset: number, play: boolean) {
+    const el = audio.value
+    if (!el) {
+      return
+    }
+    state.value.transcoding = transcode
+    state.value.offset = transcode ? offset : 0
+    el.src = streamUrl(song.id, transcode ? { offset } : undefined)
+    if (play) {
+      resume()
+    }
+  }
+
+  /** 再生中の曲を頭から鳴らし直す。再生回数も数え直す。 */
+  function restart() {
+    const el = audio.value
+    const song = current.value
+    if (!el || !song) {
+      return
+    }
+    state.value.started++
+    state.value.position = 0
+    if (state.value.transcoding) {
+      openSong(song, true, 0, !el.paused || el.ended)
+    }
+    else {
+      el.currentTime = 0
+    }
+  }
+
+  /**
+   * 鳴らせなかった曲を、変換して読み直す（docs/web.md の「再生」）。読み直したら true。
+   * 変換しても鳴らせなかったときは false で、呼び出し側が鳴らせなかったことを出す。
+   */
+  function fallback() {
+    const song = current.value
+    if (!song || state.value.transcoding) {
+      return false
+    }
+    fallingBack = formatKey(song)
+    openSong(song, true, state.value.position, true)
+    return true
   }
 
   /** `songs` をキューにして、`index` 番目から鳴らす。シャッフル中なら、その曲を先頭に残して混ぜる。 */
@@ -112,21 +181,26 @@ export function usePlayer() {
     if (!el || !current.value) {
       return
     }
-    if (state.value.index === 0 || el.currentTime > RESTART_AFTER) {
-      el.currentTime = 0
-      state.value.started++
+    if (state.value.index === 0 || state.value.position > RESTART_AFTER) {
+      restart()
       return
     }
     load(state.value.index - 1)
   }
 
-  /** 再生位置を `seconds` 秒に移す。 */
+  /** 再生位置を `seconds` 秒に移す。変換して鳴らしている曲は途中から読めないので、その位置から変換し直させる。 */
   function seek(seconds: number) {
     const el = audio.value
-    if (!el || !current.value) {
+    const song = current.value
+    if (!el || !song) {
       return
     }
-    el.currentTime = seconds
+    if (state.value.transcoding) {
+      openSong(song, true, seconds, !el.paused)
+    }
+    else {
+      el.currentTime = seconds
+    }
     state.value.position = seconds
   }
 
@@ -215,6 +289,8 @@ export function usePlayer() {
     jump,
     move,
     remove,
+    restart,
+    fallback,
   }
 }
 
@@ -232,7 +308,7 @@ export function usePlayerVolume() {
 /** PlayerAudio が `<audio>` を渡し、その event で状態を更新する。 */
 export function usePlayerAudio() {
   const state = useState<PlayerState>('player', initial)
-  const { next } = usePlayer()
+  const { next, restart, fallback } = usePlayer()
 
   function attach(el: HTMLAudioElement) {
     audio.value = el
@@ -252,20 +328,30 @@ export function usePlayerAudio() {
     pause: () => {
       state.value.playing = false
     },
+    // 変換して鳴らす曲を変換で鳴らせたら、その形式は鳴らせないと覚える
+    playing: () => {
+      if (fallingBack !== undefined && state.value.transcoding) {
+        unplayable.add(fallingBack)
+      }
+      fallingBack = undefined
+    },
     timeupdate: (e: Event) => {
-      state.value.position = (e.target as HTMLAudioElement).currentTime
+      state.value.position = state.value.offset + (e.target as HTMLAudioElement).currentTime
     },
     // 1 曲のリピートなら同じ曲を頭から鳴らす。キューの最後の曲が終わったら、リピートがなければその曲を出したまま止める
     ended: () => {
       if (state.value.repeat === 'one' && audio.value) {
-        audio.value.currentTime = 0
-        state.value.started++
+        restart()
         audio.value.play().catch(() => {})
         return
       }
       next()
     },
+    // 元のファイルを鳴らせなければ変換で読み直し、それでも鳴らせなければ再生バーに出す
     error: () => {
+      if (fallback()) {
+        return
+      }
       state.value.playing = false
       state.value.failed = true
     },
