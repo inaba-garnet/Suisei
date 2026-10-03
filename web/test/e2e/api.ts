@@ -37,6 +37,7 @@ export interface MockAlbum {
   id: string
   name: string
   artist: string
+  year: number
   songCount: number
   duration: number
 }
@@ -47,6 +48,7 @@ export async function mockLibrary(page: Page, { count = 250, songs = 2, name = (
     id: `al-${i}`,
     name: name(i),
     artist: `アーティスト ${i % 7}`,
+    year: 2000 + (i % 20),
     songCount: 2,
     duration: 400,
   }))
@@ -58,8 +60,9 @@ export async function mockLibrary(page: Page, { count = 250, songs = 2, name = (
     requests.push(params)
     const offset = Number(params.get('offset') ?? 0)
     const size = Number(params.get('size') ?? 10)
-    // お気に入りは 3 枚ごとに 1 枚
-    const list = params.get('type') === 'starred' ? albums.filter((_, i) => i % 3 === 0) : albums
+    // お気に入りは 3 枚ごとに 1 枚。並べ方は区別せず、どれも名前順で返す
+    const starred = params.get('type') === 'starred' || params.get('starred') === 'true'
+    const list = starred ? albums.filter((_, i) => i % 3 === 0) : albums
     return route.fulfill(ok({ albumList2: { album: list.slice(offset, offset + size) } }))
   })
   await page.route(/\/rest\/getAlbum(\?|$)/, (route) => {

@@ -1,27 +1,20 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
+import type { AlbumView } from '~/utils/albums'
 import { LayoutGrid, List } from 'lucide-vue-next'
+import { albumSort, albumSortOptions, albumView } from '~/utils/albums'
 
 useHead({ title: 'アルバム' })
 
-const dev = useDev()
-
 // お気に入りだけに絞り込む（docs/web.md の「一覧」）
 const favorite = useListOption('albums-favorite', false)
+const view = useStoredSort('suisei-album-view', albumView)
+const sort = useStoredSort('suisei-album-sort', albumSort)
 
-type View = 'grid' | 'list'
-const view = ref<View>('grid')
-const views: { value: View, label: string, icon: Component, disabled?: boolean }[] = [
+const views: { value: AlbumView, label: string, icon: Component }[] = [
   { value: 'grid', label: 'グリッド', icon: LayoutGrid },
-  { value: 'list', label: 'リスト', icon: List, disabled: true },
+  { value: 'list', label: 'リスト', icon: List },
 ]
-const sorts = [
-  { value: 'name', label: '名前順' },
-  { value: 'newest', label: '新着順', disabled: true },
-  { value: 'artist', label: 'アーティスト順', disabled: true },
-  { value: 'year', label: '年順', disabled: true },
-]
-const sort = ref('name')
 </script>
 
 <template>
@@ -29,14 +22,11 @@ const sort = ref('name')
     <PageHeader title="アルバム" :back="{ to: '/library', label: 'ライブラリ', mobileOnly: true }">
       <div class="flex flex-wrap items-center gap-2" data-testid="album-controls">
         <FavoriteToggle v-model="favorite" />
-        <!-- 表示の切り替えと並び順は、未実装の選択肢があるので開発モードのときだけ出す（docs/web.md の「開発」） -->
-        <template v-if="dev">
-          <SegmentedControl v-model="view" label="表示" :options="views" icon-only />
-          <SortSelect v-model="sort" :options="sorts" class="ml-auto" />
-        </template>
+        <SegmentedControl v-model="view" label="表示" :options="views" icon-only />
+        <SortSelect v-model="sort" :options="albumSortOptions" class="ml-auto" />
       </div>
     </PageHeader>
 
-    <AlbumBrowser :key="String(favorite)" :favorite="favorite" />
+    <AlbumBrowser :key="`${sort}:${favorite}`" :sort="sort" :favorite="favorite" :view="view" />
   </div>
 </template>

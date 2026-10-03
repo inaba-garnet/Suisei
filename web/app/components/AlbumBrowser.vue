@@ -1,18 +1,23 @@
 <script setup lang="ts">
+import type { AlbumSort, AlbumView } from '~/utils/albums'
 import type { Album } from '~/utils/subsonic'
 import { Disc3 } from 'lucide-vue-next'
+import { albumListParams } from '~/utils/albums'
 
 /**
- * アルバムを 100 枚ずつ読み足すグリッド（docs/web.md の「一覧」）。`favorite` ならお気に入りだけを、お気に入りにした新しい順に並べる。
- * 読み込んだ一覧と位置は絞り込みごとに残す。
+ * アルバムを `sort` の順に 100 枚ずつ読み足す一覧（docs/web.md の「一覧」）。`favorite` ならお気に入りだけに絞る。
+ * 読み込んだ一覧と位置は、並び順と絞り込みごとに残す。
  */
-const props = defineProps<{ favorite: boolean }>()
+const props = defineProps<{ sort: AlbumSort, favorite: boolean, view: AlbumView }>()
 
 const subsonic = useSubsonic()
 
-const { items, done, loading, error, loadMore } = useInfiniteList<Album>(props.favorite ? 'albums:starred' : 'albums:name', async (offset, size) => {
+const key = `albums:${props.sort}:${props.favorite ? 'starred' : 'all'}`
+const { items, done, loading, error, loadMore } = useInfiniteList<Album>(key, async (offset, size) => {
   const res = await subsonic<{ albumList2: { album?: Album[] } }>('getAlbumList2', {
-    type: props.favorite ? 'starred' : 'alphabeticalByName',
+    ...albumListParams(props.sort),
+    // サーバーの独自の引数。並べ方はそのままで、お気に入りだけに絞る
+    ...(props.favorite && { starred: 'true' }),
     size,
     offset,
   })
@@ -22,7 +27,8 @@ const { items, done, loading, error, loadMore } = useInfiniteList<Album>(props.f
 
 <template>
   <div>
-    <AlbumGrid :albums="items" :more="!done && !loading && !error" @more="loadMore" />
+    <AlbumGrid v-if="view === 'grid'" :albums="items" :more="!done && !loading && !error" @more="loadMore" />
+    <AlbumList v-else :albums="items" :more="!done && !loading && !error" @more="loadMore" />
 
     <p v-if="loading" class="py-6 text-center text-body-sm text-fg-subtle">
       読み込み中…
