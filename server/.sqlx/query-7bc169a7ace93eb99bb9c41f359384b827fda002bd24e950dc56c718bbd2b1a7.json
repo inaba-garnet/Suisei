@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT album.id AS \"id!\", album.name, album.display_artist, album.sort_name,\n                      album.year, album.created_at, album.compilation,\n                      album.cover_path IS NOT NULL AS \"has_cover!: bool\",\n                      album.starred_at, album.rating,\n                      (SELECT COUNT(*) FROM track WHERE track.album_id = album.id)\n                        AS \"song_count!: i64\",\n                      (SELECT COALESCE(SUM(file.duration_ms), 0) FROM track\n                         JOIN file ON file.id = track.primary_file_id\n                         WHERE track.album_id = album.id) AS \"duration_ms!: i64\",\n                      (SELECT COUNT(*) FROM play_history\n                         JOIN track ON track.id = play_history.track_id\n                         WHERE track.album_id = album.id) AS \"play_count!: i64\",\n                      (SELECT MAX(play_history.played_at) FROM play_history\n                         JOIN track ON track.id = play_history.track_id\n                         WHERE track.album_id = album.id) AS \"last_played: i64\"\n               FROM album WHERE album.id IN (\n                     SELECT track.album_id FROM play_history\n                       JOIN track ON track.id = play_history.track_id)\n                 ORDER BY (SELECT COUNT(*) FROM play_history\n                             JOIN track ON track.id = play_history.track_id\n                           WHERE track.album_id = album.id) DESC,\n                          (SELECT MAX(play_history.played_at) FROM play_history\n                             JOIN track ON track.id = play_history.track_id\n                           WHERE track.album_id = album.id) DESC,\n                          album.sort_key, album.id\n                 LIMIT ? OFFSET ?",
+  "query": "SELECT album.id AS \"id!\", album.name, album.display_artist, album.sort_name,\n                      album.year, album.created_at, album.compilation,\n                      album.cover_path IS NOT NULL AS \"has_cover!: bool\",\n                      album.starred_at, album.rating,\n                      (SELECT COUNT(*) FROM track WHERE track.album_id = album.id)\n                        AS \"song_count!: i64\",\n                      (SELECT COALESCE(SUM(file.duration_ms), 0) FROM track\n                         JOIN file ON file.id = track.primary_file_id\n                         WHERE track.album_id = album.id) AS \"duration_ms!: i64\",\n                      (SELECT COUNT(*) FROM play_history\n                         JOIN track ON track.id = play_history.track_id\n                         WHERE track.album_id = album.id) AS \"play_count!: i64\",\n                      (SELECT MAX(play_history.played_at) FROM play_history\n                         JOIN track ON track.id = play_history.track_id\n                         WHERE track.album_id = album.id) AS \"last_played: i64\"\n               FROM album WHERE (NOT ? OR album.starred_at IS NOT NULL)\n                   AND album.id IN (\n                     SELECT track.album_id FROM play_history\n                       JOIN track ON track.id = play_history.track_id)\n                 ORDER BY (SELECT COUNT(*) FROM play_history\n                             JOIN track ON track.id = play_history.track_id\n                           WHERE track.album_id = album.id) DESC,\n                          (SELECT MAX(play_history.played_at) FROM play_history\n                             JOIN track ON track.id = play_history.track_id\n                           WHERE track.album_id = album.id) DESC,\n                          album.sort_key, album.id\n                 LIMIT ? OFFSET ?",
   "describe": {
     "columns": [
       {
@@ -134,7 +134,7 @@
       }
     ],
     "parameters": {
-      "Right": 2
+      "Right": 3
     },
     "nullable": [
       true,
@@ -153,5 +153,5 @@
       true
     ]
   },
-  "hash": "f237229045c95216be848345d3214e9a8bfde259470cf2ead82a5270fa2fc31c"
+  "hash": "7bc169a7ace93eb99bb9c41f359384b827fda002bd24e950dc56c718bbd2b1a7"
 }

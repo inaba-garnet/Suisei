@@ -283,13 +283,16 @@ pub enum AlbumOrder {
 pub async fn album_list(
     pool: &Pool,
     order: &AlbumOrder,
+    starred_only: bool,
     size: i64,
     offset: i64,
 ) -> Result<Vec<Album>, sqlx::Error> {
     match order {
         AlbumOrder::Newest => {
             albums!(
-                "ORDER BY album.created_at DESC, album.sort_key, album.id LIMIT ? OFFSET ?",
+                "WHERE (NOT ? OR album.starred_at IS NOT NULL)
+                 ORDER BY album.created_at DESC, album.sort_key, album.id LIMIT ? OFFSET ?",
+                starred_only,
                 size,
                 offset
             )
@@ -298,7 +301,9 @@ pub async fn album_list(
         }
         AlbumOrder::ByName => {
             albums!(
-                "ORDER BY album.sort_key, album.id LIMIT ? OFFSET ?",
+                "WHERE (NOT ? OR album.starred_at IS NOT NULL)
+                 ORDER BY album.sort_key, album.id LIMIT ? OFFSET ?",
+                starred_only,
                 size,
                 offset
             )
@@ -307,11 +312,13 @@ pub async fn album_list(
         }
         AlbumOrder::ByArtist => {
             albums!(
-                "ORDER BY (SELECT artist.sort_key FROM album_artist
+                "WHERE (NOT ? OR album.starred_at IS NOT NULL)
+                 ORDER BY (SELECT artist.sort_key FROM album_artist
                              JOIN artist ON artist.id = album_artist.artist_id
                            WHERE album_artist.album_id = album.id AND album_artist.position = 0),
                           album.sort_key, album.id
                  LIMIT ? OFFSET ?",
+                starred_only,
                 size,
                 offset
             )
@@ -319,14 +326,22 @@ pub async fn album_list(
             .await
         }
         AlbumOrder::Random => {
-            albums!("ORDER BY RANDOM() LIMIT ? OFFSET ?", size, offset)
-                .fetch_all(pool)
-                .await
+            albums!(
+                "WHERE (NOT ? OR album.starred_at IS NOT NULL)
+                 ORDER BY RANDOM() LIMIT ? OFFSET ?",
+                starred_only,
+                size,
+                offset
+            )
+            .fetch_all(pool)
+            .await
         }
         AlbumOrder::ByYear { from, to } if from <= to => {
             albums!(
-                "WHERE album.year BETWEEN ? AND ?
+                "WHERE (NOT ? OR album.starred_at IS NOT NULL)
+                   AND album.year BETWEEN ? AND ?
                  ORDER BY album.year, album.sort_key, album.id LIMIT ? OFFSET ?",
+                starred_only,
                 from,
                 to,
                 size,
@@ -337,8 +352,10 @@ pub async fn album_list(
         }
         AlbumOrder::ByYear { from, to } => {
             albums!(
-                "WHERE album.year BETWEEN ? AND ?
+                "WHERE (NOT ? OR album.starred_at IS NOT NULL)
+                   AND album.year BETWEEN ? AND ?
                  ORDER BY album.year DESC, album.sort_key, album.id LIMIT ? OFFSET ?",
+                starred_only,
                 to,
                 from,
                 size,
@@ -349,11 +366,13 @@ pub async fn album_list(
         }
         AlbumOrder::ByGenre(genre) => {
             albums!(
-                "WHERE album.id IN (
+                "WHERE (NOT ? OR album.starred_at IS NOT NULL)
+                   AND album.id IN (
                      SELECT track.album_id FROM track
                        JOIN track_genre ON track_genre.track_id = track.id
                      WHERE track_genre.genre = ?)
                  ORDER BY album.sort_key, album.id LIMIT ? OFFSET ?",
+                starred_only,
                 genre,
                 size,
                 offset
@@ -364,7 +383,8 @@ pub async fn album_list(
         // 列の別名は型の注釈を含むので、並べ替えには式を書き直す
         AlbumOrder::Recent => {
             albums!(
-                "WHERE album.id IN (
+                "WHERE (NOT ? OR album.starred_at IS NOT NULL)
+                   AND album.id IN (
                      SELECT track.album_id FROM play_history
                        JOIN track ON track.id = play_history.track_id)
                  ORDER BY (SELECT MAX(play_history.played_at) FROM play_history
@@ -372,6 +392,7 @@ pub async fn album_list(
                            WHERE track.album_id = album.id) DESC,
                           album.sort_key, album.id
                  LIMIT ? OFFSET ?",
+                starred_only,
                 size,
                 offset
             )
@@ -380,7 +401,8 @@ pub async fn album_list(
         }
         AlbumOrder::Frequent => {
             albums!(
-                "WHERE album.id IN (
+                "WHERE (NOT ? OR album.starred_at IS NOT NULL)
+                   AND album.id IN (
                      SELECT track.album_id FROM play_history
                        JOIN track ON track.id = play_history.track_id)
                  ORDER BY (SELECT COUNT(*) FROM play_history
@@ -391,6 +413,7 @@ pub async fn album_list(
                            WHERE track.album_id = album.id) DESC,
                           album.sort_key, album.id
                  LIMIT ? OFFSET ?",
+                starred_only,
                 size,
                 offset
             )
@@ -399,8 +422,10 @@ pub async fn album_list(
         }
         AlbumOrder::Starred => {
             albums!(
-                "WHERE album.starred_at IS NOT NULL
+                "WHERE (NOT ? OR album.starred_at IS NOT NULL)
+                   AND album.starred_at IS NOT NULL
                  ORDER BY album.starred_at DESC, album.sort_key, album.id LIMIT ? OFFSET ?",
+                starred_only,
                 size,
                 offset
             )
@@ -409,13 +434,15 @@ pub async fn album_list(
         }
         AlbumOrder::Highest => {
             albums!(
-                "WHERE album.rating IS NOT NULL
+                "WHERE (NOT ? OR album.starred_at IS NOT NULL)
+                   AND album.rating IS NOT NULL
                  ORDER BY album.rating DESC,
                           (SELECT COUNT(*) FROM play_history
                              JOIN track ON track.id = play_history.track_id
                            WHERE track.album_id = album.id) DESC,
                           album.sort_key, album.id
                  LIMIT ? OFFSET ?",
+                starred_only,
                 size,
                 offset
             )

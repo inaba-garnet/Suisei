@@ -561,6 +561,43 @@ async fn album_list_orders() {
 }
 
 #[tokio::test]
+async fn album_list_filters_starred() {
+    let server = album_list_server().await;
+    for name in ["a", "c"] {
+        let album = server.id("album", "name", name).await;
+        server.get("star", &format!("&albumId={album}")).await;
+    }
+    let list = |query: &'static str| {
+        let server = &server;
+        async move {
+            let res = server.get("getAlbumList2", query).await;
+            names(&res["albumList2"]["album"])
+                .into_iter()
+                .map(str::to_owned)
+                .collect::<Vec<_>>()
+        }
+    };
+
+    // 並べ方はそのままで、お気に入りでない b だけが抜ける
+    assert_eq!(
+        list("&type=alphabeticalByName&starred=true").await,
+        ["a", "c"]
+    );
+    assert_eq!(
+        list("&type=alphabeticalByArtist&starred=true").await,
+        ["c", "a"]
+    );
+    assert_eq!(
+        list("&type=byYear&fromYear=9999&toYear=0&starred=true").await,
+        ["a", "c"]
+    );
+    assert_eq!(
+        list("&type=alphabeticalByName&starred=false").await,
+        ["a", "b", "c"]
+    );
+}
+
+#[tokio::test]
 async fn album_list_errors() {
     let server = album_list_server().await;
     let res = server.raw("getAlbumList2", "").await;
