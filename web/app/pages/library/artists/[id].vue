@@ -98,7 +98,7 @@ const titleVisible = computed(() => {
       </header>
 
       <div
-        class="sticky z-[6] mb-2 flex justify-end bg-surface-0 py-2 md:bg-surface-1"
+        class="sticky z-[6] -mx-4 mb-2 flex justify-end bg-surface-0 px-4 py-2 md:mx-0 md:bg-surface-1 md:px-0"
         :style="{ top: `${barHeight}px` }"
         data-testid="artist-sort"
       >
