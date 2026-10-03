@@ -75,15 +75,6 @@ test('直に開いたアルバムの詳細の「戻る」は、アルバムの�
   await expect(page.getByRole('link', { name: 'アルバム 000' })).toBeVisible()
 })
 
-test('表示の切り替えと並び順は開発モードのときだけ出す', async ({ page }) => {
-  await mockApi(page, { loggedIn: true })
-  await mockLibrary(page, { count: 3 })
-  await page.goto('/library/albums')
-  await expect(page.getByRole('link', { name: 'アルバム 000' })).toBeVisible()
-  await expect(page.getByRole('radio', { name: 'グリッド' })).toHaveCount(0)
-  await expect(page.getByRole('combobox', { name: '並び順' })).toHaveCount(0)
-})
-
 test('お気に入りに絞り込むとお気に入りのアルバムを読み直し、開き直すと絞り込みを外す', async ({ page }) => {
   await mockApi(page, { loggedIn: true })
   const { requests } = await mockLibrary(page, { count: 9 })
@@ -96,7 +87,8 @@ test('お気に入りに絞り込むとお気に入りのアルバムを読み�
   await favorite.click()
   await expect(favorite).toHaveAttribute('aria-pressed', 'true')
   await expect(grid.getByRole('link')).toHaveCount(3)
-  expect(requests.at(-1)?.get('type')).toBe('starred')
+  expect(requests.at(-1)?.get('type')).toBe('alphabeticalByName')
+  expect(requests.at(-1)?.get('starred')).toBe('true')
 
   // 詳細から戻ると絞り込みを保つ
   await grid.getByRole('link').first().click()
@@ -111,14 +103,61 @@ test('お気に入りに絞り込むとお気に入りのアルバムを読み�
   await expect(grid.getByRole('link')).toHaveCount(9)
 })
 
-test('開発モードでは未実装の表示と並び順を押せない状態で出す', async ({ page }) => {
-  await mockApi(page, { loggedIn: true, dev: true })
-  await mockLibrary(page, { count: 3 })
+test('並び順を選ぶとその順で読み直し、選んだ順を再読み込みでも保つ', async ({ page }) => {
+  await mockApi(page, { loggedIn: true })
+  const { requests } = await mockLibrary(page, { count: 3 })
   await page.goto('/library/albums')
-  await expect(page.getByRole('radio', { name: 'グリッド' })).toHaveAttribute('aria-checked', 'true')
-  await expect(page.getByRole('radio', { name: 'リスト' })).toBeDisabled()
-  await expect(page.getByRole('combobox', { name: '並び順' })).toHaveValue('name')
-  await expect(page.getByRole('option', { name: '新着順' })).toBeDisabled()
+  const sort = page.getByRole('combobox', { name: '並び順' })
+  await expect(sort).toHaveValue('name')
+  await expect(page.getByRole('link', { name: 'アルバム 000' })).toBeVisible()
+
+  for (const [value, type] of [['newest', 'newest'], ['artist', 'alphabeticalByArtist'], ['year', 'byYear']]) {
+    await sort.selectOption(value!)
+    await expect.poll(() => requests.at(-1)?.get('type')).toBe(type)
+    expect(requests.at(-1)?.get('offset')).toBe('0')
+  }
+  // 年順は新しい年から
+  expect(requests.at(-1)?.get('fromYear')).toBe('9999')
+  expect(requests.at(-1)?.get('toYear')).toBe('0')
+
+  await page.reload()
+  await expect(sort).toHaveValue('year')
+  await expect.poll(() => requests.at(-1)?.get('type')).toBe('byYear')
+})
+
+test('リストに切り替えると行で並べ、選んだ表示を再読み込みでも保つ', async ({ page }) => {
+  await mockApi(page, { loggedIn: true })
+  const { requests } = await mockLibrary(page, { count: 3 })
+  await page.goto('/library/albums')
+  await expect(page.getByTestId('album-grid').getByRole('link')).toHaveCount(3)
+  const loaded = requests.length
+
+  await page.getByRole('radio', { name: 'リスト' }).click()
+  const list = page.getByTestId('album-list')
+  await expect(list.getByRole('listitem')).toHaveCount(3)
+  await expect(list.getByRole('listitem').first()).toContainText('アルバム 000')
+  await expect(list.getByRole('listitem').first()).toContainText('アーティスト 0 · 2000')
+  await expect(list.getByRole('listitem').first()).toContainText('2 曲')
+  // 表示を変えるだけなので読み直さない
+  expect(requests.length).toBe(loaded)
+
+  await list.getByRole('link', { name: /アルバム 001/ }).click()
+  await expect(page).toHaveURL('/library/albums/al-1')
+
+  await page.goto('/library/albums')
+  await expect(page.getByRole('radio', { name: 'リスト' })).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByTestId('album-list').getByRole('listitem')).toHaveCount(3)
+})
+
+test('お気に入りに絞り込んでも、選んだ並び順のまま読み直す', async ({ page }) => {
+  await mockApi(page, { loggedIn: true })
+  const { requests } = await mockLibrary(page, { count: 9 })
+  await page.goto('/library/albums')
+  await page.getByRole('combobox', { name: '並び順' }).selectOption('artist')
+  await page.getByRole('button', { name: 'お気に入り', exact: true }).click()
+  await expect(page.getByTestId('album-grid').getByRole('link')).toHaveCount(3)
+  expect(requests.at(-1)?.get('type')).toBe('alphabeticalByArtist')
+  expect(requests.at(-1)?.get('starred')).toBe('true')
 })
 
 test('セッションが切れていればログインの画面に移す', async ({ page }) => {
