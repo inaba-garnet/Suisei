@@ -297,7 +297,9 @@ async fn album_list(params: &Params, state: &AppState) -> Result<Map<String, Val
         .unwrap_or(LIST_SIZE_DEFAULT)
         .clamp(0, LIST_SIZE_MAX);
     let offset = number("offset").unwrap_or(0).max(0);
-    let albums = browse::album_list(&state.db, &order, size, offset)
+    // 独自の引数。どの並べ方でもお気に入りのアルバムだけに絞る（docs/schema.md）
+    let starred_only = params.get("starred") == Some("true");
+    let albums = browse::album_list(&state.db, &order, starred_only, size, offset)
         .await
         .map_err(db_error)?;
     let mut list = Vec::with_capacity(albums.len());
