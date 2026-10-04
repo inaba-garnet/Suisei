@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { AlbumWithSongs, Song } from '~/utils/subsonic'
-import { useScroll } from '@vueuse/core'
 import { Play } from 'lucide-vue-next'
 import { coverArtUrl, formatDuration } from '~/utils/subsonic'
 
@@ -47,14 +46,9 @@ function songArtist(song: Song): string | undefined {
 }
 
 // 大きな見出しが帯の下に隠れたら、帯にアルバムの名前を出す
-const scroller = useScroller()
-const { y } = useScroll(scroller)
 const heading = ref<HTMLElement>()
-const titleVisible = computed(() => {
-  const el = heading.value
-  const bar = scroller.value?.querySelector<HTMLElement>('[data-testid="page-header"]')
-  return !!el && !!bar && y.value + bar.offsetHeight > el.offsetTop + el.offsetHeight
-})
+const cover = ref()
+const { titleVisible, bandOpacity, coverOpacity } = useDetailHeader(heading, cover)
 </script>
 
 <template>
@@ -77,6 +71,8 @@ const titleVisible = computed(() => {
       detail
       overlay
       :title-visible="titleVisible"
+      :cover="album?.coverArt"
+      :band-opacity="bandOpacity"
     />
 
     <p v-if="status === 'pending' && !album" class="relative py-6 text-center text-body-sm text-fg-subtle">
@@ -92,7 +88,7 @@ const titleVisible = computed(() => {
     </div>
     <div v-else class="relative">
       <header class="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end">
-        <CoverArt :id="album.coverArt" :size="240" :alt="album.name" class="w-44 shrink-0 shadow-[0_8px_32px_rgb(0_0_0/0.35)] sm:w-56" />
+        <CoverArt :id="album.coverArt" ref="cover" :size="240" :style="{ opacity: coverOpacity }" :alt="album.name" class="w-44 shrink-0 shadow-[0_8px_32px_rgb(0_0_0/0.35)] sm:w-56" data-testid="album-cover" />
         <div class="flex min-w-0 flex-col gap-1.5">
           <h1 ref="heading" class="line-clamp-2 text-display font-semibold break-words" :title="album.name">
             {{ album.name }}
