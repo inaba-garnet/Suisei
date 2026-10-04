@@ -52,6 +52,7 @@ watch([items, () => props.more], ([visible, more]) => {
       </button>
       <HeartButton :id="songs[item.index]!.id" target="song" :starred="!!songs[item.index]!.starred" :label="`${songs[item.index]!.title}をお気に入りにする`" />
       <span class="w-12 shrink-0 text-right text-body-sm text-fg-subtle tabular-nums">{{ formatDuration(songs[item.index]!.duration) }}</span>
+      <SongMenuButton :target="{ kind: 'song', song: songs[item.index]! }" :label="`${songs[item.index]!.title}のメニュー`" />
     </li>
   </ol>
 </template>

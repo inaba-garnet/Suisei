@@ -137,6 +137,7 @@ const titleVisible = computed(() => {
                   <span v-if="songArtist(song)" class="block truncate text-body-sm text-fg-subtle">{{ songArtist(song) }}</span>
                 </span>
                 <span class="shrink-0 text-body-sm text-fg-subtle tabular-nums">{{ formatDuration(song.duration) }}</span>
+                <SongMenuButton :target="{ kind: 'song', song }" :label="`${song.title}のメニュー`" />
               </li>
             </template>
           </ol>
