@@ -1,0 +1,38 @@
+name: audit
+
+# 依存の脆弱性を照らす（docs/server.md と docs/web.md の「依存の照合」）。
+# 脆弱性の情報は変更と関係なく増えるので、PR ではなく定期実行で見る
+on:
+  schedule:
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/audit.yml"
+      - "server/deny.toml"
+      - "web/build/audit.mjs"
+
+jobs:
+  server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          manifest-path: server/Cargo.toml
+          command: check advisories
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: web/.node-version
+      - run: node build/audit.mjs
