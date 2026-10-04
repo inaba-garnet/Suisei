@@ -42,6 +42,16 @@ test('サーバーに届かなければそう伝える', async ({ page }) => {
   await expect(page.getByRole('alert')).toHaveText('サーバーに接続できません')
 })
 
+test('失敗が続いて拒まれたら、待つように伝える', async ({ page }) => {
+  await mockApi(page)
+  await page.goto('/login')
+  await page.route('**/api/login', route => route.fulfill({ status: 429 }))
+  await page.getByLabel('ユーザー名').fill(USER)
+  await page.getByLabel('パスワード').fill(PASSWORD)
+  await page.getByRole('button', { name: 'ログイン' }).click()
+  await expect(page.getByRole('alert')).toHaveText('失敗が続いたため、しばらく待ってからやり直してください')
+})
+
 test('ログアウトするとログインの画面に戻る', async ({ page }) => {
   await mockApi(page, { loggedIn: true })
   await page.goto('/settings')
