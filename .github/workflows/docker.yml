@@ -1,0 +1,25 @@
+name: docker
+
+on:
+  push:
+    branches: [main]
+  # サーバーと Web のビルドはそれぞれの CI が PR で確かめるので、PR ではイメージの定義を変えたときだけ走らせる
+  pull_request:
+    paths:
+      - "Dockerfile"
+      - ".dockerignore"
+      - ".github/workflows/docker.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      # ビルドできることだけ確かめる。レジストリには載せない
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
