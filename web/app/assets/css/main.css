@@ -136,4 +136,19 @@
     outline: none;
     box-shadow: var(--focus-ring);
   }
+
+  /* スクロールバーは細くし、つまみを枠線の色、溝を透明にする。ブラウザ標準の太いバーが暗い画面で浮くため（docs/web.md の「デザイン」） */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+}
+
+/* 横スクロールの棚など、バーを出さずに送る場所（docs/web.md の「デザイン」） */
+@utility scrollbar-none {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }

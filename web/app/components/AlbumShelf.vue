@@ -1,15 +1,16 @@
 <script setup lang="ts">
+import type { RouteLocationRaw } from 'vue-router'
 import type { Album } from '~/utils/subsonic'
 
 /**
- * アルバムのジャケットを横スクロールで一列に並べる（docs/web.md の「一覧」）。スマホでは画面の端まで広げる。
+ * 見出しとアルバムのジャケットの横スクロールの棚（docs/web.md の「一覧」）。スマホでは画面の端まで広げる。
  * 名前の下には `caption` を出す。既定は年（アーティストの詳細ではアーティストが分かっているため）。
  */
-withDefaults(defineProps<{ albums: Album[], caption?: 'year' | 'artist' }>(), { caption: 'year' })
+withDefaults(defineProps<{ title: string, albums: Album[], caption?: 'year' | 'artist', more?: RouteLocationRaw }>(), { caption: 'year', more: undefined })
 </script>
 
 <template>
-  <ul class="-mx-4 flex snap-x gap-4 overflow-x-auto scroll-px-4 px-4 pb-2 md:mx-0 md:scroll-px-0 md:px-0" data-testid="album-shelf">
+  <ShelfSection :title="title" :count="albums.length" :more="more" testid="album-shelf">
     <li v-for="album in albums" :key="album.id" class="w-36 shrink-0 snap-start">
       <NuxtLink :to="`/library/albums/${album.id}`" class="group flex min-w-0 flex-col gap-2">
         <CoverArt
@@ -24,5 +25,8 @@ withDefaults(defineProps<{ albums: Album[], caption?: 'year' | 'artist' }>(), { 
         </span>
       </NuxtLink>
     </li>
-  </ul>
+    <template #fallback>
+      <slot name="fallback" />
+    </template>
+  </ShelfSection>
 </template>

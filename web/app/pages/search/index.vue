@@ -117,7 +117,15 @@ const empty = computed(() => !!sections.value && Object.values(sections.value).e
     <EmptyState v-else-if="empty" :icon="SearchX" :title="`「${query}」は見つかりませんでした`" />
     <div v-else-if="sections" class="space-y-8 transition-opacity" :class="{ 'opacity-60': loading }" data-testid="search-results">
       <template v-for="{ kind, label } in searchKinds" :key="kind">
-        <section v-if="sections[kind].items.length" :aria-label="label">
+        <!-- アルバムは横スクロールの棚にし、見出しに送る矢印を置く -->
+        <AlbumShelf
+          v-if="kind === 'albums' && sections.albums.items.length"
+          :title="label"
+          :albums="sections.albums.items"
+          caption="artist"
+          :more="sections.albums.more ? { path: '/search/albums', query: { q: query } } : undefined"
+        />
+        <section v-else-if="kind !== 'albums' && sections[kind].items.length" :aria-label="label">
           <div class="mb-3 flex items-baseline justify-between">
             <h2 class="text-h2 font-semibold">
               {{ label }}
@@ -131,7 +139,6 @@ const empty = computed(() => !!sections.value && Object.values(sections.value).e
             </NuxtLink>
           </div>
           <ArtistRows v-if="kind === 'artists'" :artists="sections.artists.items" :more="false" />
-          <AlbumShelf v-else-if="kind === 'albums'" :albums="sections.albums.items" caption="artist" />
           <SongList v-else :songs="sections.songs.items" :more="false" />
         </section>
       </template>
