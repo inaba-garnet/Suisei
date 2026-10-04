@@ -1,0 +1,9 @@
+# 依存のライセンスの一覧（THIRD_PARTY_LICENSES.md）を作る cargo-about の設定。
+# 複数から選べる依存は、先に並べたものを選ぶ
+accepted = ["MIT", "Apache-2.0", "BSD-3-Clause", "Zlib", "Unicode-3.0"]
+# バイナリに入らない依存は除く
+ignore-build-dependencies = true
+ignore-dev-dependencies = true
+targets = ["x86_64-unknown-linux-gnu", "x86_64-unknown-linux-musl"]
+# Suisei 自身のクレート（publish = false）は除く
+private = { ignore = true }
