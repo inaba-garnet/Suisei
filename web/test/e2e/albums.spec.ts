@@ -228,9 +228,8 @@ test('アルバムの詳細はジャケットの背景を敷き、アーティ�
   await page.goto('/library/albums/al-1')
   await expect(page.getByRole('heading', { name: 'アルバム 001' })).toBeVisible()
   await expect(page.getByTestId('album-hero')).toHaveCount(1)
-  // メニューは開発モードのときだけ
   await expect(page.getByRole('button', { name: 'すべて再生' })).toBeEnabled()
-  await expect(page.getByRole('button', { name: 'メニュー' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'アルバムのメニュー' })).toBeEnabled()
 
   await page.getByRole('link', { name: 'アーティスト 1' }).click()
   await expect(page).toHaveURL('/library/artists/ar-1?view=albums')

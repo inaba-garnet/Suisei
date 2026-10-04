@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import type { AlbumWithSongs, Song } from '~/utils/subsonic'
 import { useScroll } from '@vueuse/core'
-import { Ellipsis, Play } from 'lucide-vue-next'
+import { Play } from 'lucide-vue-next'
 import { coverArtUrl, formatDuration } from '~/utils/subsonic'
 
 const route = useRoute()
 const subsonic = useSubsonic()
-const dev = useDev()
 const { current, start } = usePlayer()
 const id = computed(() => String(route.params.id))
 
@@ -120,10 +119,7 @@ const titleVisible = computed(() => {
               すべて再生
             </Button>
             <HeartButton :id="album.id" target="album" :starred="!!album.starred" label="アルバムをお気に入りにする" size="lg" />
-            <!-- メニューの中身ができるまでは、開発モードのときだけ押せない状態で出す（docs/web.md の「開発」） -->
-            <Button v-if="dev" variant="secondary" size="icon-lg" disabled aria-label="メニュー">
-              <Ellipsis class="size-5" />
-            </Button>
+            <SongMenuButton :target="{ kind: 'album', album, songs }" label="アルバムのメニュー" size="lg" />
           </div>
         </div>
       </header>
@@ -143,6 +139,7 @@ const titleVisible = computed(() => {
             </button>
             <HeartButton :id="song.id" target="song" :starred="!!song.starred" :label="`${song.title}をお気に入りにする`" />
             <span class="w-12 shrink-0 text-right text-body-sm text-fg-subtle tabular-nums">{{ formatDuration(song.duration) }}</span>
+            <SongMenuButton :target="{ kind: 'song', song }" :label="`${song.title}のメニュー`" />
           </li>
         </template>
       </ol>

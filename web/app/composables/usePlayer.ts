@@ -66,6 +66,14 @@ function formatKey(song: Song) {
   return `${song.contentType ?? ''}|${song.suffix ?? ''}`
 }
 
+/**
+ * キューに足す曲の写し。シャッフル前の並びは曲のオブジェクトで探すので、
+ * 同じ曲がキューに二度入っても取り違えないよう、足すたびに別のオブジェクトにする。
+ */
+function copiesOf(songs: Song[]): Song[] {
+  return songs.map(song => ({ ...song }))
+}
+
 function initial(): PlayerState {
   return { queue: [], index: -1, playing: false, position: 0, failed: false, shuffle: false, original: [], repeat: 'off', started: 0, transcoding: false, offset: 0 }
 }
@@ -267,6 +275,39 @@ export function usePlayer() {
     }
   }
 
+  /**
+   * `songs` を再生中の曲の直後に入れる（docs/web.md の「メニュー」）。シャッフル前の並びでも再生中の曲の直後に入れ、
+   * シャッフルをオフにしても続けて鳴るようにする。キューが空なら、その曲から鳴らし始める。
+   */
+  function playNext(songs: Song[]) {
+    if (!songs.length) {
+      return
+    }
+    const playing = current.value
+    if (!playing) {
+      start(songs)
+      return
+    }
+    const copies = copiesOf(songs)
+    state.value.queue.splice(state.value.index + 1, 0, ...copies)
+    const i = state.value.original.indexOf(playing)
+    state.value.original.splice(i >= 0 ? i + 1 : state.value.original.length, 0, ...copies)
+  }
+
+  /** `songs` をキューの最後に入れる。キューが空なら、その曲から鳴らし始める。 */
+  function addToQueue(songs: Song[]) {
+    if (!songs.length) {
+      return
+    }
+    if (!current.value) {
+      start(songs)
+      return
+    }
+    const copies = copiesOf(songs)
+    state.value.queue.push(...copies)
+    state.value.original.push(...copies)
+  }
+
   /** リピートを「なし」「キュー全体」「1 曲」の順に切り替える。 */
   function cycleRepeat() {
     const order: RepeatMode[] = ['off', 'all', 'one']
@@ -289,6 +330,8 @@ export function usePlayer() {
     jump,
     move,
     remove,
+    playNext,
+    addToQueue,
     restart,
     fallback,
   }
