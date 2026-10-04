@@ -84,7 +84,7 @@ export async function mockLibrary(page: Page, { count = 250, songs = 2, name = (
           ...Array.from({ length: Math.max(0, songs - 2) }, (_, i) => (
             { id: `${id}-${i + 3}`, title: `曲 ${i + 3}`, artist: album.artist, track: i + 3, discNumber: 1, duration: 200 }
           )),
-        ].map(song => ({ ...song, album: album.name, albumId: album.id, coverArt: album.id })),
+        ].map(song => ({ ...song, album: album.name, albumId: album.id, coverArt: album.id, artists: [{ id: song.artist === 'ゲスト' ? 'ar-guest' : 'ar-1', name: song.artist }] })),
       },
     }))
   })
@@ -385,7 +385,7 @@ export async function mockPlaylists(page: Page, { count = 2, songs = 4 } = {}) {
     const all = [...playlists.flatMap(p => p.entry), ...Array.from({ length: 10 }, (_, i) => song(i))]
     p.entry = [
       ...p.entry.filter((_, i) => !remove.has(i)),
-      ...params.getAll('songIdToAdd').map(id => all.find(s => s.id === id)!),
+      ...params.getAll('songIdToAdd').map(id => all.find(s => s.id === id) ?? { ...song(0), id, title: id }),
     ]
     return route.fulfill(ok({}))
   })
