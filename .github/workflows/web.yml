@@ -31,5 +31,7 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      # 依存のライセンスの一覧がビルド結果に合っているか（docs/web.md の「ライセンスの表示」）
+      - run: git diff --exit-code THIRD_PARTY_LICENSES.md
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e

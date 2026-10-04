@@ -1,4 +1,5 @@
 import tailwindcss from '@tailwindcss/vite'
+import { thirdPartyLicenses } from './build/third-party-licenses'
 
 // 開発サーバーから `/api` と `/rest` を中継する先（docs/web.md）
 const backend = process.env.SUISEI_DEV_BACKEND ?? 'http://127.0.0.1:4533'
@@ -39,6 +40,14 @@ export default defineNuxtConfig({
   },
   vite: {
     plugins: [tailwindcss()],
+  },
+  hooks: {
+    // 配るのはクライアントのビルド結果だけなので、その依存のライセンスを書き出す
+    'vite:extendConfig'(config, { isClient }) {
+      if (isClient) {
+        config.plugins?.push(thirdPartyLicenses())
+      }
+    },
   },
   nitro: {
     devProxy: {

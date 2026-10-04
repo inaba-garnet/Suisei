@@ -36,6 +36,7 @@
     "@types/node": "^26.6.3",
     "@types/sortablejs": "^1.15.9",
     "eslint": "^10.11.0",
+    "rollup-plugin-license": "^3.7.1",
     "shadcn-nuxt": "^2.8.2",
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3",
