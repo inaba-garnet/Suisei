@@ -337,3 +337,63 @@ export async function mockSearch(page: Page, { artists = 8, albums = 30, songs =
   await page.route(/\/rest\/getCoverArt(\?|$)/, route => route.fulfill({ status: 404 }))
   return { requests }
 }
+
+/**
+ * プレイリストの偽物。作成、名前の変更、曲の入れ替え、削除を手元の一覧に反映し、
+ * 呼ばれた `updatePlaylist` の引数（フォームか URL）を `updates` に残す。
+ */
+export async function mockPlaylists(page: Page, { count = 2, songs = 4 } = {}) {
+  const song = (i: number) => ({ id: `tr-${i}`, title: `曲 ${i}`, artist: 'ClariS', album: `アルバム ${i % 2}`, albumId: `al-${i % 2}`, coverArt: `al-${i % 2}`, duration: 200 })
+  const playlists = Array.from({ length: count }, (_, i) => ({
+    id: `pl-${i}`,
+    name: `プレイリスト ${i}`,
+    entry: Array.from({ length: songs }, (_, j) => song(j)),
+  }))
+  const updates: URLSearchParams[] = []
+  const ok = (body: object) => ({ json: { 'subsonic-response': { status: 'ok', version: '1.16.1', ...body } } })
+  const summary = (p: typeof playlists[number]) => ({
+    id: p.id,
+    name: p.name,
+    songCount: p.entry.length,
+    duration: p.entry.length * 200,
+    changed: '2026-10-01T00:00:00Z',
+    ...(p.entry[0] && { coverArt: p.entry[0].coverArt }),
+  })
+  const paramsOf = (request: { url: () => string, method: () => string, postData: () => string | null }) =>
+    request.method() === 'POST' ? new URLSearchParams(request.postData() ?? '') : new URL(request.url()).searchParams
+
+  await page.route(/\/rest\/getPlaylists(\?|$)/, route => route.fulfill(ok({ playlists: playlists.length ? { playlist: playlists.map(summary) } : {} })))
+  await page.route(/\/rest\/getPlaylist(\?|$)/, (route) => {
+    const p = playlists.find(p => p.id === paramsOf(route.request()).get('id'))
+    return p
+      ? route.fulfill(ok({ playlist: { ...summary(p), entry: p.entry } }))
+      : route.fulfill(ok({ status: 'failed', error: { code: 70, message: 'playlist not found' } }))
+  })
+  await page.route(/\/rest\/createPlaylist(\?|$)/, (route) => {
+    const p = { id: `pl-${playlists.length}`, name: paramsOf(route.request()).get('name')!, entry: [] as ReturnType<typeof song>[] }
+    playlists.push(p)
+    return route.fulfill(ok({ playlist: { ...summary(p), entry: [] } }))
+  })
+  await page.route(/\/rest\/updatePlaylist(\?|$)/, (route) => {
+    const params = paramsOf(route.request())
+    updates.push(params)
+    const p = playlists.find(p => p.id === params.get('playlistId'))!
+    if (params.get('name')) {
+      p.name = params.get('name')!
+    }
+    const remove = new Set(params.getAll('songIndexToRemove').map(Number))
+    const all = [...playlists.flatMap(p => p.entry), ...Array.from({ length: 10 }, (_, i) => song(i))]
+    p.entry = [
+      ...p.entry.filter((_, i) => !remove.has(i)),
+      ...params.getAll('songIdToAdd').map(id => all.find(s => s.id === id)!),
+    ]
+    return route.fulfill(ok({}))
+  })
+  await page.route(/\/rest\/deletePlaylist(\?|$)/, (route) => {
+    const index = playlists.findIndex(p => p.id === paramsOf(route.request()).get('id'))
+    playlists.splice(index, 1)
+    return route.fulfill(ok({}))
+  })
+  await page.route(/\/rest\/getCoverArt(\?|$)/, route => route.fulfill({ status: 404 }))
+  return { playlists, updates }
+}

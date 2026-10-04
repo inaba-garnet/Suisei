@@ -71,6 +71,21 @@ export interface AlbumWithSongs extends Album {
   song?: Song[]
 }
 
+/** `getPlaylists` のプレイリスト。`coverArt` は画像のある最初の曲のアルバム。 */
+export interface Playlist {
+  id: string
+  name: string
+  comment?: string
+  songCount: number
+  duration: number
+  coverArt?: string
+  changed: string
+}
+
+export interface PlaylistWithSongs extends Playlist {
+  entry?: Song[]
+}
+
 /** 呼び出しで名乗るクライアント名と、対応する API の版。 */
 export const CLIENT = 'suisei-web'
 export const API_VERSION = '1.16.1'
