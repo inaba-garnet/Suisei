@@ -42,6 +42,10 @@ exec /home/sprite/suisei/suisei
 ```
 URL は Sprite の作成時に `url_settings.auth` を `public` にして公開した。Subsonic の認証で守る。
 
+## 認証の制限
+- Sprite のプロキシの後ろでは、すべての送り主が同じ IP（プロキシの内側のアドレス）に見える。`SUISEI_TRUST_FORWARDED_FOR` を付けても区別できなかったので、付けない。
+- そのため、誰かが 15 分に 11 回パスワードを間違えると、15 分間は誰も認証できなくなる（docs/server.md の「認証の総当たりの制限」）。締め出されたら `POST /services/suisei/restart` で再起動して解く。回数はメモリにだけ持つため。
+
 ## ログ
 - 直近のログは `GET /services/suisei/logs?lines=100`。
 - 全体は `POST /exec` で `/home/sprite/suisei/suisei.log` を読む。
