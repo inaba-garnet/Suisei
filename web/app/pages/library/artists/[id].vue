@@ -108,12 +108,7 @@ const titleVisible = computed(() => {
       <AlbumGrid v-if="view === 'albums'" :albums="albums" :more="false" />
 
       <template v-else-if="view === 'tracks'">
-        <section v-if="albums.length" class="mb-8">
-          <h2 class="mb-3 text-h2 font-semibold">
-            アルバム
-          </h2>
-          <AlbumShelf :albums="albums" />
-        </section>
+        <AlbumShelf v-if="albums.length" title="アルバム" :albums="albums" class="mb-8" />
         <section>
           <h2 class="mb-3 text-h2 font-semibold">
             曲

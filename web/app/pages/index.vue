@@ -42,41 +42,27 @@ const failed = computed(() => !!data.value && Object.values(data.value).some(v =
       読み込み中…
     </p>
     <div v-else class="space-y-8" data-testid="home">
-      <section v-for="shelf in shelves" :key="shelf.key" :aria-label="shelf.title">
-        <div class="mb-3 flex items-baseline justify-between">
-          <h2 class="text-h2 font-semibold">
-            {{ shelf.title }}
-          </h2>
-          <NuxtLink v-if="shelf.albums?.length" :to="shelf.more" class="text-body-sm text-fg-subtle transition-colors hover:text-fg">
-            すべて見る
-          </NuxtLink>
-        </div>
-        <AlbumShelf v-if="shelf.albums?.length" :albums="shelf.albums" caption="artist" />
-        <p v-else-if="shelf.albums" class="text-body-sm text-fg-subtle">
-          {{ shelf.empty }}
-        </p>
-        <p v-else class="text-body-sm text-danger">
-          読み込めませんでした
-        </p>
-      </section>
+      <AlbumShelf v-for="shelf in shelves" :key="shelf.key" :title="shelf.title" :albums="shelf.albums ?? []" caption="artist" :more="shelf.more">
+        <template #fallback>
+          <p v-if="shelf.albums" class="text-body-sm text-fg-subtle">
+            {{ shelf.empty }}
+          </p>
+          <p v-else class="text-body-sm text-danger">
+            読み込めませんでした
+          </p>
+        </template>
+      </AlbumShelf>
 
-      <section aria-label="プレイリスト">
-        <div class="mb-3 flex items-baseline justify-between">
-          <h2 class="text-h2 font-semibold">
-            プレイリスト
-          </h2>
-          <NuxtLink v-if="data?.playlists?.length" to="/playlists" class="text-body-sm text-fg-subtle transition-colors hover:text-fg">
-            すべて見る
-          </NuxtLink>
-        </div>
-        <PlaylistShelf v-if="data?.playlists?.length" :playlists="data.playlists" />
-        <p v-else-if="data?.playlists" class="text-body-sm text-fg-subtle">
-          プレイリストを作ると、ここに並びます。
-        </p>
-        <p v-else class="text-body-sm text-danger">
-          読み込めませんでした
-        </p>
-      </section>
+      <PlaylistShelf title="プレイリスト" :playlists="data?.playlists ?? []" more="/playlists">
+        <template #fallback>
+          <p v-if="data?.playlists" class="text-body-sm text-fg-subtle">
+            プレイリストを作ると、ここに並びます。
+          </p>
+          <p v-else class="text-body-sm text-danger">
+            読み込めませんでした
+          </p>
+        </template>
+      </PlaylistShelf>
 
       <div v-if="failed" class="flex justify-center">
         <Button variant="secondary" @click="refresh()">

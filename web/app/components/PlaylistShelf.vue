@@ -1,12 +1,13 @@
 <script setup lang="ts">
+import type { RouteLocationRaw } from 'vue-router'
 import type { Playlist } from '~/utils/subsonic'
 
-/** プレイリストのジャケットを横スクロールで一列に並べる（docs/web.md の「ホーム」）。アルバムの棚と同じ形にする。 */
-defineProps<{ playlists: Playlist[] }>()
+/** 見出しとプレイリストのジャケットの横スクロールの棚（docs/web.md の「ホーム」）。アルバムの棚と同じ形にする。 */
+defineProps<{ title: string, playlists: Playlist[], more?: RouteLocationRaw }>()
 </script>
 
 <template>
-  <ul class="-mx-4 flex snap-x gap-4 overflow-x-auto scroll-px-4 px-4 pb-2 md:mx-0 md:scroll-px-0 md:px-0" data-testid="playlist-shelf">
+  <ShelfSection :title="title" :count="playlists.length" :more="more" testid="playlist-shelf">
     <li v-for="playlist in playlists" :key="playlist.id" class="w-36 shrink-0 snap-start">
       <NuxtLink :to="`/playlists/${playlist.id}`" class="group flex min-w-0 flex-col gap-2">
         <CoverArt
@@ -21,5 +22,8 @@ defineProps<{ playlists: Playlist[] }>()
         </span>
       </NuxtLink>
     </li>
-  </ul>
+    <template #fallback>
+      <slot name="fallback" />
+    </template>
+  </ShelfSection>
 </template>
