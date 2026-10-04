@@ -86,3 +86,32 @@ test('「すべて見る」で開いた並び順は残さず、お気に入り�
   await expect(page.getByRole('button', { name: 'お気に入り', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await expect.poll(() => requests.at(-1)?.get('starred')).toBe('true')
 })
+
+test('棚はスクロールバーを隠し、PC は見出しの矢印で送る。ほかのスクロールバーは細くする', async ({ page, isMobile }) => {
+  await mockApi(page, { loggedIn: true })
+  await mockPlaylists(page, { count: 1 })
+  await mockHome(page)
+  await page.goto('/')
+  const shelf = page.getByRole('region', { name: '最近再生したアルバム' })
+  const list = shelf.getByTestId('album-shelf')
+  await expect(list).toHaveCSS('scrollbar-width', 'none')
+  await expect(page.getByTestId('scroller')).toHaveCSS('scrollbar-width', 'thin')
+
+  const previous = shelf.getByRole('button', { name: '最近再生したアルバムの前へ' })
+  const next = shelf.getByRole('button', { name: '最近再生したアルバムの次へ' })
+  if (isMobile) {
+    // スマホは指で送るので矢印を出さない
+    await expect(next).toBeHidden()
+    return
+  }
+  await expect(previous).toBeDisabled()
+  await next.click()
+  await expect.poll(() => list.evaluate(el => el.scrollLeft)).toBeGreaterThan(0)
+  await expect(previous).toBeEnabled()
+  await previous.click()
+  await expect.poll(() => list.evaluate(el => el.scrollLeft)).toBe(0)
+  await expect(previous).toBeDisabled()
+
+  // 棚に収まっているなら矢印を出さない
+  await expect(page.getByRole('region', { name: 'プレイリスト' }).getByRole('button', { name: /の次へ$/ })).toHaveCount(0)
+})
