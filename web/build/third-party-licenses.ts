@@ -73,6 +73,13 @@ function render(entries: Entry[]): string {
 export function thirdPartyLicenses() {
   return license({
     thirdParty: {
+      // 許すライセンス以外の依存がバンドルに入ったらビルドを落とす（docs/web.md の「依存の照合」）。
+      // 「MIT か GPL」のように選べるものは、許すほうを選べるので通る
+      allow: {
+        test: '(MIT OR Apache-2.0 OR ISC)',
+        failOnUnlicensed: true,
+        failOnViolation: true,
+      },
       output: {
         file: fileURLToPath(new URL('../THIRD_PARTY_LICENSES.md', import.meta.url)),
         template: deps => render([
