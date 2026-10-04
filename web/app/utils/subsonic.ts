@@ -141,3 +141,20 @@ export function formatDuration(seconds: number): string {
   const rest = String(total % 60).padStart(2, '0')
   return hours > 0 ? `${hours}:${String(minutes).padStart(2, '0')}:${rest}` : `${minutes}:${rest}`
 }
+
+/** `getLyricsBySongId` の歌詞の一行。時刻付きの歌詞なら `start`（ミリ秒）がある。 */
+export interface LyricLine {
+  start?: number
+  value: string
+}
+
+/** `getLyricsBySongId` の歌詞（OpenSubsonic の `structuredLyrics`）。 */
+export interface StructuredLyrics {
+  lang: string
+  synced: boolean
+  /** LRC の `[offset:]` と同じく、正なら歌詞を早める（ミリ秒） */
+  offset?: number
+  displayArtist?: string
+  displayTitle?: string
+  line: LyricLine[]
+}
