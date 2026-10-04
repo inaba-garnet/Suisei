@@ -1,0 +1,10 @@
+# ビルドの文脈に要るのは server/ と web/ のソースだけ
+*
+!server/
+!web/
+server/target/
+web/node_modules/
+web/.nuxt/
+web/.output/
+web/test-results/
+web/playwright-report/
