@@ -39,6 +39,9 @@ const albums = computed(() => sortAlbums(albumsAsAlbumArtist(artist.value?.album
 const songs = computed(() => artist.value?.song ?? [])
 const sortedSongs = computed(() => sortSongs(songs.value, sort.value))
 const groups = computed(() => sortGroups(groupByAlbum(songs.value), sort.value, artist.value?.album ?? []))
+// 行を押すと、アルバムの見出しごとに並んだ順で全曲をキューに入れる（docs/web.md の「再生」）
+const queue = computed(() => groups.value.flatMap(group => group.songs))
+const { current, start } = usePlayer()
 const summary = computed(() => view.value === 'albums' ? `アルバム ${albums.value.length} 枚` : `${songs.value.length} 曲`)
 
 /** 曲のアーティストがこのアーティストだけなら出さない。 */
@@ -126,12 +129,15 @@ const titleVisible = computed(() => {
                 </NuxtLink>
               </li>
               <li v-for="song in group.songs" :key="song.id" class="flex h-12 items-center gap-3 border-b border-divider px-3">
-                <span class="w-6 shrink-0 text-right text-body-sm text-fg-subtle tabular-nums">{{ song.track ?? '' }}</span>
-                <span class="min-w-0 flex-1">
-                  <span class="block truncate text-body">{{ song.title }}</span>
-                  <span v-if="songArtist(song)" class="block truncate text-body-sm text-fg-subtle">{{ songArtist(song) }}</span>
-                </span>
-                <span class="shrink-0 text-body-sm text-fg-subtle tabular-nums">{{ formatDuration(song.duration) }}</span>
+                <button type="button" class="flex min-w-0 flex-1 items-center gap-3 self-stretch text-left" @click="start(queue, queue.indexOf(song))">
+                  <span class="w-6 shrink-0 text-right text-body-sm text-fg-subtle tabular-nums">{{ song.track ?? '' }}</span>
+                  <span class="min-w-0 flex-1">
+                    <span class="block truncate text-body" :class="{ 'text-accent-base': current?.id === song.id }">{{ song.title }}</span>
+                    <span v-if="songArtist(song)" class="block truncate text-body-sm text-fg-subtle">{{ songArtist(song) }}</span>
+                  </span>
+                </button>
+                <HeartButton :id="song.id" target="song" :starred="!!song.starred" :label="`${song.title}をお気に入りにする`" />
+                <span class="w-12 shrink-0 text-right text-body-sm text-fg-subtle tabular-nums">{{ formatDuration(song.duration) }}</span>
                 <SongMenuButton :target="{ kind: 'song', song }" :label="`${song.title}のメニュー`" />
               </li>
             </template>
