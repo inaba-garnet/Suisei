@@ -411,6 +411,8 @@ async fn scan_endpoints() {
         cache_dir: "/nonexistent".into(),
         ffmpeg: "ffmpeg".into(),
         dev: false,
+        throttle: Default::default(),
+        trust_forwarded_for: false,
     });
     let status = |endpoint: &'static str| {
         let app = app.clone();

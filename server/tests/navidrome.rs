@@ -25,6 +25,8 @@ async fn suisei(endpoint: &str, query: &str) -> Map<String, Value> {
         cache_dir: "/nonexistent".into(),
         ffmpeg: "ffmpeg".into(),
         dev: false,
+        throttle: Default::default(),
+        trust_forwarded_for: false,
     });
     let uri = format!("/rest/{endpoint}?u=inaba&p=sesame&f=json{query}");
     let res = app

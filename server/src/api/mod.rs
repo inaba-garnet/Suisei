@@ -8,6 +8,7 @@ mod media;
 mod playlist;
 mod search;
 mod session;
+mod throttle;
 mod transcode;
 mod unsupported;
 mod web;
@@ -27,8 +28,10 @@ use crate::Credentials;
 use crate::db::Pool;
 use crate::scan::{self, Scanner};
 use crate::subsonic::{self, Error, ErrorCode, Format, Params};
+use throttle::ClientIp;
 
 pub use history::NowPlaying;
+pub use throttle::Throttle;
 pub use web::Web;
 
 #[derive(Debug, Clone)]
@@ -43,6 +46,10 @@ pub struct AppState {
     pub ffmpeg: PathBuf,
     /// 開発モード（docs/server.md の「設定」）
     pub dev: bool,
+    /// 認証の失敗の記録（docs/server.md の「認証の総当たりの制限」）
+    pub throttle: Arc<Throttle>,
+    /// 送り主の IP を `X-Forwarded-For` から取るか
+    pub trust_forwarded_for: bool,
 }
 
 pub fn router(state: AppState) -> Router {
@@ -67,6 +74,7 @@ async fn rest(
     State(state): State<Arc<AppState>>,
     method: Method,
     headers: HeaderMap,
+    ClientIp(ip): ClientIp,
     Path(endpoint): Path<String>,
     params: Params,
 ) -> Response {
@@ -82,7 +90,7 @@ async fn rest(
 
     // OpenSubsonic の仕様で、認証なしで呼べることになっている。
     if name != "getOpenSubsonicExtensions"
-        && let Err(err) = session::authenticate(&state, &headers, &params).await
+        && let Err(err) = session::authenticate(&state, &headers, &params, ip).await
     {
         tracing::info!(
             endpoint = name,

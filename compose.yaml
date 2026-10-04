@@ -16,6 +16,8 @@ services:
       # SUISEI_API_KEY: ${SUISEI_API_KEY}
       # 定期スキャンの間隔（既定は 1h、0 で起動時だけ）
       # SUISEI_SCAN_INTERVAL: 1h
+      # リバースプロキシの後ろに置くときだけ付ける。認証の制限で送り主の IP を X-Forwarded-For から取る
+      # SUISEI_TRUST_FORWARDED_FOR: "true"
       # `キャラクター(CV:声優)` を分けない
       # SUISEI_SPLIT_CHARACTERS: "false"
     volumes:

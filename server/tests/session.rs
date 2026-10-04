@@ -39,6 +39,8 @@ impl App {
             cache_dir: "/nonexistent".into(),
             ffmpeg: "ffmpeg".into(),
             dev: false,
+            throttle: Default::default(),
+            trust_forwarded_for: false,
         });
         Self { router, db }
     }

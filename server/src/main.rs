@@ -1,3 +1,5 @@
+use std::net::SocketAddr;
+
 use clap::Parser;
 use suisei::{AppState, Config, db, scan};
 use tokio::net::TcpListener;
@@ -26,12 +28,18 @@ async fn main() -> std::io::Result<()> {
         cache_dir: config.data_dir.join("cache"),
         ffmpeg: config.ffmpeg,
         dev: config.dev,
+        throttle: Default::default(),
+        trust_forwarded_for: config.trust_forwarded_for,
     };
     let listener = TcpListener::bind(config.listen).await?;
     tracing::info!(addr = %config.listen, "listening");
-    axum::serve(listener, suisei::router(state))
-        .with_graceful_shutdown(shutdown_signal())
-        .await
+    axum::serve(
+        listener,
+        // 認証の制限で送り主の IP を使う
+        suisei::router(state).into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .with_graceful_shutdown(shutdown_signal())
+    .await
 }
 
 async fn shutdown_signal() {

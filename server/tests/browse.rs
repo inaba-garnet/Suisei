@@ -102,6 +102,8 @@ async fn start_with_ffmpeg(dir: TempDir, ffmpeg: std::path::PathBuf) -> Server {
         cache_dir: cache.path().to_owned(),
         ffmpeg,
         dev: false,
+        throttle: Default::default(),
+        trust_forwarded_for: false,
     });
     Server {
         dir,
