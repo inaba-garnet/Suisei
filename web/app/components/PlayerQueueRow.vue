@@ -20,54 +20,7 @@ const props = defineProps<{
 const { state, jump, remove } = usePlayer()
 const playing = computed(() => props.index === state.value.index)
 
-/** 左にこれより大きく払って離したら消す（px）。 */
-const REMOVE_DISTANCE = 96
-/** 横にこれだけ動いたら、タップやスクロールではなく払っているとみなす（px）。 */
-const SWIPE_START = 10
-
-const swiping = ref<{ x: number, y: number, dx: number, active: boolean }>()
-
-function onTouchStart(e: TouchEvent) {
-  const touch = e.touches[0]
-  if (!props.swipe || playing.value || e.touches.length !== 1 || !touch || (e.target as Element).closest('[data-queue-handle]')) {
-    swiping.value = undefined
-    return
-  }
-  swiping.value = { x: touch.clientX, y: touch.clientY, dx: 0, active: false }
-}
-
-function onTouchMove(e: TouchEvent) {
-  const s = swiping.value
-  const touch = e.touches[0]
-  if (!s || !touch) {
-    return
-  }
-  const dx = touch.clientX - s.x
-  const dy = touch.clientY - s.y
-  if (!s.active) {
-    // 縦に動かしたならスクロールか、パネルを引く操作に任せる
-    if (Math.abs(dy) > SWIPE_START && Math.abs(dy) >= Math.abs(dx)) {
-      swiping.value = undefined
-      return
-    }
-    if (Math.abs(dx) <= SWIPE_START) {
-      return
-    }
-    s.active = true
-  }
-  // 払っている間は、パネルを引く操作に渡さない
-  e.preventDefault()
-  e.stopPropagation()
-  s.dx = Math.min(0, dx)
-}
-
-function onTouchEnd() {
-  const s = swiping.value
-  swiping.value = undefined
-  if (s?.active && s.dx < -REMOVE_DISTANCE) {
-    remove(props.index)
-  }
-}
+const { swiping, handlers } = useSwipeRemove(() => !!props.swipe && !playing.value, () => remove(props.index))
 </script>
 
 <template>
@@ -84,10 +37,7 @@ function onTouchEnd() {
       class="group relative flex items-center gap-2"
       :class="swiping?.active ? 'bg-surface-1' : 'transition-transform duration-200'"
       :style="swiping?.active ? { transform: `translateX(${swiping.dx}px)` } : undefined"
-      @touchstart="onTouchStart"
-      @touchmove="onTouchMove"
-      @touchend="onTouchEnd"
-      @touchcancel="onTouchEnd"
+      v-on="handlers"
     >
       <button
         type="button"
@@ -129,6 +79,7 @@ function onTouchEnd() {
         role="img"
         class="flex size-8 shrink-0 cursor-grab touch-none items-center justify-center text-fg-subtle active:cursor-grabbing"
         data-queue-handle
+        data-swipe-ignore
         data-sheet-no-drag
       >
         <GripVertical class="size-4" />
