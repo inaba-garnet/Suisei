@@ -5,24 +5,29 @@ import { coverArtUrl } from '~/utils/subsonic'
 /**
  * 再生プレイヤー（docs/web.md の「画面構成」「再生」）。広い画面の右の欄に置き、
  * `sheet` ならスマホの下から引き出す再生画面として、枠を付けずに閉じる矢印を出す。
- * キューを開くと、ジャケットと曲名の場所をキューに入れ替える。下の操作の段はそのまま残す。
+ * キューか歌詞を開くと、ジャケットと曲名の場所をそれに入れ替える。下の操作の段はそのまま残す。
  */
 const props = defineProps<{ sheet?: boolean }>()
 defineEmits<{ close: [] }>()
 
 const { state, current, canPrevious, canNext, previous, next } = usePlayer()
 const queue = usePlayerQueueOpen()
+const lyricsOpen = usePlayerLyricsOpen()
 const showQueue = computed(() => queue.value && !!current.value)
+const showLyrics = computed(() => lyricsOpen.value && !queue.value && !!current.value)
+/** キューか歌詞を、ジャケットと曲名の場所に入れ替えて出しているか。 */
+const swapped = computed(() => showQueue.value || showLyrics.value)
+const title = computed(() => showQueue.value ? 'キュー' : showLyrics.value ? '歌詞' : '再生中')
 
 /**
- * 余白と間隔。キューを出している間は、下の操作の段の間隔と下の余白を詰めて下に寄せ、キューを大きく見せる。
+ * 余白と間隔。キューか歌詞を出している間は、下の操作の段の間隔と下の余白を詰めて下に寄せ、中身を大きく見せる。
  * 操作の段はジャケットの表示と同じものを残す。
  */
 const layout = computed(() => {
   if (props.sheet) {
-    return showQueue.value ? 'gap-3 px-6 pt-6 pb-[calc(env(safe-area-inset-bottom)+8px)]' : 'gap-5 px-6 pt-6 pb-[calc(env(safe-area-inset-bottom)+24px)]'
+    return swapped.value ? 'gap-3 px-6 pt-6 pb-[calc(env(safe-area-inset-bottom)+8px)]' : 'gap-5 px-6 pt-6 pb-[calc(env(safe-area-inset-bottom)+24px)]'
   }
-  return showQueue.value ? 'gap-3 px-5 pt-5 pb-3' : 'gap-5 p-5'
+  return swapped.value ? 'gap-3 px-5 pt-5 pb-3' : 'gap-5 p-5'
 })
 </script>
 
@@ -57,7 +62,7 @@ const layout = computed(() => {
     </div>
     <div
       class="flex h-full flex-col"
-      :class="[layout, { 'overflow-y-auto': !showQueue }]"
+      :class="[layout, { 'overflow-y-auto': !swapped }]"
     >
       <div v-if="sheet" class="flex min-h-11 items-center">
         <button
@@ -69,14 +74,15 @@ const layout = computed(() => {
           <ChevronDown class="size-6" />
         </button>
         <h2 class="flex-1 text-center text-body font-semibold">
-          {{ showQueue ? 'キュー' : '再生中' }}
+          {{ title }}
         </h2>
         <span class="size-11 shrink-0" />
       </div>
       <h2 v-else class="text-body font-semibold">
-        {{ showQueue ? 'キュー' : '再生中' }}
+        {{ title }}
       </h2>
       <PlayerQueue v-if="showQueue" :sheet="sheet" class="-mx-1 min-h-0 flex-1 px-1" />
+      <PlayerLyrics v-else-if="showLyrics" :sheet="sheet" class="min-h-0 flex-1" />
       <template v-else>
       <!-- ジャケットは枠を付けず、再生のボタンと同じく再生中は強く、止めているときは弱く光らせる -->
       <CoverArt
@@ -103,7 +109,7 @@ const layout = computed(() => {
       </p>
       </template>
       <PlayerSeek v-if="current" times />
-      <div class="flex items-center justify-center gap-4" :class="{ 'mb-auto': sheet && !showQueue }">
+      <div class="flex items-center justify-center gap-4" :class="{ 'mb-auto': sheet && !swapped }">
         <PlayerModes mode="shuffle" />
         <Button variant="ghost" size="icon" :disabled="!canPrevious" aria-label="前の曲" @click="previous">
           <SkipBack class="size-4" />
@@ -116,8 +122,9 @@ const layout = computed(() => {
       </div>
       <!-- 音量は PC だけ（スマホは本体のボタンで変える） -->
       <PlayerVolume v-if="!sheet" class="justify-center" />
-      <!-- 表示を切り替えるボタンの段。どちらの表示でも下端に置き、後で歌詞のボタンも同じ段に並べる -->
-      <div class="flex items-center justify-end" :class="{ 'mt-auto': !sheet }">
+      <!-- 表示を切り替えるボタンの段。どの表示でも下端の同じ位置に置く -->
+      <div class="flex items-center justify-end gap-2" :class="{ 'mt-auto': !sheet }">
+        <PlayerLyricsButton />
         <PlayerQueueButton />
       </div>
     </div>

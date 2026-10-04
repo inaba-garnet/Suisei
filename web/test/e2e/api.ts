@@ -397,3 +397,22 @@ export async function mockPlaylists(page: Page, { count = 2, songs = 4 } = {}) {
   await page.route(/\/rest\/getCoverArt(\?|$)/, route => route.fulfill({ status: 404 }))
   return { playlists, updates }
 }
+
+/**
+ * `getLyricsBySongId` の偽物。`synced` の曲には 3 秒ごとの時刻付きの歌詞、`plain` の曲には時刻なしの歌詞を返し、ほかの曲には歌詞を返さない。
+ * 頼まれた曲の ID を `ids` に残す。
+ */
+export async function mockLyrics(page: Page, { synced = [] as string[], plain = [] as string[], lines = 20 } = {}) {
+  const ids: string[] = []
+  await page.route(/\/rest\/getLyricsBySongId(\?|$)/, (route) => {
+    const id = new URL(route.request().url()).searchParams.get('id')!
+    ids.push(id)
+    const structuredLyrics = synced.includes(id)
+      ? [{ lang: 'jpn', synced: true, line: Array.from({ length: lines }, (_, i) => ({ start: i * 3000, value: i === 0 ? '' : `時刻付きの歌詞 ${i} 行目` })) }]
+      : plain.includes(id)
+        ? [{ lang: 'jpn', synced: false, line: Array.from({ length: lines }, (_, i) => ({ value: `時刻なしの歌詞 ${i + 1} 行目` })) }]
+        : []
+    return route.fulfill({ json: { 'subsonic-response': { status: 'ok', version: '1.16.1', lyricsList: { structuredLyrics } } } })
+  })
+  return { ids }
+}

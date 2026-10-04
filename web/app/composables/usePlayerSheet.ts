@@ -7,3 +7,8 @@ export function usePlayerSheet() {
 export function usePlayerQueueOpen() {
   return useState('player-queue', () => false)
 }
+
+/** 歌詞を開いているか（docs/web.md の「再生」）。キューとは同時に開かない。 */
+export function usePlayerLyricsOpen() {
+  return useState('player-lyrics', () => false)
+}

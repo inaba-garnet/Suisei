@@ -7,6 +7,7 @@ import { onKeyStroke } from '@vueuse/core'
  */
 const open = usePlayerSheet()
 const queue = usePlayerQueueOpen()
+const lyrics = usePlayerLyricsOpen()
 const { current } = usePlayer()
 
 /** 取っ手をこれより下まで引いて離したら閉じる（px）。 */
@@ -24,6 +25,7 @@ onKeyStroke('Escape', close)
 watch(open, (value) => {
   if (!value) {
     queue.value = false
+    lyrics.value = false
   }
 })
 watch(current, (song) => {
