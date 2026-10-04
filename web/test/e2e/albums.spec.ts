@@ -235,6 +235,46 @@ test('アルバムの詳細はジャケットの背景を敷き、アーティ�
   await expect(page).toHaveURL('/library/artists/ar-1?view=albums')
 })
 
+test('見出しの帯は、アルバム名が帯の下に入るにつれてジャケットのぼかしで塗り、パネルの幅いっぱいに広げる', async ({ page }) => {
+  // 内容の幅（640px）より広く、PC の作りより狭い幅。帯を内容の幅で止めると、横から背景が覗く
+  await page.setViewportSize({ width: 700, height: 640 })
+  await mockApi(page, { loggedIn: true })
+  await mockLibrary(page, { count: 3, songs: 30 })
+  await page.goto('/library/albums/al-1')
+  const heading = page.getByRole('heading', { name: 'アルバム 001' })
+  await expect(heading).toBeVisible()
+
+  const band = page.getByTestId('page-header-band')
+  const opacity = async (locator: Locator) => Number(await locator.evaluate(el => getComputedStyle(el).opacity))
+  const cover = page.getByTestId('album-cover')
+  const title = page.getByTestId('page-header').getByText('アルバム 001')
+  await expect.poll(() => opacity(band)).toBe(0)
+  await expect(title).toHaveClass(/opacity-0/)
+
+  const panel = await page.getByTestId('scroller').evaluate(el => ({ left: el.getBoundingClientRect().left + el.clientLeft, width: el.clientWidth }))
+  const box = (await band.boundingBox())!
+  expect(box.x).toBeCloseTo(panel.left, 0)
+  expect(box.width).toBeCloseTo(panel.width, 0)
+
+  // アルバム名が半分だけ帯の下に入ると、帯は半ばの濃さで、名前はまだ出さない。ジャケットは帯の下に入った分だけ薄れる
+  const half = await page.evaluate(() => {
+    const scroller = document.querySelector<HTMLElement>('[data-testid="scroller"]')!
+    const bar = scroller.querySelector('[data-testid="page-header"]')!.getBoundingClientRect()
+    const h = scroller.querySelector('h1')!.getBoundingClientRect()
+    return scroller.scrollTop + h.top + h.height / 2 - bar.bottom
+  })
+  await scrollTo(page, half)
+  await expect.poll(() => opacity(band)).toBeGreaterThan(0.3)
+  expect(await opacity(band)).toBeLessThan(0.7)
+  await expect(title).toHaveClass(/opacity-0/)
+  await expect.poll(() => opacity(cover)).toBeLessThan(1)
+
+  // 隠れきると、帯を塗りきって名前を出す
+  await scrollTo(page, half + 200)
+  await expect.poll(() => opacity(band)).toBe(1)
+  await expect(title).toHaveClass(/opacity-100/)
+})
+
 test('アルバムと曲のハートでお気に入りを付け外しする', async ({ page }) => {
   await mockApi(page, { loggedIn: true })
   await mockLibrary(page, { count: 3 })

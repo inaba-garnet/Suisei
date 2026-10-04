@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { PlaylistRow } from '~/utils/playlists'
 import type { PlaylistWithSongs } from '~/utils/subsonic'
-import { useMediaQuery, useScroll } from '@vueuse/core'
+import { useMediaQuery } from '@vueuse/core'
 import { ListMusic, Pencil, Play } from 'lucide-vue-next'
 import Sortable from 'sortablejs'
 import { playlistUpdate } from '~/utils/playlists'
@@ -27,14 +27,9 @@ const songs = computed(() => playlist.value?.entry ?? [])
 const details = computed(() => playlist.value ? `${playlist.value.songCount} 曲 · ${formatDuration(playlist.value.duration)}` : '')
 
 // 大きな見出しが帯の下に隠れたら、帯に名前を出す
-const scroller = useScroller()
-const { y } = useScroll(scroller)
 const heading = ref<HTMLElement>()
-const titleVisible = computed(() => {
-  const el = heading.value
-  const bar = scroller.value?.querySelector<HTMLElement>('[data-testid="page-header"]')
-  return !!el && !!bar && y.value + bar.offsetHeight > el.offsetTop + el.offsetHeight
-})
+const cover = ref()
+const { titleVisible, bandOpacity, coverOpacity } = useDetailHeader(heading, cover)
 
 // 編集。手元の写しを変え、「完了」でまとめて保存する。「キャンセル」なら写しを捨てる
 const editing = ref(false)
@@ -146,6 +141,8 @@ onBeforeUnmount(() => sortable?.destroy())
       detail
       overlay
       :title-visible="titleVisible"
+      :cover="playlist?.coverArt"
+      :band-opacity="bandOpacity"
     />
 
     <p v-if="status === 'pending' && !playlist" class="relative py-6 text-center text-body-sm text-fg-subtle">
@@ -161,7 +158,7 @@ onBeforeUnmount(() => sortable?.destroy())
     </div>
     <div v-else class="relative">
       <header class="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end">
-        <CoverArt :id="playlist.coverArt" :size="240" :alt="playlist.name" class="w-44 shrink-0 shadow-[0_8px_32px_rgb(0_0_0/0.35)] sm:w-56" />
+        <CoverArt :id="playlist.coverArt" ref="cover" :size="240" :style="{ opacity: coverOpacity }" :alt="playlist.name" class="w-44 shrink-0 shadow-[0_8px_32px_rgb(0_0_0/0.35)] sm:w-56" />
         <div class="flex min-w-0 flex-1 flex-col gap-1.5">
           <template v-if="editing">
             <label>
