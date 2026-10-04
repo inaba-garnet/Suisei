@@ -34,6 +34,10 @@ export function useAuth() {
       if (statusOf(err) === 401) {
         throw new LoginError('ユーザー名かパスワードが違います')
       }
+      // 失敗が続くと、サーバーはしばらくログインを拒む（docs/server.md の「認証の総当たりの制限」）
+      if (statusOf(err) === 429) {
+        throw new LoginError('失敗が続いたため、しばらく待ってからやり直してください')
+      }
       throw err
     }
     // 開発モードかどうかも受け取るため、ログイン中の利用者を取り直す
