@@ -117,3 +117,39 @@ test('スマホの再生画面でも歌詞を開け、閉じて開き直すと�
   await expect(sheet.getByRole('heading', { name: '再生中' })).toBeVisible()
   await expect(sheet.getByTestId('lyrics')).toHaveCount(0)
 })
+
+test('下端の再生バーの PC では、歌詞をキューと同じ右端のパネルに出し、キューと入れ替えられ、× と Esc で閉じる', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'PC の画面だけ')
+  await mockApi(page, { loggedIn: true })
+  await mockLibrary(page, { count: 3, songs: 2 })
+  await mockStream(page)
+  await mockLyrics(page, { synced: ['al-1-2'] })
+  await page.goto('/library/albums/al-1')
+
+  const bar = page.getByTestId('player-bar')
+  const button = bar.getByRole('button', { name: '歌詞', exact: true })
+  await page.getByTestId('songs').getByText('一曲目').click()
+  await expect(button).toBeDisabled()
+  await bar.getByRole('button', { name: '次の曲' }).click()
+  await expect(button).toBeEnabled()
+
+  await button.click()
+  const lyrics = page.getByRole('dialog', { name: '歌詞' })
+  await expect(lyrics.getByTestId('lyrics')).toContainText('時刻付きの歌詞 1 行目')
+
+  // キューのボタンで同じパネルの中身をキューに替える
+  await bar.getByRole('button', { name: 'キュー', exact: true }).click()
+  const queue = page.getByRole('dialog', { name: 'キュー' })
+  await expect(queue.getByTestId('player-queue')).toBeVisible()
+  await expect(lyrics).toHaveCount(0)
+  await expect(button).toHaveAttribute('aria-pressed', 'false')
+
+  await button.click()
+  await lyrics.getByRole('button', { name: '歌詞を閉じる' }).click()
+  await expect(lyrics).toHaveCount(0)
+  await button.click()
+  await expect(lyrics).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(lyrics).toHaveCount(0)
+  await expect(button).toHaveAttribute('aria-pressed', 'false')
+})
