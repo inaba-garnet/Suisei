@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test'
 import { expect, test } from '@playwright/test'
-import { mockApi, mockArtists } from './api'
+import { mockApi, mockArtists, mockStar, mockStream } from './api'
 
 const scrollTop = (page: Page) => page.getByTestId('scroller').evaluate(el => el.scrollTop)
 const scrollTo = (page: Page, top: number) => page.getByTestId('scroller').evaluate((el, top) => {
@@ -138,6 +138,29 @@ test('アーティストの一覧から開いた詳細は、アルバムを横�
   // 再読み込みしても同じ表示にする
   await page.reload()
   await expect(page.getByTestId('song-group')).toHaveCount(2)
+})
+
+test('アーティストの曲の行を押すと、見出しごとに並んだ順で押した曲から鳴らし、ハートで付け外しする', async ({ page, isMobile }) => {
+  test.skip(isMobile, '次の曲のボタンは PC だけ')
+  await mockApi(page, { loggedIn: true })
+  await mockArtists(page)
+  const { ids } = await mockStream(page)
+  const { calls } = await mockStar(page)
+  await page.goto('/library/artists/ar-ア-0?view=tracks')
+
+  // 新しい順なので、客演のアルバム（2015）の曲の次に一枚目（2010）の曲が並ぶ
+  const songs = page.getByTestId('songs')
+  await songs.getByText('客演の曲', { exact: true }).click()
+  const bar = page.getByTestId('player-bar')
+  await expect(bar).toContainText('客演の曲')
+  await bar.getByRole('button', { name: '次の曲' }).click()
+  await expect(bar).toContainText('一曲目')
+  await expect.poll(() => ids).toEqual(['s-3', 's-1'])
+
+  const heart = songs.getByRole('button', { name: '二曲目をお気に入りにする' })
+  await heart.click()
+  await expect(heart).toHaveAttribute('aria-pressed', 'true')
+  await expect.poll(() => calls.at(-1)?.params.get('id')).toBe('s-2')
 })
 
 test('アーティストの詳細の並び順は既定で新しい順にし、選んだ順を表示ごとに残す', async ({ page }) => {
