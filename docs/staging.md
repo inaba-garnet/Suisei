@@ -1,7 +1,8 @@
 # 検証用サーバーの運用
 
-検証用サーバーは Sprite `suisei-staging`（`https://suisei-staging-b3k73.sprites.app`）。
-操作は Sprites の API（`https://api.sprites.dev/v1/sprites/suisei-staging`）に `Authorization: Bearer $SPRITES_TOKEN` を付けて行う。
+検証用サーバーは Fly.io の Sprite。
+Sprite の名前は環境変数 `SUISEI_STAGING_SPRITE`、公開 URL は `SUISEI_STAGING_URL` に置き、リポジトリには書かない。URL を知られると、パスワードの総当たりや締め出し（「認証の制限」）の的になるため。
+操作は Sprites の API（`https://api.sprites.dev/v1/sprites/$SUISEI_STAGING_SPRITE`）に `Authorization: Bearer $SPRITES_TOKEN` を付けて行う。
 
 ## 配置
 | パス | 中身 |
