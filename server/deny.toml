@@ -1,4 +1,4 @@
-# 依存の脆弱性の照合（docs/server.md の「依存の照合」）。週に一度、CI で `cargo deny check advisories` を実行する。
+# 依存の脆弱性の照合（docs/server.md の「依存の照合」）。毎日、CI で `cargo deny check advisories` を実行する。
 [graph]
 targets = ["x86_64-unknown-linux-gnu", "x86_64-unknown-linux-musl"]
 # 開発用の依存はバイナリに入らない
