@@ -1,7 +1,8 @@
-# ビルドの文脈に要るのは server/ と web/ のソースだけ
+# ビルドの文脈に要るのは server/ と web/ のソースと LICENSE だけ
 *
 !server/
 !web/
+!LICENSE
 server/target/
 web/node_modules/
 web/.nuxt/

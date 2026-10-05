@@ -41,6 +41,12 @@ RUN groupadd --gid 1000 suisei \
     && useradd --uid 1000 --gid 1000 --no-create-home --shell /usr/sbin/nologin suisei \
     && mkdir /data && chown suisei:suisei /data
 COPY --from=server /usr/local/bin/suisei /usr/local/bin/suisei
+# 配るイメージに、Suisei と依存と辞書のライセンスを同梱する（docs/server.md の「ライセンスの表示」）
+COPY LICENSE /usr/share/doc/suisei/
+COPY server/THIRD_PARTY_LICENSES.md /usr/share/doc/suisei/THIRD_PARTY_LICENSES-server.md
+COPY --from=web /src/web/THIRD_PARTY_LICENSES.md /usr/share/doc/suisei/THIRD_PARTY_LICENSES-web.md
+COPY server/dict/README.md /usr/share/doc/suisei/dict/
+COPY server/dict/licenses/ /usr/share/doc/suisei/dict/licenses/
 USER suisei
 ENV SUISEI_DATA_DIR=/data \
     SUISEI_MUSIC_DIR=/music
