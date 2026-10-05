@@ -22,6 +22,10 @@ struct App {
 
 impl App {
     async fn new() -> Self {
+        Self::with_forwarded_for(false).await
+    }
+
+    async fn with_forwarded_for(trust_forwarded_for: bool) -> Self {
         let db = db::open_in_memory().await.unwrap();
         let router = suisei::router(AppState {
             credentials: Credentials {
@@ -39,6 +43,8 @@ impl App {
             cache_dir: "/nonexistent".into(),
             ffmpeg: "ffmpeg".into(),
             dev: false,
+            throttle: Default::default(),
+            trust_forwarded_for,
         });
         Self { router, db }
     }
@@ -67,6 +73,28 @@ impl App {
                 .unwrap(),
         )
         .await
+    }
+
+    /// 送り主を `X-Forwarded-For` で示してログインする。
+    async fn login_from(&self, ip: &str, password: &str) -> Res {
+        let body = serde_json::json!({ "username": "inaba", "password": password });
+        self.send(
+            Request::post("/api/login")
+                .header(header::CONTENT_TYPE, "application/json")
+                .header("x-forwarded-for", ip)
+                .body(Body::from(body.to_string()))
+                .unwrap(),
+        )
+        .await
+    }
+
+    /// Subsonic API を Cookie なしで呼び、応答の中身を返す。
+    async fn rest_without_cookie(&self, uri: &str) -> Value {
+        let res = self
+            .send(Request::get(uri).body(Body::empty()).unwrap())
+            .await;
+        assert_eq!(res.status, StatusCode::OK);
+        serde_json::from_str::<Value>(&res.body).unwrap()["subsonic-response"].clone()
     }
 
     /// ログインして、Cookie の値を返す。
@@ -322,4 +350,94 @@ async fn login_deletes_expired_sessions() {
     app.session().await;
     assert_eq!(app.last_used_at("old").await, None);
     assert!(app.last_used_at("recent").await.is_some());
+}
+
+const PING_OK: &str = "/rest/ping?u=inaba&p=sesame&v=1.16.1&c=t&f=json";
+const PING_WRONG: &str = "/rest/ping?u=inaba&p=wrong&v=1.16.1&c=t&f=json";
+
+#[tokio::test]
+async fn login_is_rejected_after_too_many_failures() {
+    let app = App::new().await;
+    for _ in 0..10 {
+        assert_eq!(
+            app.login("inaba", "wrong").await.status,
+            StatusCode::UNAUTHORIZED
+        );
+    }
+    assert_eq!(
+        app.login("inaba", "wrong").await.status,
+        StatusCode::UNAUTHORIZED
+    );
+    // 拒否中は正しいパスワードでも通さない
+    assert_eq!(
+        app.login("inaba", "sesame").await.status,
+        StatusCode::TOO_MANY_REQUESTS
+    );
+}
+
+#[tokio::test]
+async fn subsonic_is_rejected_with_40_after_too_many_failures() {
+    let app = App::new().await;
+    let token = app.session().await;
+    for _ in 0..11 {
+        let res = app.rest_without_cookie(PING_WRONG).await;
+        assert_eq!(res["error"]["code"], 40);
+    }
+    let res = app.rest_without_cookie(PING_OK).await;
+    assert_eq!(res["status"], "failed");
+    assert_eq!(res["error"]["code"], 40);
+    // Cookie のセッションは総当たりにならないので止めない
+    let res = app.rest("/rest/ping?v=1.16.1&c=t&f=json", &token).await;
+    assert_eq!(res["status"], "ok");
+}
+
+#[tokio::test]
+async fn success_clears_failures() {
+    let app = App::new().await;
+    for _ in 0..10 {
+        app.rest_without_cookie(PING_WRONG).await;
+    }
+    assert_eq!(app.rest_without_cookie(PING_OK).await["status"], "ok");
+    for _ in 0..10 {
+        app.rest_without_cookie(PING_WRONG).await;
+    }
+    assert_eq!(app.rest_without_cookie(PING_OK).await["status"], "ok");
+}
+
+#[tokio::test]
+async fn missing_parameters_are_not_counted() {
+    let app = App::new().await;
+    for _ in 0..20 {
+        let res = app
+            .rest_without_cookie("/rest/ping?v=1.16.1&c=t&f=json")
+            .await;
+        assert_eq!(res["error"]["code"], 10);
+    }
+    assert_eq!(app.rest_without_cookie(PING_OK).await["status"], "ok");
+}
+
+#[tokio::test]
+async fn forwarded_for_is_used_only_when_trusted() {
+    let trusted = App::with_forwarded_for(true).await;
+    for _ in 0..11 {
+        trusted.login_from("192.0.2.1", "wrong").await;
+    }
+    assert_eq!(
+        trusted.login_from("192.0.2.1", "sesame").await.status,
+        StatusCode::TOO_MANY_REQUESTS
+    );
+    assert_eq!(
+        trusted.login_from("192.0.2.2", "sesame").await.status,
+        StatusCode::NO_CONTENT
+    );
+
+    // 信じない設定では、ヘッダーを変えても同じ送り主として数える
+    let untrusted = App::new().await;
+    for _ in 0..11 {
+        untrusted.login_from("192.0.2.1", "wrong").await;
+    }
+    assert_eq!(
+        untrusted.login_from("192.0.2.2", "sesame").await.status,
+        StatusCode::TOO_MANY_REQUESTS
+    );
 }

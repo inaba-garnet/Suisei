@@ -29,6 +29,10 @@ pub struct Config {
     #[arg(long, env = "SUISEI_SPLIT_CHARACTERS", default_value_t = true, action = clap::ArgAction::Set)]
     pub split_characters: bool,
 
+    /// 送り主の IP を `X-Forwarded-For` の最後の要素から取る。リバースプロキシの後ろに置くときだけ付ける。
+    #[arg(long, env = "SUISEI_TRUST_FORWARDED_FOR", default_value_t = false, action = clap::ArgAction::Set)]
+    pub trust_forwarded_for: bool,
+
     /// 開発モード。Web クライアントが未完成の UI を出す。
     #[arg(long, env = "SUISEI_DEV", default_value_t = false, action = clap::ArgAction::Set)]
     pub dev: bool,

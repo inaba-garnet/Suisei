@@ -1,5 +1,6 @@
 //! Web クライアントのログインと、Cookie のセッションでの認証（docs/server.md の「Web クライアントのログイン」）。
 
+use std::net::IpAddr;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -13,6 +14,7 @@ use serde_json::json;
 use sha2::{Digest, Sha256};
 
 use super::AppState;
+use super::throttle::ClientIp;
 use crate::db;
 use crate::subsonic::{self, Error, ErrorCode, Params};
 
@@ -32,12 +34,19 @@ pub(super) struct Login {
 pub(super) async fn login(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
+    ClientIp(ip): ClientIp,
     Json(login): Json<Login>,
 ) -> Response {
+    if state.throttle.is_locked(ip) {
+        tracing::info!(%ip, "login rejected: too many failed attempts");
+        return StatusCode::TOO_MANY_REQUESTS.into_response();
+    }
     if !subsonic::verify_password(&state.credentials, &login.username, &login.password) {
         tracing::info!("login failed");
+        record_failure(&state, ip);
         return StatusCode::UNAUTHORIZED.into_response();
     }
+    state.throttle.succeed(ip);
     let now = now_ms();
     if let Err(err) = db::session::delete_unused_since(&state.db, now - millis(LIFETIME)).await {
         tracing::warn!(%err, "failed to delete expired sessions");
@@ -100,6 +109,7 @@ pub(super) async fn authenticate(
     state: &AppState,
     headers: &HeaderMap,
     params: &Params,
+    ip: IpAddr,
 ) -> Result<(), Error> {
     if !subsonic::has_credentials(params)
         && let Some(token) = cookie(headers)
@@ -116,7 +126,36 @@ pub(super) async fn authenticate(
             }
         };
     }
-    subsonic::authenticate(params, &state.credentials)
+    // 拒否中は確かめずに、パスワード違いと同じエラーを返す。
+    // クライアントが通信の失敗とみなして再送を繰り返さないよう、HTTP 429 にはしない
+    if state.throttle.is_locked(ip) {
+        return Err(Error::new(
+            ErrorCode::WrongCredentials,
+            "too many failed attempts, try again later",
+        ));
+    }
+    let result = subsonic::authenticate(params, &state.credentials);
+    match &result {
+        Ok(()) => state.throttle.succeed(ip),
+        // 引数の不足や非対応の方式は、総当たりにならないので数えない
+        Err(err)
+            if matches!(
+                err.code,
+                ErrorCode::WrongCredentials | ErrorCode::InvalidApiKey
+            ) =>
+        {
+            record_failure(state, ip);
+        }
+        Err(_) => {}
+    }
+    result
+}
+
+/// 認証の失敗を数え、拒み始めたら記録する。
+fn record_failure(state: &AppState, ip: IpAddr) {
+    if state.throttle.fail(ip) {
+        tracing::warn!(%ip, "too many failed authentication attempts; rejecting for a while");
+    }
 }
 
 /// セッションが有効か確かめ、必要なら最終利用日時を更新する。

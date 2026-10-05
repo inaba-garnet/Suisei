@@ -26,6 +26,8 @@ async fn app_with(web: Web) -> axum::Router {
             cache_dir: "/nonexistent".into(),
             ffmpeg: "ffmpeg".into(),
             dev: false,
+            throttle: Default::default(),
+            trust_forwarded_for: false,
         },
         web,
     )
