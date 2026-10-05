@@ -78,18 +78,21 @@ AAC / AIFF / APE / FLAC / M4A / MP3 / Musepack / Ogg / Opus / WAV / WavPack
 - Docker Compose
 - 音楽ファイルを保存したディレクトリ
 
-現在はビルド済み Docker イメージを配布していないため、リポジトリを取得してローカルでビルドします。
+ビルド済みの Docker イメージを GitHub Container Registry（`ghcr.io/inaba-garnet/suisei`）で配布しています。
 
-### 1. リポジトリを取得
+### 1. compose.yaml を取得
+
+任意のディレクトリに [`compose.yaml`](compose.yaml) を置きます。
 
 ```sh
-git clone https://github.com/inaba-garnet/Suisei.git
-cd Suisei
+mkdir suisei
+cd suisei
+curl -O https://raw.githubusercontent.com/inaba-garnet/Suisei/main/compose.yaml
 ```
 
 ### 2. ユーザー名とパスワードを設定
 
-リポジトリ直下に `.env` を作成します。
+同じディレクトリに `.env` を作成します。
 
 ```sh
 cat > .env <<'EOF'
@@ -100,12 +103,12 @@ EOF
 
 ### 3. 音楽フォルダを指定
 
-[`compose.yaml`](compose.yaml) 内の `/path/to/music` を、実際の音楽フォルダへ変更します。
+`compose.yaml` 内の `/path/to/music` を、実際の音楽フォルダへ変更します。
 
 ### 4. 起動
 
 ```sh
-docker compose up -d --build
+docker compose up -d
 ```
 
 起動後、ブラウザから次の URL を開きます。
@@ -117,6 +120,17 @@ http://<サーバーのアドレス>:4533/
 Subsonic クライアントを使用する場合も、同じサーバー URL と `.env` で設定したユーザー名・パスワードを指定します。
 
 起動時に音楽フォルダをスキャンし、デフォルトではその後 1 時間ごとに再スキャンします。
+
+### 更新
+
+`compose.yaml` は `0.1` のように系列を指定しているので、同じ系列の修正版を取り込めます。
+
+```sh
+docker compose pull
+docker compose up -d
+```
+
+リポジトリを取得してローカルでビルドする場合は、`compose.yaml` の `image:` の行を `build: .` に置き換えます。
 
 ## 設定
 
