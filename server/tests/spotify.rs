@@ -606,7 +606,10 @@ async fn changing_client_id_disconnects() {
     let (status, saved) = f.request("PUT", "/api/settings", Some(cleared)).await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(saved["spotifyClientId"], Value::Null);
-    assert_eq!(f.status().await, json!({ "configured": false }));
+    assert_eq!(
+        f.status().await,
+        json!({ "configured": false, "redirectUri": REDIRECT_URI })
+    );
     let (status, _) = f.request("POST", "/api/spotify/authorize", None).await;
     assert_eq!(status, StatusCode::NOT_FOUND);
 }

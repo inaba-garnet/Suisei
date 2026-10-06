@@ -42,7 +42,8 @@ pub(super) async fn status(State(state): State<Arc<AppState>>, headers: HeaderMa
     }
     let spotify = &state.spotify;
     if spotify.client_id().is_none() {
-        return Json(json!({ "configured": false })).into_response();
+        // Spotify のアプリを登録する前に Redirect URI を見せるため、未設定でも返す
+        return Json(json!({ "configured": false, "redirectUri": REDIRECT_URI })).into_response();
     }
     match spotify.status().await {
         Ok(status) => Json(json!({
