@@ -66,7 +66,6 @@ export function lastSyncMessage(last: SpotifyLastSync, now: number): string {
     : `${when}、新しく取り込んだ曲はありませんでした`
 }
 
-
 /** 未対応の曲の行から、ローカルの曲を探す検索語を作る。曲名だけにする。アーティストの表記は Spotify とローカルで違うことが多いため。 */
 export function searchTermOf(track: Pick<SpotifyTrack, 'title'>): string {
   return track.title.trim()
