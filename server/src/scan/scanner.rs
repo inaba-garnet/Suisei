@@ -3,18 +3,20 @@
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant, SystemTime};
+use std::time::{Instant, SystemTime};
 
 use tokio::sync::{Mutex as AsyncMutex, OwnedMutexGuard, watch};
 
 use super::{Mode, Options, run_with_progress};
 use crate::db::Pool;
+use crate::settings::Settings;
 
 #[derive(Debug)]
 pub struct Scanner {
     pool: Pool,
     music_dir: PathBuf,
-    options: Options,
+    /// 設定の画面で変わるので、スキャンのたびに読む
+    options: Mutex<Options>,
     /// スキャン中は取られている
     lock: Arc<AsyncMutex<()>>,
     scanning: AtomicBool,
@@ -47,7 +49,7 @@ impl Scanner {
         Arc::new(Self {
             pool,
             music_dir,
-            options,
+            options: Mutex::new(options),
             lock: Arc::default(),
             scanning: AtomicBool::new(false),
             progress: Arc::default(),
@@ -71,17 +73,39 @@ impl Scanner {
         drop(self.lock.lock().await);
     }
 
-    /// すぐに一度スキャンし、`interval` ごとに繰り返す。間隔は前のスキャンが終わってから数える。
-    /// `interval` が 0 なら一度だけ。手動のスキャンが走っていれば、その回は飛ばす。
-    pub async fn run_periodically(self: Arc<Self>, interval: Duration) {
+    /// 次のスキャンから使うタグの解釈を変える。
+    pub fn set_options(&self, options: Options) {
+        *self.options.lock().expect("設定のロックが壊れた") = options;
+    }
+
+    /// すぐに一度スキャンし、設定の間隔ごとに繰り返す。間隔は前のスキャンが終わってから数える。
+    /// 間隔が 0 なら、設定が変わるまで待つ。手動のスキャンが走っていれば、その回は飛ばす。
+    /// 設定が変われば、タグの解釈を差し替え、新しい間隔で次の時刻を数え直す。
+    pub async fn run_periodically(self: Arc<Self>, mut settings: watch::Receiver<Settings>) {
         loop {
+            self.set_options(settings.borrow_and_update().tag_options());
             if let Some(guard) = self.begin() {
                 self.scan(Mode::Quick, guard).await;
             }
-            if interval.is_zero() {
-                return;
+            let finished = Instant::now();
+            loop {
+                let interval = settings.borrow().scan_interval;
+                let wait = async {
+                    if interval.is_zero() {
+                        std::future::pending::<()>().await;
+                    }
+                    tokio::time::sleep_until((finished + interval).into()).await;
+                };
+                tokio::select! {
+                    () = wait => break,
+                    changed = settings.changed() => {
+                        if changed.is_err() {
+                            return;
+                        }
+                        self.set_options(settings.borrow_and_update().tag_options());
+                    }
+                }
             }
-            tokio::time::sleep(interval).await;
         }
     }
 
@@ -119,11 +143,12 @@ impl Scanner {
 
     async fn scan(&self, mode: Mode, _guard: OwnedMutexGuard<()>) {
         let started = Instant::now();
+        let options = *self.options.lock().expect("設定のロックが壊れた");
         let result = run_with_progress(
             &self.pool,
             &self.music_dir,
             mode,
-            self.options,
+            options,
             Arc::clone(&self.progress),
         )
         .await;

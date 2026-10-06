@@ -8,6 +8,7 @@ mod media;
 mod playlist;
 mod search;
 mod session;
+mod settings;
 mod spotify;
 mod throttle;
 mod transcode;
@@ -51,8 +52,10 @@ pub struct AppState {
     pub throttle: Arc<Throttle>,
     /// 送り主の IP を `X-Forwarded-For` から取るか
     pub trust_forwarded_for: bool,
-    /// Spotify 連携。Client ID を設定したときだけ持つ（docs/spotify.md）
-    pub spotify: Option<Arc<crate::spotify::Spotify>>,
+    /// Web から変える設定（docs/server.md の「設定」）
+    pub settings: Arc<crate::settings::Store>,
+    /// Spotify 連携。設定に Client ID がなければ使わない（docs/spotify.md）
+    pub spotify: Arc<crate::spotify::Spotify>,
 }
 
 pub fn router(state: AppState) -> Router {
@@ -66,6 +69,7 @@ pub fn router_with(state: AppState, web: Web) -> Router {
         .route("/api/login", post(session::login))
         .route("/api/logout", post(session::logout))
         .route("/api/me", get(session::me))
+        .route("/api/settings", get(settings::get).put(settings::put))
         .route(
             "/api/spotify",
             get(spotify::status).delete(spotify::disconnect),

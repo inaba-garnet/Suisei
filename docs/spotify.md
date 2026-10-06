@@ -8,14 +8,15 @@
 - ローカルにない曲は取り込めない。音源を Spotify から得る手段はないので、対応しなかった曲は一覧で見せるだけにする。
 
 ## Spotify のアプリ
-- 利用者が自分で Spotify のアプリを登録し、その Client ID を `SUISEI_SPOTIFY_CLIENT_ID` で渡す。Suisei は各自が立てるサーバーなので、共通の Client ID を配れない。開発モードのアプリは利用者 5 人までだが、一人で使う前提なら足りる。
+- 利用者が自分で Spotify のアプリを登録し、その Client ID を Web の設定の画面で入れる（docs/server.md の「設定」）。Suisei は各自が立てるサーバーなので、共通の Client ID を配れない。開発モードのアプリは利用者 5 人までだが、一人で使う前提なら足りる。
 - 開発モードのアプリは、登録した人が Spotify Premium に入っている必要がある（2026 年 2 月の変更）。README の手順に書く。
 - 認可は Authorization Code with PKCE で行い、Client Secret は持たない。秘密を設定に置かずに済むため。
-- 未設定なら Spotify 連携の API と画面を出さない。
+- 未設定なら Spotify 連携の API を使えなくする。
+- Client ID を変えたら接続を切る。接続は Client ID ごとに発行されるため。対応表とローカルのお気に入りは残す。
 - 登録の手順は README に書く。
   1. Spotify for Developers のダッシュボードでアプリを作り、使う API に Web API を選ぶ。
   2. Redirect URI に `http://127.0.0.1:27533/callback` を登録する（「認可の戻り先」）。
-  3. アプリの Client ID を `SUISEI_SPOTIFY_CLIENT_ID` に設定してサーバーを起動し直す。
+  3. アプリの Client ID を設定の画面に入れる。
   4. Web の設定の画面で「Spotify に接続」を押し、Spotify で許可する。
   5. ブラウザが開けなかったページのアドレスバーの URL を、設定の画面に貼り付ける。
 
@@ -44,8 +45,8 @@
 - Spotify で外した曲のお気に入りを、ローカルで外すことは範囲に入れない。ローカルで付けたお気に入りと区別せずに外すと、利用者が手で付けたものを失うため。
 - 取り込みは Web の設定の画面から手動でも始められる。
 - スキャンが終わるたびに、Spotify を呼ばずに、対応表の未対応の行に対応を付け直す。スキャンで増えた曲にすぐ対応を付けるため。
-- 接続していて、前の取り込みを始めてから 60 分たっていれば、付け直す前に Spotify から読み直す。取り込みのための間隔の設定を別に持たずに済み、`SUISEI_SCAN_INTERVAL` を短くしても Spotify の API を呼びすぎないため。
-- 定期のスキャンを止めている（`SUISEI_SCAN_INTERVAL=0`）ときは、スキャンの後に Spotify から読まない。
+- 接続していて、前の取り込みを始めてから 60 分たっていれば、付け直す前に Spotify から読み直す。取り込みのための間隔の設定を別に持たずに済み、スキャンの間隔を短くしても Spotify の API を呼びすぎないため。
+- 定期のスキャンを止めている（間隔が `0`）ときは、スキャンの後に Spotify から読まない。
 - 前の取り込みを始めた日時は DB に持つ。再起動のたびに Spotify を呼ばないため。
 - 429 が返れば `Retry-After` の秒数だけ待って続ける。2 分より長く待てと言われたら、その回は諦めて次のスキャンの後にやり直す。
 - 取り込みは一度に一つだけ走らせる。
@@ -69,7 +70,7 @@
 
 ## API
 - Subsonic API ではなく `/api/spotify` に置き、セッションの Cookie で認証する。Subsonic に Spotify 連携の仕様はなく、使うのは Web クライアントだけのため。
-  - `GET /api/spotify`: 設定の有無、登録する Redirect URI、接続の状態、取り込み中か、最後の取り込みの日時と結果、件数（全件、対応済み）。未設定なら `configured: false` だけを返し、Web は項目を出さない。ほかの API は 404 を返す。
+  - `GET /api/spotify`: 設定の有無、登録する Redirect URI、接続の状態、取り込み中か、最後の取り込みの日時と結果、件数（全件、対応済み）。未設定なら `configured: false` と Redirect URI だけを返す。アプリを登録する前に Redirect URI を見せるため。ほかの API は 404 を返す。
   - `POST /api/spotify/authorize`: 認可の URL を返す。
   - `POST /api/spotify/callback`: 貼り付けた URL を受け、コードをトークンに換える。
   - `DELETE /api/spotify`: 接続を切る。対応表は残す。

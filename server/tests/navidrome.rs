@@ -13,6 +13,7 @@ use tower::ServiceExt;
 
 async fn suisei(endpoint: &str, query: &str) -> Map<String, Value> {
     let db = suisei::db::open_in_memory().await.unwrap();
+    let settings = suisei::settings::Store::new(db.clone(), Default::default());
     let app = suisei::router(AppState {
         credentials: Credentials {
             user: "inaba".into(),
@@ -20,14 +21,15 @@ async fn suisei(endpoint: &str, query: &str) -> Map<String, Value> {
             api_key: None,
         },
         db: db.clone(),
-        scanner: suisei::scan::Scanner::new(db, "/nonexistent".into(), Default::default()),
+        scanner: suisei::scan::Scanner::new(db.clone(), "/nonexistent".into(), Default::default()),
         now_playing: Default::default(),
         cache_dir: "/nonexistent".into(),
         ffmpeg: "ffmpeg".into(),
         dev: false,
         throttle: Default::default(),
         trust_forwarded_for: false,
-        spotify: None,
+        spotify: suisei::spotify::Spotify::new(db.clone(), settings.clone(), Default::default()),
+        settings,
     });
     let uri = format!("/rest/{endpoint}?u=inaba&p=sesame&f=json{query}");
     let res = app

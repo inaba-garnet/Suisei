@@ -13,6 +13,7 @@ async fn app() -> axum::Router {
 
 async fn app_with(web: Web) -> axum::Router {
     let db = suisei::db::open_in_memory().await.unwrap();
+    let settings = suisei::settings::Store::new(db.clone(), Default::default());
     suisei::router_with(
         AppState {
             credentials: Credentials {
@@ -21,14 +22,23 @@ async fn app_with(web: Web) -> axum::Router {
                 api_key: None,
             },
             db: db.clone(),
-            scanner: suisei::scan::Scanner::new(db, "/nonexistent".into(), Default::default()),
+            scanner: suisei::scan::Scanner::new(
+                db.clone(),
+                "/nonexistent".into(),
+                Default::default(),
+            ),
             now_playing: Default::default(),
             cache_dir: "/nonexistent".into(),
             ffmpeg: "ffmpeg".into(),
             dev: false,
             throttle: Default::default(),
             trust_forwarded_for: false,
-            spotify: None,
+            spotify: suisei::spotify::Spotify::new(
+                db.clone(),
+                settings.clone(),
+                Default::default(),
+            ),
+            settings,
         },
         web,
     )

@@ -71,11 +71,10 @@ pub struct Token {
 pub struct Client {
     http: reqwest::Client,
     endpoints: Endpoints,
-    client_id: String,
 }
 
 impl Client {
-    pub fn new(client_id: String, endpoints: Endpoints) -> Self {
+    pub fn new(endpoints: Endpoints) -> Self {
         // 暗号の実装は ring だけを入れているので、明示して使う。二度目以降の呼び出しは失敗するが害はない
         let _ = rustls::crypto::ring::default_provider().install_default();
         let http = reqwest::Client::builder()
@@ -83,18 +82,14 @@ impl Client {
             .timeout(Duration::from_secs(30))
             .build()
             .expect("HTTP クライアントを作れる");
-        Self {
-            http,
-            endpoints,
-            client_id,
-        }
+        Self { http, endpoints }
     }
 
-    pub fn authorize_url(&self, state: &str, challenge: &str) -> String {
+    pub fn authorize_url(&self, client_id: &str, state: &str, challenge: &str) -> String {
         reqwest::Url::parse_with_params(
             &format!("{}/authorize", self.endpoints.accounts),
             [
-                ("client_id", self.client_id.as_str()),
+                ("client_id", client_id),
                 ("response_type", "code"),
                 ("redirect_uri", REDIRECT_URI),
                 ("code_challenge_method", "S256"),
@@ -108,22 +103,27 @@ impl Client {
     }
 
     /// 認可のコードをトークンに換える。
-    pub async fn exchange_code(&self, code: &str, verifier: &str) -> Result<Token, Error> {
+    pub async fn exchange_code(
+        &self,
+        client_id: &str,
+        code: &str,
+        verifier: &str,
+    ) -> Result<Token, Error> {
         self.token(&[
             ("grant_type", "authorization_code"),
             ("code", code),
             ("redirect_uri", REDIRECT_URI),
-            ("client_id", &self.client_id),
+            ("client_id", client_id),
             ("code_verifier", verifier),
         ])
         .await
     }
 
-    pub async fn refresh(&self, refresh_token: &str) -> Result<Token, Error> {
+    pub async fn refresh(&self, client_id: &str, refresh_token: &str) -> Result<Token, Error> {
         self.token(&[
             ("grant_type", "refresh_token"),
             ("refresh_token", refresh_token),
-            ("client_id", &self.client_id),
+            ("client_id", client_id),
         ])
         .await
     }

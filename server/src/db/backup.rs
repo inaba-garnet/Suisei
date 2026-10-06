@@ -4,8 +4,10 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
 use sqlx::migrate::{Migrate, Migrator};
+use tokio::sync::watch;
 
 use super::Pool;
+use crate::settings::Settings;
 
 const PERIODIC_PREFIX: &str = "suisei-";
 const PRE_MIGRATE_PREFIX: &str = "suisei-pre-migrate-";
@@ -29,14 +31,19 @@ impl Periodic {
         !self.interval.is_zero() && self.keep > 0
     }
 
-    /// 期限が来るたびに写す。失敗しても次の確認でやり直す。
-    pub async fn run(self, pool: Pool) {
-        if !self.enabled() {
-            tracing::info!("periodic database backup is disabled");
-            return;
-        }
+    /// 期限が来るたびに写す。間隔と世代数は設定の画面で変わるので、確かめるたびに読む。
+    /// 失敗しても次の確認でやり直す。
+    pub async fn run(dir: PathBuf, pool: Pool, settings: watch::Receiver<Settings>) {
         loop {
-            match self.run_once(&pool, SystemTime::now()).await {
+            let periodic = {
+                let s = settings.borrow();
+                Self {
+                    dir: dir.clone(),
+                    interval: s.backup_interval,
+                    keep: s.backup_keep as usize,
+                }
+            };
+            match periodic.run_once(&pool, SystemTime::now()).await {
                 Ok(Some(path)) => tracing::info!(path = %path.display(), "backed up database"),
                 Ok(None) => {}
                 Err(err) => tracing::error!(%err, "failed to back up database"),

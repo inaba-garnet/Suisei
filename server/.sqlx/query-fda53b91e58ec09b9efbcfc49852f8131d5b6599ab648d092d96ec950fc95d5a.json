@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE settings SET scan_interval_secs = ?, backup_interval_secs = ?, backup_keep = ?,\n             split_characters = ?, spotify_client_id = ?\n         WHERE id = 1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "fda53b91e58ec09b9efbcfc49852f8131d5b6599ab648d092d96ec950fc95d5a"
+}

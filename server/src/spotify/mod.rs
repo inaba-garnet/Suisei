@@ -14,7 +14,7 @@ use sha2::{Digest, Sha256};
 use tokio::sync::{Mutex as AsyncMutex, watch};
 
 use crate::db::{self, Pool};
-use crate::tags;
+use crate::settings;
 use client::Client;
 pub use client::{Endpoints, REDIRECT_URI};
 
@@ -85,12 +85,20 @@ pub struct Status {
 }
 
 #[derive(Debug)]
+struct Pending {
+    verifier: String,
+    client_id: String,
+    at: Instant,
+}
+
+#[derive(Debug)]
 pub struct Spotify {
     pool: Pool,
     client: Client,
-    options: tags::Options,
-    /// 始めた認可。`state` から PKCE の verifier と始めた時刻を引く
-    pending: Mutex<HashMap<String, (String, Instant)>>,
+    /// Client ID とタグの解釈は設定の画面で変わるので、使うたびに読む
+    settings: Arc<settings::Store>,
+    /// 始めた認可。`state` から PKCE の verifier、使った Client ID、始めた時刻を引く
+    pending: Mutex<HashMap<String, Pending>>,
     access_token: AsyncMutex<Option<(String, Instant)>>,
     /// 取り込みは一度に一つだけ
     lock: Arc<AsyncMutex<()>>,
@@ -99,16 +107,11 @@ pub struct Spotify {
 }
 
 impl Spotify {
-    pub fn new(
-        pool: Pool,
-        client_id: String,
-        endpoints: Endpoints,
-        options: tags::Options,
-    ) -> Arc<Self> {
+    pub fn new(pool: Pool, settings: Arc<settings::Store>, endpoints: Endpoints) -> Arc<Self> {
         Arc::new(Self {
             pool,
-            client: Client::new(client_id, endpoints),
-            options,
+            client: Client::new(endpoints),
+            settings,
             pending: Mutex::default(),
             access_token: AsyncMutex::default(),
             lock: Arc::default(),
@@ -117,15 +120,29 @@ impl Spotify {
         })
     }
 
-    /// 認可を始め、Spotify の認可の画面の URL を返す。
-    pub fn authorize_url(&self) -> String {
+    /// 設定の Client ID。なければ Spotify 連携を使わない。
+    pub fn client_id(&self) -> Option<String> {
+        self.settings.get().spotify_client_id
+    }
+
+    /// 認可を始め、Spotify の認可の画面の URL を返す。Client ID がなければ None。
+    pub fn authorize_url(&self) -> Option<String> {
+        let client_id = self.client_id()?;
         let state = hex::encode(random_bytes::<16>());
         let verifier = URL_SAFE_NO_PAD.encode(random_bytes::<48>());
         let challenge = URL_SAFE_NO_PAD.encode(Sha256::digest(&verifier));
         let mut pending = self.pending.lock().expect("認可のロックが壊れた");
-        pending.retain(|_, (_, at)| at.elapsed() < PENDING_LIFETIME);
-        pending.insert(state.clone(), (verifier, Instant::now()));
-        self.client.authorize_url(&state, &challenge)
+        pending.retain(|_, p| p.at.elapsed() < PENDING_LIFETIME);
+        let url = self.client.authorize_url(&client_id, &state, &challenge);
+        pending.insert(
+            state,
+            Pending {
+                verifier,
+                client_id,
+                at: Instant::now(),
+            },
+        );
+        Some(url)
     }
 
     /// 認可の後にブラウザが開けなかったページの URL を受け、接続する。
@@ -138,16 +155,20 @@ impl Spotify {
         let (Some(code), Some(state)) = (query.get("code"), query.get("state")) else {
             return Err(ConnectError::InvalidUrl);
         };
-        let verifier = {
+        let pending = {
             let mut pending = self.pending.lock().expect("認可のロックが壊れた");
             match pending.remove(state) {
-                Some((verifier, at)) if at.elapsed() < PENDING_LIFETIME => verifier,
+                Some(p) if p.at.elapsed() < PENDING_LIFETIME => p,
                 _ => return Err(ConnectError::UnknownState),
             }
         };
+        // 認可を始めた後に Client ID を変えたなら、古いアプリで許可した URL なのでつながない
+        if self.client_id().as_deref() != Some(pending.client_id.as_str()) {
+            return Err(ConnectError::UnknownState);
+        }
         let token = self
             .client
-            .exchange_code(code, &verifier)
+            .exchange_code(&pending.client_id, code, &pending.verifier)
             .await
             .map_err(|err| ConnectError::Failed(Error::Spotify(err)))?;
         let Some(refresh_token) = &token.refresh_token else {
@@ -197,13 +218,13 @@ impl Spotify {
         true
     }
 
-    /// スキャンが終わるたびに、対応を付け直す。`periodic` なら、前に読んでから 60 分たっていれば Spotify から読み直す。
-    pub async fn follow_scans(self: Arc<Self>, mut finished: watch::Receiver<u64>, periodic: bool) {
+    /// スキャンが終わるたびに、対応を付け直す。定期スキャンが有効で、前に読んでから 60 分たっていれば Spotify から読み直す。
+    pub async fn follow_scans(self: Arc<Self>, mut finished: watch::Receiver<u64>) {
         while finished.changed().await.is_ok() {
             let Some(guard) = self.begin() else {
                 continue;
             };
-            let result = match self.should_fetch(periodic).await {
+            let result = match self.should_fetch().await {
                 Ok(true) => self.fetch_and_match().await,
                 Ok(false) => self.rematch().await.map(|matched| (None, matched)),
                 Err(err) => Err(err.into()),
@@ -213,8 +234,8 @@ impl Spotify {
         }
     }
 
-    async fn should_fetch(&self, periodic: bool) -> Result<bool, sqlx::Error> {
-        if !periodic {
+    async fn should_fetch(&self) -> Result<bool, sqlx::Error> {
+        if self.settings.get().scan_interval.is_zero() || self.client_id().is_none() {
             return Ok(false);
         }
         let Some((_, fetched_at)) = db::spotify::account(&self.pool).await? else {
@@ -303,7 +324,10 @@ impl Spotify {
         let Some((refresh_token, _)) = db::spotify::account(&self.pool).await? else {
             return Err(Error::NotConnected);
         };
-        let token = match self.client.refresh(&refresh_token).await {
+        let Some(client_id) = self.client_id() else {
+            return Err(Error::NotConnected);
+        };
+        let token = match self.client.refresh(&client_id, &refresh_token).await {
             Ok(token) => token,
             Err(client::Error::InvalidGrant) => {
                 // 接続が切れた。切れたままの接続で取り込みを繰り返さないよう、接続を消す
@@ -329,9 +353,10 @@ impl Spotify {
             return Ok(0);
         }
         let index = matching::Index::new(db::spotify::local_tracks(&self.pool).await?);
+        let options = self.settings.get().tag_options();
         let mut matched = 0;
         for track in &unmatched {
-            if let Some((track_id, method)) = index.find(track, self.options)
+            if let Some((track_id, method)) = index.find(track, options)
                 && db::spotify::link(&self.pool, &track.spotify_id, Some(track_id), method).await?
             {
                 matched += 1;
