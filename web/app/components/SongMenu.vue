@@ -91,7 +91,9 @@ async function openPlaylists() {
   playlists.value = undefined
   loadFailed.value = false
   try {
-    playlists.value = (await subsonic<{ playlists: { playlist?: Playlist[] } }>('getPlaylists')).playlists.playlist ?? []
+    // お気に入りのプレイリストのように曲を足せないものは、選ばせない
+    const all = (await subsonic<{ playlists: { playlist?: Playlist[] } }>('getPlaylists')).playlists.playlist ?? []
+    playlists.value = all.filter(p => !p.readonly)
   }
   catch {
     loadFailed.value = true

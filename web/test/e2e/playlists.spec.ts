@@ -41,6 +41,22 @@ test('一覧から開いて曲を並べ、「すべて再生」で一曲目か�
   await expect(page).toHaveURL('/playlists')
 })
 
+test('お気に入りのプレイリストは先頭に出し、編集させない', async ({ page }) => {
+  await mockApi(page, { loggedIn: true })
+  await mockPlaylists(page, { starred: true })
+  await page.goto('/playlists')
+
+  const list = page.getByTestId('playlists')
+  await expect(list.getByRole('listitem')).toHaveCount(3)
+  await expect(list.getByRole('listitem').first()).toContainText('お気に入り')
+  await list.getByRole('link', { name: /お気に入り/ }).click()
+
+  await expect(page).toHaveURL('/playlists/pl-starred')
+  await expect(page.getByRole('heading', { name: 'お気に入り' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'すべて再生' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '編集' })).toHaveCount(0)
+})
+
 test('名前を入れて作り、作ったプレイリストを開く', async ({ page }) => {
   await mockApi(page, { loggedIn: true })
   await mockPlaylists(page, { count: 0 })
