@@ -8,6 +8,7 @@ mod media;
 mod playlist;
 mod search;
 mod session;
+mod spotify;
 mod throttle;
 mod transcode;
 mod unsupported;
@@ -21,7 +22,7 @@ use axum::extract::{Path, State};
 use axum::http::header::USER_AGENT;
 use axum::http::{HeaderMap, Method, StatusCode, Uri};
 use axum::response::{IntoResponse, Response};
-use axum::routing::{any, get, post};
+use axum::routing::{any, get, post, put};
 use serde_json::{Map, Value, json};
 
 use crate::Credentials;
@@ -50,6 +51,8 @@ pub struct AppState {
     pub throttle: Arc<Throttle>,
     /// 送り主の IP を `X-Forwarded-For` から取るか
     pub trust_forwarded_for: bool,
+    /// Spotify 連携。Client ID を設定したときだけ持つ（docs/spotify.md）
+    pub spotify: Option<Arc<crate::spotify::Spotify>>,
 }
 
 pub fn router(state: AppState) -> Router {
@@ -63,6 +66,15 @@ pub fn router_with(state: AppState, web: Web) -> Router {
         .route("/api/login", post(session::login))
         .route("/api/logout", post(session::logout))
         .route("/api/me", get(session::me))
+        .route(
+            "/api/spotify",
+            get(spotify::status).delete(spotify::disconnect),
+        )
+        .route("/api/spotify/authorize", post(spotify::authorize))
+        .route("/api/spotify/callback", post(spotify::callback))
+        .route("/api/spotify/sync", post(spotify::sync))
+        .route("/api/spotify/tracks", get(spotify::tracks))
+        .route("/api/spotify/tracks/{id}", put(spotify::link))
         .with_state(Arc::new(state))
         .fallback(move |method: Method, uri: Uri, headers: HeaderMap| {
             web::serve(web.clone(), method, uri, headers)

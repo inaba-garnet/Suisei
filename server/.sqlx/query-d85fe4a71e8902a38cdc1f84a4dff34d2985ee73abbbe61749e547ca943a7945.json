@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT added_at FROM spotify_track WHERE spotify_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "added_at",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "spotify_track",
+            "name": "added_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d85fe4a71e8902a38cdc1f84a4dff34d2985ee73abbbe61749e547ca943a7945"
+}

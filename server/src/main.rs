@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 
 use clap::Parser;
-use suisei::{AppState, Config, db, scan};
+use suisei::{AppState, Config, db, scan, spotify};
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
 
@@ -26,6 +26,16 @@ async fn main() -> std::io::Result<()> {
         split_characters: config.split_characters,
     };
     let scanner = scan::Scanner::new(db.clone(), config.music_dir.clone(), options);
+    let spotify = config
+        .spotify_client_id
+        .clone()
+        .filter(|id| !id.trim().is_empty())
+        .map(|client_id| spotify::Spotify::new(db.clone(), client_id, Default::default(), options));
+    // 最初のスキャンの後にも動くよう、スキャンを始める前に受け口を作る
+    if let Some(spotify) = &spotify {
+        let periodic = !config.scan_interval.is_zero();
+        tokio::spawn(spotify.clone().follow_scans(scanner.subscribe(), periodic));
+    }
     tokio::spawn(scanner.clone().run_periodically(config.scan_interval));
     let state = AppState {
         credentials: config.credentials,
@@ -37,6 +47,7 @@ async fn main() -> std::io::Result<()> {
         dev: config.dev,
         throttle: Default::default(),
         trust_forwarded_for: config.trust_forwarded_for,
+        spotify,
     };
     let listener = TcpListener::bind(config.listen).await?;
     tracing::info!(addr = %config.listen, "listening");

@@ -32,6 +32,9 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 unicode-normalization = "0.1"
 walkdir = "2"
 wana_kana = "5"
+reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider", "json", "form", "query"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+base64 = "0.23"
 
 [dev-dependencies]
 http-body-util = "0.1"

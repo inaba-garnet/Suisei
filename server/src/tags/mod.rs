@@ -131,15 +131,13 @@ impl TrackInfo {
         let album = album(tags, path, &artists, &display_artist, options);
         // アルバムのアーティストを MusicBrainz ID で ARTISTS と対応させた後で分ける
         let artists = split_characters(artists, options);
-        let disc = tags.disc_number.map(|n| n.to_string()).unwrap_or_default();
-        let track = tags.track_number.map(|n| n.to_string()).unwrap_or_default();
-        let match_key = match_key::join([
-            normalize(&title).as_str(),
-            &credit_keys(&artists),
-            &normalize(&album.name),
-            &disc,
-            &track,
-        ]);
+        let match_key = track_key(
+            &title,
+            &artists,
+            &album.name,
+            tags.disc_number,
+            tags.track_number,
+        );
         Self {
             reading: reading(&title, tags.title_sort.as_deref()),
             title,
@@ -155,6 +153,61 @@ impl TrackInfo {
             match_key,
         }
     }
+}
+
+fn track_key(
+    title: &str,
+    artists: &[Credit],
+    album: &str,
+    disc_number: Option<u32>,
+    track_number: Option<u32>,
+) -> String {
+    let disc = disc_number.map(|n| n.to_string()).unwrap_or_default();
+    let track = track_number.map(|n| n.to_string()).unwrap_or_default();
+    match_key::join([
+        normalize(title).as_str(),
+        &credit_keys(artists),
+        &normalize(album),
+        &disc,
+        &track,
+    ])
+}
+
+/// ライブラリの外の曲（Spotify など）を、ライブラリの曲と照らす鍵（docs/spotify.md の「曲の対応」）。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExternalTrackKeys {
+    /// スキャンと同じ規則で作る `match_key`
+    pub match_key: String,
+    /// 曲名とアーティストだけの鍵。[`loose_key`] と照らす
+    pub loose_key: String,
+}
+
+impl ExternalTrackKeys {
+    /// `artists` は一人ずつの名前。アーティストの分け方はスキャンと同じ設定に従う。
+    pub fn new(
+        title: &str,
+        artists: &[String],
+        album: &str,
+        disc_number: Option<u32>,
+        track_number: Option<u32>,
+        options: Options,
+    ) -> Self {
+        let names: Vec<&str> = if artists.is_empty() {
+            vec![UNKNOWN_ARTIST]
+        } else {
+            artists.iter().map(String::as_str).collect()
+        };
+        let artists = split_characters(credits(&names, None), options);
+        Self {
+            match_key: track_key(title, &artists, album, disc_number, track_number),
+            loose_key: loose_key(title, artists.iter().map(|c| c.match_key.as_str())),
+        }
+    }
+}
+
+/// 曲名とアーティストだけの鍵。`artist_keys` はアーティストの `match_key` を曲での並び順に渡す。
+pub fn loose_key<'a>(title: &str, artist_keys: impl IntoIterator<Item = &'a str>) -> String {
+    match_key::join([normalize(title).as_str(), &match_key::list(artist_keys)])
 }
 
 /// ARTISTS を使い、なければ ARTIST の値を分割せずに一人ずつ使う。
@@ -503,6 +556,44 @@ mod tests {
         };
         assert_eq!(info(&base).match_key, info(&varied).match_key);
         assert_eq!(info(&base).album.match_key, info(&varied).album.match_key);
+    }
+
+    #[test]
+    fn external_keys_follow_scan_rules() {
+        let tags = RawTags {
+            title: Some("夢の続き".into()),
+            artists: strings(&["キャラA(CV:声優A)", "歌手B"]),
+            album: Some("アルバム".into()),
+            disc_number: Some(1),
+            track_number: Some(4),
+            ..RawTags::default()
+        };
+        let local = info(&tags);
+        let keys = ExternalTrackKeys::new(
+            "夢の続き",
+            &strings(&["キャラA（CV：声優A）", "歌手Ｂ"]),
+            "アルバム",
+            Some(1),
+            Some(4),
+            Options::default(),
+        );
+        assert_eq!(keys.match_key, local.match_key);
+        let local_loose = loose_key(
+            &local.title,
+            local.artists.iter().map(|c| c.match_key.as_str()),
+        );
+        assert_eq!(keys.loose_key, local_loose);
+        // 盤が違っても、曲名とアーティストの鍵は同じ
+        let single = ExternalTrackKeys::new(
+            "夢の続き",
+            &strings(&["キャラA(CV:声優A)", "歌手B"]),
+            "シングル",
+            Some(1),
+            Some(1),
+            Options::default(),
+        );
+        assert_ne!(single.match_key, local.match_key);
+        assert_eq!(single.loose_key, local_loose);
     }
 
     #[test]

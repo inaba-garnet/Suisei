@@ -45,6 +45,10 @@ pub struct Config {
     #[arg(long, env = "SUISEI_BACKUP_KEEP", default_value_t = 7)]
     pub backup_keep: u32,
 
+    /// Spotify のアプリの Client ID。渡したときだけ Spotify 連携を使える（docs/spotify.md）。
+    #[arg(long, env = "SUISEI_SPOTIFY_CLIENT_ID")]
+    pub spotify_client_id: Option<String>,
+
     /// 開発モード。Web クライアントが未完成の UI を出す。
     #[arg(long, env = "SUISEI_DEV", default_value_t = false, action = clap::ArgAction::Set)]
     pub dev: bool,

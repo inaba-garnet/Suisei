@@ -9,6 +9,7 @@ pub mod library;
 pub mod playlist;
 pub mod search;
 pub mod session;
+pub mod spotify;
 
 use std::path::Path;
 use std::time::SystemTime;

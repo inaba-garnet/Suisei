@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE spotify_track SET track_id = ? WHERE track_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "a44e5a14d1d8a50020744ec97d7ee5b4da040c3eafda3f33bfc4ac9f2e494ae2"
+}
