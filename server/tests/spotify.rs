@@ -92,6 +92,8 @@ async fn saved_tracks(
     {
         return StatusCode::UNAUTHORIZED.into_response();
     }
+    // アーティストの名前を日本語の表記で受け取る
+    assert_eq!(headers[header::ACCEPT_LANGUAGE], "ja");
     mock.track_requests += 1;
     let (offset, limit) = (query["offset"], query["limit"]);
     let items: Vec<Value> = mock
