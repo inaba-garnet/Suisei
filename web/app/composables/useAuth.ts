@@ -17,7 +17,7 @@ export function useAuth() {
       serverDev.value = me.dev === true
     }
     catch (err) {
-      if (statusOf(err) !== 401) {
+      if (httpStatusOf(err) !== 401) {
         throw err
       }
       user.value = null
@@ -31,11 +31,11 @@ export function useAuth() {
       await $fetch('/api/login', { method: 'POST', body: { username, password } })
     }
     catch (err) {
-      if (statusOf(err) === 401) {
+      if (httpStatusOf(err) === 401) {
         throw new LoginError('ユーザー名かパスワードが違います')
       }
       // 失敗が続くと、サーバーはしばらくログインを拒む（docs/server.md の「認証の総当たりの制限」）
-      if (statusOf(err) === 429) {
+      if (httpStatusOf(err) === 429) {
         throw new LoginError('失敗が続いたため、しばらく待ってからやり直してください')
       }
       throw err
@@ -52,8 +52,4 @@ export function useAuth() {
   }
 
   return { user, fetchMe, login, logout }
-}
-
-function statusOf(err: unknown): number | undefined {
-  return (err as { response?: { status?: number } }).response?.status
 }

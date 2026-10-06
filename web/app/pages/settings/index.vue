@@ -10,6 +10,10 @@ const { user, logout } = useAuth()
 const { preference, setPreference } = useTheme()
 const { align, setAlign } = useContentAlign()
 const dev = useDev()
+const serverSettings = useServerSettings()
+
+// 読めなければサーバーの設定の項目を出さない。テーマやログアウトは使えるようにする
+onMounted(() => serverSettings.load().catch(() => {}))
 
 const themeModel = computed({ get: () => preference.value, set: setPreference })
 const alignModel = computed({ get: () => align.value, set: setAlign })
@@ -50,6 +54,8 @@ async function onLogout() {
       <SegmentedControl v-model="themeModel" label="テーマ" :options="themes" />
     </section>
 
+    <ServerSettings />
+
     <SpotifySettings />
 
     <section v-if="dev" class="mt-8 flex flex-col gap-3">
@@ -61,6 +67,8 @@ async function onLogout() {
       </p>
       <SegmentedControl v-model="alignModel" label="内容の配置" :options="aligns" />
     </section>
+
+    <AdvancedSettings />
 
     <section class="mt-8 flex flex-col gap-3">
       <h2 class="text-h3 font-semibold">

@@ -23,8 +23,9 @@ export async function mockApi(page: Page, { loggedIn = false, dev = false } = {}
     session = true
     return route.fulfill({ status: 204 })
   })
-  // Spotify 連携は既定では設定していないことにする。使うテストは mockSpotify で差し替える
-  await page.route('**/api/spotify', route => route.fulfill({ json: { configured: false } }))
+  // サーバーの設定は既定の値で、Spotify 連携は設定していないことにする。使うテストは mockSettings や mockSpotify で差し替える
+  await mockSettings(page)
+  await page.route('**/api/spotify', route => route.fulfill({ json: { configured: false, redirectUri: SPOTIFY_REDIRECT_URI } }))
   await page.route('**/api/logout', async (route) => {
     const json = route.request().headers()['content-type']?.startsWith('application/json')
     if (!json) {
@@ -432,11 +433,59 @@ export async function mockLyrics(page: Page, { synced = [] as string[], plain = 
 
 export const SPOTIFY_REDIRECT_URI = 'http://127.0.0.1:27533/callback'
 
+export interface MockSettings {
+  scanInterval: number
+  backupInterval: number
+  backupKeep: number
+  splitCharacters: boolean
+  spotifyClientId: string | null
+}
+
+/**
+ * `/api/settings` の偽物（docs/server.md の「設定」）。保存した値を `settings` に持ち、送られた本文を `saved` に残す。
+ * `fail` なら保存を失敗させる。`onChange` は保存のたびに呼ぶ。
+ */
+export async function mockSettings(page: Page, initial: Partial<MockSettings> = {}, { fail = false, onChange = (_: MockSettings) => {} } = {}) {
+  const settings: MockSettings = { scanInterval: 3600, backupInterval: 86400, backupKeep: 7, splitCharacters: true, spotifyClientId: null, ...initial }
+  const saved: MockSettings[] = []
+  await page.route('**/api/settings', (route) => {
+    const request = route.request()
+    if (request.method() !== 'PUT') {
+      return route.fulfill({ json: settings })
+    }
+    if (!request.headers()['content-type']?.startsWith('application/json')) {
+      return route.fulfill({ status: 415 })
+    }
+    const body = request.postDataJSON() as MockSettings
+    saved.push(body)
+    if (fail) {
+      return route.fulfill({ status: 500 })
+    }
+    if (body.spotifyClientId !== null && !/^[0-9a-z]+$/i.test(body.spotifyClientId)) {
+      return route.fulfill({ status: 400, json: { error: 'invalid', field: 'spotifyClientId' } })
+    }
+    Object.assign(settings, body)
+    onChange(settings)
+    return route.fulfill({ json: settings })
+  })
+  return { settings, saved }
+}
+
 /**
  * `/api/spotify` の偽物（docs/spotify.md の「API」）。Spotify のお気に入りは 3 曲で、取り込むと 1 曲に対応が付く。
  * 認可の画面は Spotify につながず、空のページで返す。手動の対応の要求を `links` に残す。
  */
 export async function mockSpotify(page: Page, { connected = false } = {}) {
+  // Client ID を変えると接続が切れる
+  const { settings } = await mockSettings(page, { spotifyClientId: 'client' }, {
+    onChange: (s) => {
+      if (s.spotifyClientId !== clientId) {
+        state.connected = false
+        clientId = s.spotifyClientId
+      }
+    },
+  })
+  let clientId = settings.spotifyClientId
   const state = {
     connected,
     syncs: 0,
@@ -450,15 +499,17 @@ export async function mockSpotify(page: Page, { connected = false } = {}) {
   const links: { id: string, trackId: string | null }[] = []
   const json = (route: Parameters<Parameters<Page['route']>[1]>[0]) =>
     route.request().headers()['content-type']?.startsWith('application/json')
-  const status = () => ({
-    configured: true,
+  const status = () => (!settings.spotifyClientId
+    ? { configured: false, redirectUri: SPOTIFY_REDIRECT_URI }
+    : {
+        configured: true,
     redirectUri: SPOTIFY_REDIRECT_URI,
     connected: state.connected,
     syncing: false,
     lastSync: state.lastSync,
     total: state.tracks.length,
-    matched: state.tracks.filter(t => t.trackId).length,
-  })
+        matched: state.tracks.filter(t => t.trackId).length,
+      })
 
   await page.context().route('https://accounts.spotify.com/**', route => route.fulfill({ body: 'Spotify' }))
   await page.route('**/api/spotify', (route) => {

@@ -11,7 +11,7 @@ export interface SpotifyLastSync {
 }
 
 export type SpotifyStatus
-  = | { configured: false }
+  = | { configured: false, redirectUri: string }
     | {
       configured: true
       redirectUri: string

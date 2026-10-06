@@ -4,8 +4,10 @@ import { useIntervalFn } from '@vueuse/core'
 import { ChevronRight, ExternalLink, RefreshCw, Unplug } from 'lucide-vue-next'
 import { callbackErrorMessage, lastSyncMessage } from '~/utils/spotify'
 
-/** 設定の画面の「Spotify」の項目（docs/web.md の「Spotify」）。サーバーに Client ID がなければ何も出さない。 */
+/** 設定の画面の「Spotify」の項目（docs/web.md の「Spotify」）。Client ID がなければ、Client ID の欄と登録の手順だけを出す。 */
 const spotify = useSpotify()
+const { settings, save } = useServerSettings()
+const toast = useToast()
 // 「5 分前」の表示を進める
 const now = ref(Date.now())
 useIntervalFn(() => {
@@ -44,6 +46,37 @@ const started = ref(false)
 const pasted = ref('')
 const pasteError = ref('')
 const busy = ref(false)
+
+// Client ID は打ち終えてから保存のボタンで保存する。打つ途中の値で接続を切らないため
+const clientId = ref('')
+watch(() => settings.value?.spotifyClientId, (id) => {
+  clientId.value = id ?? ''
+}, { immediate: true })
+const clientIdChanged = computed(() => clientId.value.trim() !== (settings.value?.spotifyClientId ?? ''))
+const clientIdError = ref('')
+
+async function onSaveClientId() {
+  // 接続は Client ID ごとに発行されるので、変えると接続が切れる
+  if (configured.value?.connected && !window.confirm('Client ID を変えると、Spotify との接続が切れます。変えますか？')) {
+    return
+  }
+  busy.value = true
+  clientIdError.value = ''
+  try {
+    await save({ spotifyClientId: clientId.value.trim() || null })
+    toast.show('保存しました')
+    started.value = false
+    await refresh()
+  }
+  catch (err) {
+    clientIdError.value = httpStatusOf(err) === 400
+      ? 'Client ID の形が違います。Spotify のダッシュボードの Client ID をそのまま貼り付けてください'
+      : '保存できませんでした'
+  }
+  finally {
+    busy.value = false
+  }
+}
 
 async function onConnect() {
   // 非同期の処理の後に開くとポップアップとして止められるので、先にタブを開いてから URL を入れる
@@ -113,12 +146,39 @@ async function onDisconnect() {
 </script>
 
 <template>
-  <section v-if="configured" class="mt-8 flex flex-col gap-3" data-testid="spotify-settings">
+  <section v-if="status && settings" class="mt-8 flex flex-col gap-3" data-testid="spotify-settings">
     <h2 class="text-h3 font-semibold">
       Spotify
     </h2>
 
-    <template v-if="configured.connected">
+    <template v-if="!configured">
+      <p class="text-body text-fg-muted">
+        Spotify でお気に入りにした曲を、ライブラリの同じ曲でもお気に入りにします。
+        Spotify for Developers でアプリを作って次の Redirect URI を登録し、アプリの Client ID を入れてください。
+      </p>
+      <code class="self-start rounded-md bg-surface-2 px-2 py-1 text-body-sm" data-testid="spotify-redirect-uri">{{ status.redirectUri }}</code>
+    </template>
+
+    <form class="flex flex-col gap-2" @submit.prevent="onSaveClientId">
+      <Label for="spotify-client-id">Client ID</Label>
+      <div class="flex gap-2">
+        <Input
+          id="spotify-client-id"
+          v-model="clientId"
+          autocomplete="off"
+          spellcheck="false"
+          :aria-invalid="clientIdError ? 'true' : undefined"
+        />
+        <Button type="submit" size="lg" variant="secondary" :disabled="busy || !clientIdChanged">
+          保存
+        </Button>
+      </div>
+      <p v-if="clientIdError" class="text-body-sm text-danger" role="alert">
+        {{ clientIdError }}
+      </p>
+    </form>
+
+    <template v-if="configured?.connected">
       <p class="text-body" data-testid="spotify-counts">
         Spotify のお気に入り {{ configured.total }} 曲のうち、{{ configured.matched }} 曲をお気に入りにしています。
       </p>
@@ -145,12 +205,10 @@ async function onDisconnect() {
       </div>
     </template>
 
-    <template v-else>
-      <p class="text-body text-fg-muted">
-        Spotify でお気に入りにした曲を、ライブラリの同じ曲でもお気に入りにします。
-        Spotify for Developers で作ったアプリに、次の Redirect URI を登録してください。
+    <template v-else-if="configured">
+      <p class="text-body-sm text-fg-subtle">
+        Spotify のアプリに登録する Redirect URI は <code data-testid="spotify-redirect-uri">{{ configured.redirectUri }}</code> です。
       </p>
-      <code class="self-start rounded-md bg-surface-2 px-2 py-1 text-body-sm" data-testid="spotify-redirect-uri">{{ configured.redirectUri }}</code>
       <Button class="self-start" :disabled="busy" @click="onConnect">
         <ExternalLink class="size-3.5" />
         Spotify に接続

@@ -13,7 +13,7 @@ export function useSpotify() {
       return await $fetch<T>(`/api/spotify${path}`, options as never)
     }
     catch (err) {
-      if (statusOf(err) === 401) {
+      if (httpStatusOf(err) === 401) {
         user.value = null
         await navigateTo({ path: '/login', query: { redirect: route.fullPath } })
       }
@@ -33,10 +33,6 @@ export function useSpotify() {
     link: (spotifyId: string, trackId: string | null) =>
       call<undefined>(`/tracks/${encodeURIComponent(spotifyId)}`, { method: 'PUT', body: { trackId } }),
   }
-}
-
-function statusOf(err: unknown): number | undefined {
-  return (err as { response?: { status?: number } }).response?.status
 }
 
 /** `/api/spotify` の失敗した応答の JSON の `error`。 */

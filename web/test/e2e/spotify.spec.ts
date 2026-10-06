@@ -1,14 +1,43 @@
 import { expect, test } from '@playwright/test'
-import { mockApi, mockSearch, mockSpotify, SPOTIFY_REDIRECT_URI } from './api'
+import { mockApi, mockSearch, mockSettings, mockSpotify, SPOTIFY_REDIRECT_URI } from './api'
 
 test.beforeEach(async ({ page }) => {
   await mockApi(page, { loggedIn: true })
 })
 
-test('サーバーに設定がなければ Spotify の項目を出さない', async ({ page }) => {
+test('Client ID がなければ、欄と登録の手順だけを出し、入れると接続できる', async ({ page }) => {
+  const { saved } = await mockSettings(page)
   await page.goto('/settings')
-  await expect(page.getByRole('heading', { name: 'テーマ' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Spotify' })).toHaveCount(0)
+  await expect(page.getByTestId('spotify-redirect-uri')).toHaveText(SPOTIFY_REDIRECT_URI)
+  await expect(page.getByRole('button', { name: 'Spotify に接続' })).toHaveCount(0)
+
+  const input = page.getByLabel('Client ID')
+  await input.fill('https://developer.spotify.com/')
+  await page.getByRole('button', { name: '保存', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('Client ID の形が違います')
+
+  // 保存すると、接続の操作を出す
+  await mockSpotify(page)
+  await input.fill('0123456789abcdef')
+  await page.getByRole('button', { name: '保存', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Spotify に接続' })).toBeVisible()
+  expect(saved.at(-1)?.spotifyClientId).toBe('https://developer.spotify.com/')
+})
+
+test('接続中に Client ID を変えるときは確かめ、変えたら接続が切れる', async ({ page }) => {
+  const spotify = await mockSpotify(page, { connected: true })
+  await page.goto('/settings')
+  await expect(page.getByTestId('spotify-counts')).toBeVisible()
+
+  await page.getByLabel('Client ID').fill('other')
+  page.once('dialog', dialog => dialog.dismiss())
+  await page.getByRole('button', { name: '保存', exact: true }).click()
+  expect(spotify.state.connected).toBe(true)
+
+  page.once('dialog', dialog => dialog.accept())
+  await page.getByRole('button', { name: '保存', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Spotify に接続' })).toBeVisible()
+  expect(spotify.state.connected).toBe(false)
 })
 
 test('認可の後の URL を貼り付けて接続し、すぐに取り込む', async ({ page }) => {
