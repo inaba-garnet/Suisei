@@ -20,7 +20,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      # 0.1.0、0.1、latest を付ける
+      # 0.1.0、0.1、latest を付ける。リリース候補（0.2.0-rc.1）には 0.2 と latest を付けない
       - id: meta
         uses: docker/metadata-action@v6
         with:
@@ -56,4 +56,10 @@ jobs:
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" --generate-notes release/debian-packages.tsv release/ffmpeg-source/*
+        # v0.2.0-rc.1 のようなリリース候補はプレリリースにし、「Latest」の Release にしない
+        run: |
+          prerelease=()
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+            prerelease=(--prerelease)
+          fi
+          gh release create "$GITHUB_REF_NAME" "${prerelease[@]}" --generate-notes release/debian-packages.tsv release/ffmpeg-source/*
