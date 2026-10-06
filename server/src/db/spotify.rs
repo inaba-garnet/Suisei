@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use super::Pool;
+use super::{Connection, Pool};
 
 /// 対応の付け方。DB の spotify_track.match_method に入れる。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -111,11 +111,13 @@ pub async fn set_fetched_at(pool: &Pool, at: i64) -> Result<(), sqlx::Error> {
 }
 
 /// 接続を切る。対応表は残す。
-pub async fn disconnect(pool: &Pool) -> Result<(), sqlx::Error> {
-    sqlx::query!("DELETE FROM spotify_account")
+/// 接続を切る。接続していたら true。
+pub async fn disconnect(pool: &Pool) -> Result<bool, sqlx::Error> {
+    let rows = sqlx::query!("DELETE FROM spotify_account")
         .execute(pool)
-        .await?;
-    Ok(())
+        .await?
+        .rows_affected();
+    Ok(rows > 0)
 }
 
 /// Spotify から読んだ一覧で対応表を置き換える。一覧にない行は消し、ある行は対応を残して曲の情報だけ更新する。
@@ -224,6 +226,36 @@ pub async fn link(
     method: MatchMethod,
 ) -> Result<bool, sqlx::Error> {
     let mut tx = pool.begin().await?;
+    let linked = link_in(&mut tx, spotify_id, track_id, method).await?;
+    if linked {
+        tx.commit().await?;
+    }
+    Ok(linked)
+}
+
+/// 自動で見つけた対応をまとめて付ける。付けた数を返す。
+/// 一つのトランザクションにまとめる。コミットのたびにディスクへ書き切るので、一曲ずつだと遅いため。
+pub async fn link_many(
+    pool: &Pool,
+    links: &[(&str, &str, MatchMethod)],
+) -> Result<usize, sqlx::Error> {
+    let mut tx = pool.begin().await?;
+    let mut linked = 0;
+    for &(spotify_id, track_id, method) in links {
+        if link_in(&mut tx, spotify_id, Some(track_id), method).await? {
+            linked += 1;
+        }
+    }
+    tx.commit().await?;
+    Ok(linked)
+}
+
+async fn link_in(
+    tx: &mut Connection,
+    spotify_id: &str,
+    track_id: Option<&str>,
+    method: MatchMethod,
+) -> Result<bool, sqlx::Error> {
     let Some(added_at) = sqlx::query_scalar!(
         "SELECT added_at FROM spotify_track WHERE spotify_id = ?",
         spotify_id
@@ -258,7 +290,6 @@ pub async fn link(
     )
     .execute(&mut *tx)
     .await?;
-    tx.commit().await?;
     Ok(true)
 }
 

@@ -77,8 +77,15 @@ impl Client {
     pub fn new(endpoints: Endpoints) -> Self {
         // 暗号の実装は ring だけを入れているので、明示して使う。二度目以降の呼び出しは失敗するが害はない
         let _ = rustls::crypto::ring::default_provider().install_default();
+        // 日本のアーティストの名前を、ローマ字ではなくライブラリのタグと同じ表記で受け取るため
+        let mut headers = reqwest::header::HeaderMap::new();
+        headers.insert(
+            reqwest::header::ACCEPT_LANGUAGE,
+            reqwest::header::HeaderValue::from_static("ja"),
+        );
         let http = reqwest::Client::builder()
             .user_agent(concat!("Suisei/", env!("CARGO_PKG_VERSION")))
+            .default_headers(headers)
             .timeout(Duration::from_secs(30))
             .build()
             .expect("HTTP クライアントを作れる");

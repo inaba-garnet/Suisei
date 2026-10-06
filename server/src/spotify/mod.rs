@@ -187,9 +187,11 @@ impl Spotify {
 
     /// 接続を切る。対応表とローカルのお気に入りは残す。
     pub async fn disconnect(&self) -> Result<(), sqlx::Error> {
-        db::spotify::disconnect(&self.pool).await?;
+        let connected = db::spotify::disconnect(&self.pool).await?;
         *self.access_token.lock().await = None;
-        tracing::info!("disconnected from spotify");
+        if connected {
+            tracing::info!("disconnected from spotify");
+        }
         Ok(())
     }
 
@@ -354,15 +356,17 @@ impl Spotify {
         }
         let index = matching::Index::new(db::spotify::local_tracks(&self.pool).await?);
         let options = self.settings.get().tag_options();
-        let mut matched = 0;
-        for track in &unmatched {
-            if let Some((track_id, method)) = index.find(track, options)
-                && db::spotify::link(&self.pool, &track.spotify_id, Some(track_id), method).await?
-            {
-                matched += 1;
-            }
+        let links: Vec<_> = unmatched
+            .iter()
+            .filter_map(|track| {
+                let (track_id, method) = index.find(track, options)?;
+                Some((track.spotify_id.as_str(), track_id, method))
+            })
+            .collect();
+        if links.is_empty() {
+            return Ok(0);
         }
-        Ok(matched)
+        Ok(db::spotify::link_many(&self.pool, &links).await?)
     }
 }
 
