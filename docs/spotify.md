@@ -70,7 +70,7 @@
 
 ## API
 - Subsonic API ではなく `/api/spotify` に置き、セッションの Cookie で認証する。Subsonic に Spotify 連携の仕様はなく、使うのは Web クライアントだけのため。
-  - `GET /api/spotify`: 設定の有無、登録する Redirect URI、接続の状態、取り込み中か、最後の取り込みの日時と結果、件数（全件、対応済み）。未設定なら `configured: false` だけを返し、Web は項目を出さない。ほかの API は 404 を返す。
+  - `GET /api/spotify`: 設定の有無、登録する Redirect URI、接続の状態、取り込み中か、最後の取り込みの日時と結果、件数（全件、対応済み）。未設定なら `configured: false` と Redirect URI だけを返す。アプリを登録する前に Redirect URI を見せるため。ほかの API は 404 を返す。
   - `POST /api/spotify/authorize`: 認可の URL を返す。
   - `POST /api/spotify/callback`: 貼り付けた URL を受け、コードをトークンに換える。
   - `DELETE /api/spotify`: 接続を切る。対応表は残す。
