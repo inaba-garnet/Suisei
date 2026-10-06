@@ -82,6 +82,8 @@ export interface Playlist {
   duration: number
   coverArt?: string
   changed: string
+  /** お気に入りのプレイリストのように、曲も名前も変えられない（OpenSubsonic）。 */
+  readonly?: boolean
 }
 
 export interface PlaylistWithSongs extends Playlist {

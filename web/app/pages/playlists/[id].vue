@@ -186,7 +186,7 @@ onBeforeUnmount(() => sortable?.destroy())
                 <Play class="size-4" />
                 すべて再生
               </Button>
-              <Button size="lg" variant="secondary" @click="startEdit">
+              <Button v-if="!playlist?.readonly" size="lg" variant="secondary" @click="startEdit">
                 <Pencil class="size-4" />
                 編集
               </Button>

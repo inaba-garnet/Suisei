@@ -74,7 +74,7 @@ test('アルバムの「…」はアルバムの全曲を入れ、アルバム�
 test('既存のプレイリストに足し、新しいプレイリストを作って足す', async ({ page }) => {
   await mockApi(page, { loggedIn: true })
   await mockLibrary(page, { count: 3, songs: 3 })
-  const { playlists, updates } = await mockPlaylists(page, { count: 1, songs: 0 })
+  const { playlists, updates } = await mockPlaylists(page, { count: 1, songs: 0, starred: true })
   const creates: URLSearchParams[] = []
   page.on('request', (request) => {
     if (request.url().includes('/rest/createPlaylist')) {
@@ -85,10 +85,13 @@ test('既存のプレイリストに足し、新しいプレイリストを作�
 
   await page.getByRole('button', { name: '二曲目のメニュー' }).click()
   await menu(page).getByRole('menuitem', { name: 'プレイリストに追加' }).click()
+  // 曲を足せないお気に入りのプレイリストは選ばせない
+  await expect(menu(page).getByRole('menuitem', { name: 'プレイリスト 0' })).toBeVisible()
+  await expect(menu(page).getByRole('menuitem', { name: 'お気に入り' })).toHaveCount(0)
   await menu(page).getByRole('menuitem', { name: 'プレイリスト 0' }).click()
   await expect(page.getByRole('status')).toHaveText('「プレイリスト 0」に追加しました')
   expect(updates[0]?.getAll('songIdToAdd')).toEqual(['al-1-2'])
-  expect(playlists[0]?.entry.map(s => s.id)).toEqual(['al-1-2'])
+  expect(playlists[1]?.entry.map(s => s.id)).toEqual(['al-1-2'])
 
   await page.getByRole('button', { name: 'アルバムのメニュー' }).click()
   await menu(page).getByRole('menuitem', { name: 'プレイリストに追加' }).click()

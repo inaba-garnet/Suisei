@@ -357,13 +357,17 @@ export async function mockSearch(page: Page, { artists = 8, albums = 30, songs =
  * プレイリストの偽物。作成、名前の変更、曲の入れ替え、削除を手元の一覧に反映し、
  * 呼ばれた `updatePlaylist` の引数（フォームか URL）を `updates` に残す。
  */
-export async function mockPlaylists(page: Page, { count = 2, songs = 4 } = {}) {
+export async function mockPlaylists(page: Page, { count = 2, songs = 4, starred = false } = {}) {
   const song = (i: number) => ({ id: `tr-${i}`, title: `曲 ${i}`, artist: 'ClariS', album: `アルバム ${i % 2}`, albumId: `al-${i % 2}`, coverArt: `al-${i % 2}`, duration: 200 })
-  const playlists = Array.from({ length: count }, (_, i) => ({
+  const playlists: { id: string, name: string, entry: ReturnType<typeof song>[], readonly?: boolean }[] = Array.from({ length: count }, (_, i) => ({
     id: `pl-${i}`,
     name: `プレイリスト ${i}`,
     entry: Array.from({ length: songs }, (_, j) => song(j)),
   }))
+  // サーバーと同じく、お気に入りのプレイリストを先頭に置く
+  if (starred) {
+    playlists.unshift({ id: 'pl-starred', name: 'お気に入り', entry: [song(1)], readonly: true })
+  }
   const updates: URLSearchParams[] = []
   const ok = (body: object) => ({ json: { 'subsonic-response': { status: 'ok', version: '1.16.1', ...body } } })
   const summary = (p: typeof playlists[number]) => ({
@@ -372,6 +376,7 @@ export async function mockPlaylists(page: Page, { count = 2, songs = 4 } = {}) {
     songCount: p.entry.length,
     duration: p.entry.length * 200,
     changed: '2026-10-01T00:00:00Z',
+    readonly: p.readonly ?? false,
     ...(p.entry[0] && { coverArt: p.entry[0].coverArt }),
   })
   const paramsOf = (request: { url: () => string, method: () => string, postData: () => string | null }) =>
