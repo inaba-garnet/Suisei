@@ -144,15 +144,25 @@ docker compose up -d
 | `SUISEI_MUSIC_DIR` | Docker: `/music` | 音楽ライブラリのディレクトリ。読み取り専用で利用可能 |
 | `SUISEI_DATA_DIR` | Docker: `/data` | データベースとキャッシュの保存先 |
 | `SUISEI_LISTEN` | `0.0.0.0:4533` | HTTP サーバーの待受アドレス |
-| `SUISEI_SCAN_INTERVAL` | `1h` | ライブラリの再スキャン間隔。`30m` などを指定可能。`0` で起動時のみ |
-| `SUISEI_SPLIT_CHARACTERS` | `true` | `キャラクター(CV:声優)` 形式を分離するか |
 | `SUISEI_FFMPEG` | `ffmpeg` | トランスコードに使用する ffmpeg のパス |
 | `SUISEI_TRUST_FORWARDED_FOR` | `false` | 信頼できるリバースプロキシの背後で利用する場合のみ `true` |
 | `SUISEI_BACKUP_DIR` | `SUISEI_DATA_DIR` の下の `backup` | データベースのバックアップの保存先 |
-| `SUISEI_BACKUP_INTERVAL` | `1d` | データベースのバックアップの間隔。`12h` などを指定可能。`0` で定期的なバックアップを停止 |
-| `SUISEI_BACKUP_KEEP` | `7` | 残す定期的なバックアップの数。`0` で定期的なバックアップを停止 |
 
 Docker イメージ内には ffmpeg が含まれています。
+
+次の項目は、Web クライアントの設定の画面で変更します。
+変更はサーバーを起動し直さずに反映されます。
+
+| 項目 | デフォルト | 説明 |
+| --- | --- | --- |
+| スキャンの間隔 | 1 時間 | ライブラリの再スキャンの間隔。止めると起動時のみ |
+| バックアップの間隔 | 1 日 | データベースの定期的なバックアップの間隔。止めると定期的なバックアップを停止 |
+| バックアップの世代数 | 7 | 残す定期的なバックアップの数 |
+| CV の分割 | 分ける | `キャラクター(CV:声優)` 形式をキャラクター名と声優名に分離するか |
+| Spotify の Client ID | 未設定 | 設定した場合のみ Spotify 連携を有効化 |
+
+v0.1.0 で `SUISEI_SCAN_INTERVAL`、`SUISEI_BACKUP_INTERVAL`、`SUISEI_BACKUP_KEEP`、`SUISEI_SPLIT_CHARACTERS` を設定していた場合、これらの環境変数は効かなくなります。
+設定の画面で同じ値を設定し直してください。
 
 ## バックアップ
 
