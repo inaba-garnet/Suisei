@@ -34,6 +34,7 @@ pub enum ErrorCode {
     AuthMechanismNotSupported = 42,
     ConflictingAuth = 43,
     InvalidApiKey = 44,
+    NotAuthorized = 50,
     NotFound = 70,
 }
 

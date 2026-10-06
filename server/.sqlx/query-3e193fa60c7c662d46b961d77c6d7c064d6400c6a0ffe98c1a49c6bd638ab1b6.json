@@ -1,0 +1,57 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT track.id AS \"id!\", track.starred_at AS \"starred_at!\", file.duration_ms,\n                  CASE WHEN album.cover_path IS NOT NULL THEN album.id END AS cover_album_id\n           FROM track\n           JOIN file ON file.id = track.primary_file_id\n           JOIN album ON album.id = track.album_id\n           WHERE track.starred_at IS NOT NULL\n           ORDER BY track.starred_at DESC, track.id",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "starred_at!",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "starred_at"
+          }
+        }
+      },
+      {
+        "name": "duration_ms",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "duration_ms"
+          }
+        }
+      },
+      {
+        "name": "cover_album_id",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "3e193fa60c7c662d46b961d77c6d7c064d6400c6a0ffe98c1a49c6bd638ab1b6"
+}

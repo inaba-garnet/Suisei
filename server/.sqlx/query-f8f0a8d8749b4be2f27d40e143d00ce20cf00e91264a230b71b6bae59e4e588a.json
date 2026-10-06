@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT created_at, changed_at, fingerprint FROM starred_playlist WHERE id = 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "created_at",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "starred_playlist",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "name": "changed_at",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "starred_playlist",
+            "name": "changed_at"
+          }
+        }
+      },
+      {
+        "name": "fingerprint",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "starred_playlist",
+            "name": "fingerprint"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "f8f0a8d8749b4be2f27d40e143d00ce20cf00e91264a230b71b6bae59e4e588a"
+}

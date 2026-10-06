@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE starred_playlist SET changed_at = ?, fingerprint = ? WHERE id = 1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "d54dcc3692ef2ce8cf7c6c3ce9e224f6e3a7c257da09af490bf7980c6654fc20"
+}

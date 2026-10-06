@@ -1317,8 +1317,9 @@ async fn playlist_lifecycle() {
     assert_eq!(playlist["readonly"], false);
     assert_eq!(titles(&playlist["entry"]), ["a", "b", "a"]);
 
+    // お気に入りのプレイリストが先に来る
     let res = server.get("getPlaylists", "").await;
-    assert_eq!(res["playlists"]["playlist"][0]["id"], id.as_str());
+    assert_eq!(res["playlists"]["playlist"][1]["id"], id.as_str());
 
     // 0 始まりの位置で消してから、末尾に足す
     let query = format!(
@@ -1340,7 +1341,13 @@ async fn playlist_lifecycle() {
 
     server.get("deletePlaylist", &format!("&id={id}")).await;
     let res = server.get("getPlaylists", "").await;
-    assert_eq!(res["playlists"], serde_json::json!({}));
+    let ids: Vec<&Value> = res["playlists"]["playlist"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| &p["id"])
+        .collect();
+    assert_eq!(ids, ["pl-starred"]);
     let res = server.raw("getPlaylist", &format!("&id={id}")).await;
     assert_eq!(res["subsonic-response"]["error"]["code"], 70);
 }
@@ -1358,6 +1365,68 @@ async fn playlist_errors() {
     assert_eq!(res["subsonic-response"]["error"]["code"], 70);
     let res = server.raw("deletePlaylist", "&id=pl-00000000").await;
     assert_eq!(res["subsonic-response"]["error"]["code"], 70);
+}
+
+/// お気に入りの曲を新しい順に並べた、読み取り専用のプレイリスト。
+#[tokio::test]
+async fn starred_playlist() {
+    let server = album_list_server().await;
+
+    // お気に入りがなくても返す
+    let res = server.get("getPlaylists", "").await;
+    let playlist = &res["playlists"]["playlist"][0];
+    assert_eq!(playlist["id"], "pl-starred");
+    assert_eq!(playlist["name"], "お気に入り");
+    assert_eq!(playlist["songCount"], 0);
+    assert_eq!(playlist["readonly"], true);
+    let empty = playlist["changed"].clone();
+
+    for title in ["b", "a"] {
+        let id = server.id("track", "title", title).await;
+        server.get("star", &format!("&id={id}")).await;
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+    let res = server.get("getPlaylist", "&id=pl-starred").await;
+    let playlist = &res["playlist"];
+    assert_eq!(titles(&playlist["entry"]), ["a", "b"]);
+    assert_eq!(playlist["songCount"], 2);
+    assert_eq!(playlist["readonly"], true);
+    let starred = playlist["changed"].clone();
+    assert_ne!(starred, empty);
+
+    // お気に入りが変わらなければ changed も変わらない
+    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    let res = server.get("getPlaylist", "&id=pl-starred").await;
+    assert_eq!(res["playlist"]["changed"], starred);
+
+    // 外したときも changed が変わる
+    let a = server.id("track", "title", "a").await;
+    server.get("unstar", &format!("&id={a}")).await;
+    let res = server.get("getPlaylist", "&id=pl-starred").await;
+    assert_eq!(titles(&res["playlist"]["entry"]), ["b"]);
+    assert_ne!(res["playlist"]["changed"], starred);
+}
+
+#[tokio::test]
+async fn starred_playlist_is_readonly() {
+    let server = album_list_server().await;
+    let a = server.id("track", "title", "a").await;
+    for (endpoint, query) in [
+        (
+            "updatePlaylist",
+            format!("&playlistId=pl-starred&songIdToAdd={a}"),
+        ),
+        (
+            "createPlaylist",
+            format!("&playlistId=pl-starred&songId={a}"),
+        ),
+        ("deletePlaylist", "&id=pl-starred".to_owned()),
+    ] {
+        let res = server.raw(endpoint, &query).await;
+        assert_eq!(res["subsonic-response"]["error"]["code"], 50, "{endpoint}");
+    }
+    let res = server.get("getPlaylist", "&id=pl-starred").await;
+    assert_eq!(res["playlist"]["songCount"], 0);
 }
 
 /// カバーアートは、画像のある最初の曲のアルバム。
