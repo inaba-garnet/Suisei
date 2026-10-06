@@ -29,6 +29,7 @@ from mutagen.id3 import (
     TSOA,
     TSOP,
     TSOT,
+    TSRC,
     TXXX,
     TYER,
 )
@@ -54,6 +55,7 @@ MB_ARTIST_IDS = [
 MB_ALBUM_ARTIST_IDS = ["00000000-0000-0000-0000-00000000000a"]
 DATE = "2015-09-23"
 GENRES = ["Rock", "Pop"]
+ISRC = "JPXX01500001"
 
 
 def silence(path: pathlib.Path, codec_args: list[str]) -> None:
@@ -90,6 +92,7 @@ def flac_full() -> None:
     f["DATE"] = DATE
     f["GENRE"] = GENRES
     f["COMPILATION"] = "1"
+    f["ISRC"] = ISRC
     f.save()
 
 
@@ -156,6 +159,7 @@ def id3_frames() -> list:
         TDRC(encoding=3, text=DATE),
         TCON(encoding=3, text=GENRES),
         TCMP(encoding=3, text="1"),
+        TSRC(encoding=3, text=ISRC),
     ]
 
 
@@ -216,6 +220,7 @@ def m4a_full() -> None:
     f["\xa9day"] = DATE
     f["\xa9gen"] = GENRES
     f["cpil"] = True
+    f["----:com.apple.iTunes:ISRC"] = freeform([ISRC])
     f.save()
 
 
