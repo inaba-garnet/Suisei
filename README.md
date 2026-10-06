@@ -45,6 +45,7 @@ PC・スマートフォンの両方に対応し、以下の機能を備えてい
 - 再生キュー
 - プレイリスト
 - お気に入り
+- Spotify のお気に入りの取り込み
 - ライト / ダークテーマ
 - タイムスタンプ付き歌詞の同期表示
 
@@ -159,7 +160,7 @@ Docker イメージ内には ffmpeg が含まれています。
 | バックアップの間隔 | 1 日 | データベースの定期的なバックアップの間隔。止めると定期的なバックアップを停止 |
 | バックアップの世代数 | 7 | 残す定期的なバックアップの数 |
 | CV の分割 | 分ける | `キャラクター(CV:声優)` 形式をキャラクター名と声優名に分離するか |
-| Spotify の Client ID | 未設定 | 設定した場合のみ Spotify 連携を有効化 |
+| Spotify の Client ID | 未設定 | 設定した場合のみ Spotify 連携を有効化。[Spotify 連携](#spotify-連携) を参照 |
 
 v0.1.0 で `SUISEI_SCAN_INTERVAL`、`SUISEI_BACKUP_INTERVAL`、`SUISEI_BACKUP_KEEP`、`SUISEI_SPLIT_CHARACTERS` を設定していた場合、これらの環境変数は効かなくなります。
 設定の画面で同じ値を設定し直してください。
@@ -194,6 +195,32 @@ docker compose start
 動作を確かめたら `data/replaced` を削除できます。
 
 古い版のイメージへ戻す場合は、`suisei-pre-migrate-` のバックアップを復元してから、`compose.yaml` の `image:` を元の版にします。
+
+## Spotify 連携
+
+Spotify でお気に入りにした曲を、ライブラリの同じ曲でもお気に入りにします。
+向きは Spotify から Suisei への一方向です。
+Spotify でお気に入りを外しても、Suisei のお気に入りは外れません。
+
+Spotify のアプリは各自で登録します。
+アプリを登録するアカウントには Spotify Premium が必要です。
+
+1. [Spotify for Developers](https://developer.spotify.com/dashboard) でアプリを作り、使う API に Web API を選びます。
+2. Redirect URI に `http://127.0.0.1:27533/callback` を登録します。
+3. アプリの Client ID を、Web クライアントの設定の画面の「Spotify」に入れて保存します。
+4. 同じ項目の「Spotify に接続」を押し、開いたタブで許可します。
+5. 許可した後のタブは「このサイトにアクセスできません」のような表示になります。そのタブのアドレスバーの URL を、設定の画面に貼り付けて「接続」を押します。
+
+Suisei のサーバーを HTTPS で公開していなくても、この手順で接続できます。
+
+接続すると、すぐに一度取り込みます。
+その後は、ライブラリのスキャンの後に取り込みます。
+Spotify から読み直すのは 1 時間に一度までで、それより早いスキャンの後は、増えた曲との対応だけを付け直します。
+曲は ISRC、タグ（曲名、アーティスト、アルバム、トラック番号）、曲名とアーティストと長さの順で照らします。
+ライブラリの曲と対応できなかった曲は、設定の画面の「未対応の曲」から手動で選べます。
+
+Suisei は Spotify の `accounts.spotify.com` と `api.spotify.com` に接続します。
+要求する権限はお気に入りの読み取り（`user-library-read`）だけです。
 
 ## 対応クライアント
 

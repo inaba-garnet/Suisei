@@ -23,6 +23,9 @@ export async function mockApi(page: Page, { loggedIn = false, dev = false } = {}
     session = true
     return route.fulfill({ status: 204 })
   })
+  // サーバーの設定は既定の値で、Spotify 連携は設定していないことにする。使うテストは mockSettings や mockSpotify で差し替える
+  await mockSettings(page)
+  await page.route('**/api/spotify', route => route.fulfill({ json: { configured: false, redirectUri: SPOTIFY_REDIRECT_URI } }))
   await page.route('**/api/logout', async (route) => {
     const json = route.request().headers()['content-type']?.startsWith('application/json')
     if (!json) {
@@ -426,4 +429,138 @@ export async function mockLyrics(page: Page, { synced = [] as string[], plain = 
     return route.fulfill({ json: { 'subsonic-response': { status: 'ok', version: '1.16.1', lyricsList: { structuredLyrics } } } })
   })
   return { ids }
+}
+
+export const SPOTIFY_REDIRECT_URI = 'http://127.0.0.1:27533/callback'
+
+export interface MockSettings {
+  scanInterval: number
+  backupInterval: number
+  backupKeep: number
+  splitCharacters: boolean
+  spotifyClientId: string | null
+}
+
+/**
+ * `/api/settings` の偽物（docs/server.md の「設定」）。保存した値を `settings` に持ち、送られた本文を `saved` に残す。
+ * `fail` なら保存を失敗させる。`onChange` は保存のたびに呼ぶ。
+ */
+export async function mockSettings(page: Page, initial: Partial<MockSettings> = {}, { fail = false, onChange = (_: MockSettings) => {} } = {}) {
+  const settings: MockSettings = { scanInterval: 3600, backupInterval: 86400, backupKeep: 7, splitCharacters: true, spotifyClientId: null, ...initial }
+  const saved: MockSettings[] = []
+  await page.route('**/api/settings', (route) => {
+    const request = route.request()
+    if (request.method() !== 'PUT') {
+      return route.fulfill({ json: settings })
+    }
+    if (!request.headers()['content-type']?.startsWith('application/json')) {
+      return route.fulfill({ status: 415 })
+    }
+    const body = request.postDataJSON() as MockSettings
+    saved.push(body)
+    if (fail) {
+      return route.fulfill({ status: 500 })
+    }
+    if (body.spotifyClientId !== null && !/^[0-9a-z]+$/i.test(body.spotifyClientId)) {
+      return route.fulfill({ status: 400, json: { error: 'invalid', field: 'spotifyClientId' } })
+    }
+    Object.assign(settings, body)
+    onChange(settings)
+    return route.fulfill({ json: settings })
+  })
+  return { settings, saved }
+}
+
+/**
+ * `/api/spotify` の偽物（docs/spotify.md の「API」）。Spotify のお気に入りは 3 曲で、取り込むと 1 曲に対応が付く。
+ * 認可の画面は Spotify につながず、空のページで返す。手動の対応の要求を `links` に残す。
+ */
+export async function mockSpotify(page: Page, { connected = false } = {}) {
+  // Client ID を変えると接続が切れる
+  const { settings } = await mockSettings(page, { spotifyClientId: 'client' }, {
+    onChange: (s) => {
+      if (s.spotifyClientId !== clientId) {
+        state.connected = false
+        clientId = s.spotifyClientId
+      }
+    },
+  })
+  let clientId = settings.spotifyClientId
+  const state = {
+    connected,
+    syncs: 0,
+    lastSync: null as null | { at: number, error: string | null, fetched: number | null, matched: number },
+    tracks: [
+      { id: 'sp-1', title: '取り込めた曲', artists: ['歌手A'], album: '盤A', isrc: null, durationMs: 200000, addedAt: 3, trackId: 'tr-1' as string | null, method: 'isrc' as string | null },
+      { id: 'sp-2', title: 'ひかりの曲', artists: ['歌手B', '歌手C'], album: '盤B', isrc: null, durationMs: 185000, addedAt: 2, trackId: null, method: null },
+      { id: 'sp-3', title: 'ない曲', artists: ['歌手D'], album: '盤C', isrc: null, durationMs: 240000, addedAt: 1, trackId: null, method: null },
+    ],
+  }
+  const links: { id: string, trackId: string | null }[] = []
+  const json = (route: Parameters<Parameters<Page['route']>[1]>[0]) =>
+    route.request().headers()['content-type']?.startsWith('application/json')
+  const status = () => (!settings.spotifyClientId
+    ? { configured: false, redirectUri: SPOTIFY_REDIRECT_URI }
+    : {
+        configured: true,
+    redirectUri: SPOTIFY_REDIRECT_URI,
+    connected: state.connected,
+    syncing: false,
+    lastSync: state.lastSync,
+    total: state.tracks.length,
+        matched: state.tracks.filter(t => t.trackId).length,
+      })
+
+  await page.context().route('https://accounts.spotify.com/**', route => route.fulfill({ body: 'Spotify' }))
+  await page.route('**/api/spotify', (route) => {
+    if (route.request().method() === 'DELETE') {
+      if (!json(route)) {
+        return route.fulfill({ status: 415 })
+      }
+      state.connected = false
+      return route.fulfill({ status: 204 })
+    }
+    return route.fulfill({ json: status() })
+  })
+  await page.route('**/api/spotify/authorize', route =>
+    json(route)
+      ? route.fulfill({ json: { url: 'https://accounts.spotify.com/authorize?state=st' } })
+      : route.fulfill({ status: 415 }))
+  await page.route('**/api/spotify/callback', (route) => {
+    const { url } = route.request().postDataJSON() as { url: string }
+    if (!url.startsWith('http')) {
+      return route.fulfill({ status: 400, json: { error: 'invalidUrl' } })
+    }
+    if (!url.includes('state=st') || !url.includes('code=')) {
+      return route.fulfill({ status: 400, json: { error: 'unknownState' } })
+    }
+    state.connected = true
+    return route.fulfill({ status: 204 })
+  })
+  await page.route('**/api/spotify/sync', (route) => {
+    if (!json(route)) {
+      return route.fulfill({ status: 415 })
+    }
+    state.syncs += 1
+    state.lastSync = { at: Date.now(), error: null, fetched: state.tracks.length, matched: 1 }
+    return route.fulfill({ status: 202 })
+  })
+  await page.route(/\/api\/spotify\/tracks(\?|$)/, (route) => {
+    const matched = new URL(route.request().url()).searchParams.get('matched')
+    const tracks = matched === 'false' ? state.tracks.filter(t => !t.trackId) : state.tracks
+    return route.fulfill({ json: { tracks } })
+  })
+  await page.route('**/api/spotify/tracks/*', (route) => {
+    const id = decodeURIComponent(new URL(route.request().url()).pathname.split('/').pop()!)
+    const { trackId } = route.request().postDataJSON() as { trackId: string | null }
+    const track = state.tracks.find(t => t.id === id)
+    if (!track) {
+      return route.fulfill({ status: 404 })
+    }
+    links.push({ id, trackId })
+    track.trackId = trackId
+    track.method = trackId ? 'manual' : 'ignored'
+    return route.fulfill({ status: 204 })
+  })
+  return { state, links }
 }
