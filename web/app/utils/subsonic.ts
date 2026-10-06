@@ -11,6 +11,8 @@ export interface Artist {
   albumCount: number
   /** お気に入りにした日時。お気に入りでなければない */
   starred?: string
+  /** ライブラリでの役割（`albumartist`、`artist`、`composer`、`lyricist`、`arranger`） */
+  roles?: string[]
 }
 
 /** `getArtists` の、読みの行ごとの見出しとアーティスト。 */
