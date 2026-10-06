@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { callbackErrorMessage, formatAgo, lastSyncMessage } from '~/utils/spotify'
+import { callbackErrorMessage, lastSyncMessage } from '~/utils/spotify'
+import { formatAgo } from '~/utils/time'
 
 const MINUTE = 60_000
 const NOW = 1_700_000_000_000
