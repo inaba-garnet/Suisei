@@ -14,15 +14,17 @@
 - 未設定なら Spotify 連携の API と画面を出さない。
 - 登録の手順は README に書く。
   1. Spotify for Developers のダッシュボードでアプリを作り、使う API に Web API を選ぶ。
-  2. Redirect URI に、`SUISEI_SPOTIFY_REDIRECT_URI` と同じ値を登録する（「認可の戻り先」）。
-  3. アプリの Client ID を `SUISEI_SPOTIFY_CLIENT_ID` に、Redirect URI を `SUISEI_SPOTIFY_REDIRECT_URI` に設定してサーバーを起動し直す。
+  2. Redirect URI に `http://127.0.0.1/callback` を登録する（「認可の戻り先」）。
+  3. アプリの Client ID を `SUISEI_SPOTIFY_CLIENT_ID` に設定してサーバーを起動し直す。
   4. Web の設定の画面で「Spotify に接続」を押し、Spotify で許可する。
+  5. ブラウザが開けなかったページのアドレスバーの URL を、設定の画面に貼り付ける。
 
 ## 認可の戻り先
-- Spotify はリダイレクト URI に HTTPS か、ループバックの IP（`http://127.0.0.1:<port>`）しか認めない。LAN の `http://192.168.x.x` には戻せない。
-- 戻り先は `SUISEI_SPOTIFY_REDIRECT_URI` で渡す。HTTPS の公開 URL があれば `https://<host>/api/spotify/callback` を登録してもらい、サーバーが直接コードを受ける。
-- HTTPS の URL がない構成では、`http://127.0.0.1/callback` のような届かない URI を登録してもらう。認可の後にブラウザが開けなかった URL を、Web クライアントに貼り付けてもらってコードを取り出す。NAS を LAN の HTTP だけで使う人でも連携できるようにするため。
-- `/api/spotify/callback` の GET はセッションの Cookie を見ずに、`state` で確かめる。Spotify から戻る遷移は別サイトからの遷移なので、SameSite=Strict の Cookie が付かないため。
+- 戻り先は `http://127.0.0.1/callback` に固定し、認可の後にブラウザが開けなかったページの URL を、Web の設定の画面に貼り付けてもらう。サーバーはその URL からコードを取り出してトークンに換える。
+- サーバーで直接コードを受けないのは、Spotify がリダイレクト URI に HTTPS か、ループバックの IP しか認めないため。NAS を LAN の HTTP だけで使う人でも、HTTPS の公開 URL を用意せずに連携できる。HTTPS の構成でも手順を一つにそろえる。
+- `localhost` ではなく `127.0.0.1` にする。Spotify は `localhost` を Redirect URI として認めないため。
+- 戻り先を設定にしない。決まった値なら、利用者は README の値をそのまま登録すればよく、設定と Spotify 側の登録が食い違わないため。
+- 貼り付けた URL の `state` を、認可を始めたときの値と照らす。別の認可で得た URL を取り違えて貼っても、つながないため。
 - `state` と PKCE の verifier はメモリに持ち、10 分で捨て、一度使ったら消す。再起動で消えても、認可をやり直せば済むため。
 
 ## トークン
@@ -57,8 +59,7 @@
 - Subsonic API ではなく `/api/spotify` に置き、セッションの Cookie で認証する。Subsonic に Spotify 連携の仕様はなく、使うのは Web クライアントだけのため。
   - `GET /api/spotify`: 設定の有無、接続の状態、最後の取り込みの日時と結果、件数（全件、対応、未対応）。
   - `POST /api/spotify/authorize`: 認可の URL を返す。
-  - `GET /api/spotify/callback`: Spotify から戻る先。コードをトークンに換え、Web の設定の画面へ移す。
-  - `POST /api/spotify/callback`: 貼り付けた URL を受ける。
+  - `POST /api/spotify/callback`: 貼り付けた URL を受け、コードをトークンに換える。
   - `DELETE /api/spotify`: 接続を切る。対応表は残す。
   - `POST /api/spotify/sync`: 取り込みを始める。終わるのを待たずに返し、状態は `GET /api/spotify` で見る。
   - `GET /api/spotify/tracks?matched=false`: 未対応の曲の一覧。
