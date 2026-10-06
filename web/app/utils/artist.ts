@@ -1,11 +1,20 @@
 /** アーティストの詳細の表示（docs/web.md の「一覧」）。 */
-import type { Album, Song } from '~/utils/subsonic'
+import type { Album, Artist, Song } from '~/utils/subsonic'
 
 /** どの一覧から開いたか。`albums` はアルバムアーティスト、`tracks` は曲のアーティスト、`composer` は作曲家の一覧。 */
 export type ArtistView = 'albums' | 'tracks' | 'composer'
 
 export function artistView(value: unknown): ArtistView {
   return value === 'tracks' || value === 'composer' ? value : 'albums'
+}
+
+/** 検索の結果から開く表示。役割に合わない表示で開くと曲が一つも出ないので、`roles` で選ぶ（docs/web.md の「検索」）。 */
+export function viewForRoles(artist: Pick<Artist, 'roles'>): ArtistView {
+  const roles = artist.roles
+  if (!roles || roles.includes('artist')) {
+    return 'tracks'
+  }
+  return roles.includes('albumartist') ? 'albums' : 'composer'
 }
 
 /** 表示ごとに `getArtist` の `songs` に渡す役割。 */

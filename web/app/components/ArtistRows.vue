@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { Artist } from '~/utils/subsonic'
 import { useVirtualizer } from '@tanstack/vue-virtual'
+import { viewForRoles } from '~/utils/artist'
 
 /**
  * 見出しで区切らないアーティストの行。画面に見える行だけを描き、末尾に近づいたら `more` を出す（docs/web.md の「検索」）。
- * 詳細は曲のアーティストの表示で開く。検索では曲にだけ参加している人も出るため。
+ * 詳細は役割に合う表示で開く。検索では曲にだけ参加している人や作曲家も出るため。
  */
 const props = defineProps<{ artists: Artist[], more: boolean }>()
 const emit = defineEmits<{ more: [] }>()
@@ -41,7 +42,7 @@ watch([items, () => props.more], ([visible, more]) => {
       :style="{ height: `${ROW}px`, transform: `translateY(${item.start - virtualizer.options.scrollMargin}px)` }"
     >
       <NuxtLink
-        :to="{ path: `/library/artists/${artists[item.index]!.id}`, query: { view: 'tracks' } }"
+        :to="{ path: `/library/artists/${artists[item.index]!.id}`, query: { view: viewForRoles(artists[item.index]!) } }"
         class="flex h-full items-center gap-3 px-3 transition-colors hover:bg-surface-2"
       >
         <ArtistInitial :name="artists[item.index]!.name" class="size-9 text-body" />

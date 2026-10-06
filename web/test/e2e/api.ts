@@ -307,13 +307,21 @@ export async function recordMediaSession(page: Page) {
   })
 }
 
+const searchRoles = [
+  { roles: ['albumartist', 'artist'] },
+  { roles: ['albumartist'] },
+  { roles: ['composer', 'lyricist'] },
+  {},
+]
+
 /**
  * `search3` の偽物。名前に検索語を含むアーティスト、アルバム、曲を、種類ごとの件数と位置で返す。
  * 呼ばれた引数を `requests` に残す。
  */
 export async function mockSearch(page: Page, { artists = 8, albums = 30, songs = 150 } = {}) {
   const library = {
-    artist: Array.from({ length: artists }, (_, i) => ({ id: `ar-${i}`, name: `ひかりのアーティスト ${i}`, albumCount: 1 })),
+    // 役割は 4 人ごとに、曲のアーティスト、アルバムアーティストだけ、作曲家だけ、役割なしを繰り返す
+    artist: Array.from({ length: artists }, (_, i) => ({ id: `ar-${i}`, name: `ひかりのアーティスト ${i}`, albumCount: 1, ...searchRoles[i % 4] })),
     album: Array.from({ length: albums }, (_, i) => ({ id: `al-${i}`, name: `ひかりのアルバム ${i}`, artist: 'ClariS', songCount: 10, duration: 2400 })),
     song: Array.from({ length: songs }, (_, i) => ({ id: `tr-${i}`, title: `ひかりの曲 ${String(i).padStart(3, '0')}`, artist: 'ClariS', album: 'ひかりのアルバム 0', albumId: 'al-0', duration: 200 })),
   }
