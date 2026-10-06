@@ -1,5 +1,7 @@
 //! プレイリストの問い合わせ（docs/schema.md の「プレイリスト」）。
 
+use sha2::{Digest, Sha256};
+
 use super::{IdKind, Pool, new_id};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -163,4 +165,62 @@ pub async fn delete(pool: &Pool, id: &str) -> Result<bool, sqlx::Error> {
         .await?
         .rows_affected();
     Ok(deleted > 0)
+}
+
+/// お気に入りのプレイリストの ID。ふつうのプレイリストの ID（`pl-` と 16 進 8 文字）とは重ならない。
+pub const STARRED_ID: &str = "pl-starred";
+pub const STARRED_NAME: &str = "お気に入り";
+
+/// お気に入りのプレイリスト。曲はお気に入りの曲から作る（docs/schema.md の「お気に入りのプレイリスト」）。
+/// お気に入りの曲と日時の指紋が前に見たものと違えば、`changed_at` を `now` にする。
+/// お気に入りを変える処理ごとに日時を書くと、書き忘れた処理でクライアントが取り直さなくなるため。
+pub async fn starred(pool: &Pool, now: i64) -> Result<Playlist, sqlx::Error> {
+    let rows = sqlx::query!(
+        r#"SELECT track.id AS "id!", track.starred_at AS "starred_at!", file.duration_ms,
+                  CASE WHEN album.cover_path IS NOT NULL THEN album.id END AS cover_album_id
+           FROM track
+           JOIN file ON file.id = track.primary_file_id
+           JOIN album ON album.id = track.album_id
+           WHERE track.starred_at IS NOT NULL
+           ORDER BY track.starred_at DESC, track.id"#
+    )
+    .fetch_all(pool)
+    .await?;
+    let mut hasher = Sha256::new();
+    for row in &rows {
+        hasher.update(format!("{}:{}\n", row.id, row.starred_at));
+    }
+    let fingerprint = hex::encode(hasher.finalize());
+
+    let mut tx = pool.begin().await?;
+    let state = sqlx::query!(
+        "SELECT created_at, changed_at, fingerprint FROM starred_playlist WHERE id = 1"
+    )
+    .fetch_one(&mut *tx)
+    .await?;
+    let changed_at = if state.fingerprint == fingerprint {
+        state.changed_at
+    } else {
+        sqlx::query!(
+            "UPDATE starred_playlist SET changed_at = ?, fingerprint = ? WHERE id = 1",
+            now,
+            fingerprint
+        )
+        .execute(&mut *tx)
+        .await?;
+        now
+    };
+    tx.commit().await?;
+
+    Ok(Playlist {
+        id: STARRED_ID.to_owned(),
+        name: STARRED_NAME.to_owned(),
+        comment: None,
+        public: false,
+        created_at: state.created_at,
+        changed_at,
+        song_count: i64::try_from(rows.len()).unwrap_or(i64::MAX),
+        duration_ms: rows.iter().map(|r| r.duration_ms).sum(),
+        cover_album_id: rows.into_iter().find_map(|r| r.cover_album_id),
+    })
 }

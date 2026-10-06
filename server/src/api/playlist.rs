@@ -8,8 +8,8 @@ use serde_json::{Map, Value, json};
 use super::browse::{db_error, seconds, timestamp};
 use super::search::songs;
 use super::{AppState, payload};
-use crate::db::browse;
-use crate::db::playlist::{self, Changes, Playlist};
+use crate::db::playlist::{self, Changes, Playlist, STARRED_ID};
+use crate::db::{annotation, browse};
 use crate::subsonic::{Error, ErrorCode, Params};
 
 fn missing(key: &str) -> Error {
@@ -23,6 +23,11 @@ fn not_found() -> Error {
     Error::new(ErrorCode::NotFound, "playlist not found")
 }
 
+/// お気に入りのプレイリストは変えられない（docs/schema.md の「お気に入りのプレイリスト」）。
+fn readonly() -> Error {
+    Error::new(ErrorCode::NotAuthorized, "playlist is read-only")
+}
+
 fn now() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -30,11 +35,13 @@ fn now() -> i64 {
 }
 
 pub async fn list(state: &AppState) -> Result<Map<String, Value>, Error> {
-    let playlists = playlist::list(&state.db).await.map_err(db_error)?;
-    // Navidrome と同じく、プレイリストがなければ `playlist` を省く
-    if playlists.is_empty() {
-        return Ok(payload(json!({ "playlists": {} })));
-    }
+    // お気に入りのプレイリストを先に置く
+    let mut playlists = vec![
+        playlist::starred(&state.db, now())
+            .await
+            .map_err(db_error)?,
+    ];
+    playlists.extend(playlist::list(&state.db).await.map_err(db_error)?);
     let list: Vec<Value> = playlists.iter().map(|p| playlist_json(state, p)).collect();
     Ok(payload(json!({ "playlists": { "playlist": list } })))
 }
@@ -49,6 +56,7 @@ pub async fn create(params: &Params, state: &AppState) -> Result<Map<String, Val
     let tracks = track_ids(state, params.get_all("songId"), "createPlaylist").await?;
     let now = now();
     let id = match params.get("playlistId") {
+        Some(STARRED_ID) => return Err(readonly()),
         Some(id) => {
             let changes = Changes {
                 name: params.get("name").map(str::to_owned),
@@ -81,6 +89,9 @@ pub async fn update(params: &Params, state: &AppState) -> Result<Map<String, Val
     let id = params
         .get("playlistId")
         .ok_or_else(|| missing("playlistId"))?;
+    if id == STARRED_ID {
+        return Err(readonly());
+    }
     let changes = Changes {
         name: params.get("name").map(str::to_owned),
         comment: params.get("comment").map(str::to_owned),
@@ -117,6 +128,9 @@ pub async fn update(params: &Params, state: &AppState) -> Result<Map<String, Val
 
 pub async fn delete(params: &Params, state: &AppState) -> Result<Map<String, Value>, Error> {
     let id = params.get("id").ok_or_else(|| missing("id"))?;
+    if id == STARRED_ID {
+        return Err(readonly());
+    }
     if !playlist::delete(&state.db, id).await.map_err(db_error)? {
         return Err(not_found());
     }
@@ -150,11 +164,22 @@ async fn track_ids(
 
 /// プレイリストと、その曲。
 async fn with_entries(state: &AppState, id: &str) -> Result<Map<String, Value>, Error> {
-    let playlist = playlist::get(&state.db, id)
-        .await
-        .map_err(db_error)?
-        .ok_or_else(not_found)?;
-    let ids = playlist::entries(&state.db, id).await.map_err(db_error)?;
+    let (playlist, ids) = if id == STARRED_ID {
+        let playlist = playlist::starred(&state.db, now())
+            .await
+            .map_err(db_error)?;
+        let ids = annotation::starred_songs(&state.db)
+            .await
+            .map_err(db_error)?;
+        (playlist, ids)
+    } else {
+        let playlist = playlist::get(&state.db, id)
+            .await
+            .map_err(db_error)?
+            .ok_or_else(not_found)?;
+        let ids = playlist::entries(&state.db, id).await.map_err(db_error)?;
+        (playlist, ids)
+    };
     let mut value = playlist_json(state, &playlist);
     value["entry"] = json!(songs(state, &ids).await?);
     Ok(payload(json!({ "playlist": value })))
@@ -170,7 +195,7 @@ fn playlist_json(state: &AppState, p: &Playlist) -> Value {
         "duration": seconds(p.duration_ms),
         "created": timestamp(p.created_at),
         "changed": timestamp(p.changed_at),
-        "readonly": false,
+        "readonly": p.id == STARRED_ID,
     });
     if let Some(comment) = &p.comment {
         value["comment"] = json!(comment);
