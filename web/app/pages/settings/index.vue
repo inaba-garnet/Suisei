@@ -50,6 +50,8 @@ async function onLogout() {
       <SegmentedControl v-model="themeModel" label="テーマ" :options="themes" />
     </section>
 
+    <SpotifySettings />
+
     <section v-if="dev" class="mt-8 flex flex-col gap-3">
       <h2 class="text-h3 font-semibold">
         開発
