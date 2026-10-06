@@ -83,13 +83,18 @@ AAC / AIFF / APE / FLAC / M4A / MP3 / Musepack / Ogg / Opus / WAV / WavPack
 
 ### 1. compose.yaml を取得
 
-任意のディレクトリに [`compose.yaml`](compose.yaml) を置きます。
+任意のディレクトリに [`compose.yaml`](compose.yaml) を置き、データベースを保存する `data` ディレクトリを作成します。
 
 ```sh
 mkdir suisei
 cd suisei
+mkdir data
 curl -O https://raw.githubusercontent.com/inaba-garnet/Suisei/main/compose.yaml
 ```
+
+コンテナは uid 1000 で動作するため、`data` はその uid から書き込める必要があります。
+`data` を作成せずに起動すると、Docker が root の所有で作成し、`unable to open database file` で起動に失敗します。
+ログインユーザーの uid が 1000 でない場合（`id -u` で確認できます）は、`compose.yaml` の `user:` を `id -u` と `id -g` の値に合わせてください。
 
 ### 2. ユーザー名とパスワードを設定
 
