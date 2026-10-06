@@ -564,3 +564,34 @@ export async function mockSpotify(page: Page, { connected = false } = {}) {
   })
   return { state, links }
 }
+
+/**
+ * `startScan` と `getScanStatus` の偽物。始めてから `polls` 回目の `getScanStatus` で終わったことにする。
+ * 呼ばれた `startScan` の引数を `starts` に残す。
+ */
+export async function mockScan(page: Page, { polls = 2, running = false } = {}) {
+  const state = { scanning: running, count: 0, left: running ? polls : 0 }
+  const starts: URLSearchParams[] = []
+  const ok = (body: object) => ({ json: { 'subsonic-response': { status: 'ok', version: '1.16.1', ...body } } })
+  const status = () => ({ scanStatus: { scanning: state.scanning, count: state.count, folderCount: 1 } })
+  await page.route(/\/rest\/startScan(\?|$)/, (route) => {
+    starts.push(new URL(route.request().url()).searchParams)
+    if (!state.scanning) {
+      state.scanning = true
+      state.count = 0
+      state.left = polls
+    }
+    return route.fulfill(ok(status()))
+  })
+  await page.route(/\/rest\/getScanStatus(\?|$)/, (route) => {
+    if (state.scanning) {
+      state.count += 100
+      state.left -= 1
+      if (state.left <= 0) {
+        state.scanning = false
+      }
+    }
+    return route.fulfill(ok(status()))
+  })
+  return { state, starts }
+}

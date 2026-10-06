@@ -4,6 +4,7 @@
  * 使い始めてから変えるとお気に入りや評価が別のアーティストに移ることがあるので、閉じておく。
  */
 const { settings, saving, update } = useServerSettings()
+const scan = useLibraryScan()
 
 const split = computed({
   get: () => (settings.value?.splitCharacters ?? true) ? 'split' : 'keep',
@@ -29,6 +30,15 @@ const splitOptions = [
           使い始めてから変えると、次のスキャンでアーティストが入れ替わり、お気に入りや評価が別のアーティストに移ることがあります。
         </p>
         <SegmentedControl v-model="split" label="キャラクターと声優の分け方" :options="splitOptions.map(o => ({ ...o, disabled: saving }))" />
+        <p class="mt-4 text-body">
+          全ファイルを読み直す
+        </p>
+        <p class="text-body-sm text-fg-subtle">
+          ふつうのスキャンは、更新日時の変わったファイルだけを読みます。更新日時を変えずにタグを書き換えたときに使います。時間がかかります。
+        </p>
+        <Button class="self-start" variant="secondary" :disabled="scan.scanning.value" @click="scan.start(true)">
+          全ファイルを読み直す
+        </Button>
       </div>
     </details>
   </section>
