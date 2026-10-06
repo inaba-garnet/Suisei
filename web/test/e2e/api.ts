@@ -26,6 +26,7 @@ export async function mockApi(page: Page, { loggedIn = false, dev = false } = {}
   // サーバーの設定は既定の値で、Spotify 連携は設定していないことにする。使うテストは mockSettings や mockSpotify で差し替える
   await mockSettings(page)
   await page.route('**/api/spotify', route => route.fulfill({ json: { configured: false, redirectUri: SPOTIFY_REDIRECT_URI } }))
+  await page.route('**/api/scan', route => route.fulfill({ json: { scanning: false, count: 0, last: null } }))
   await page.route('**/api/logout', async (route) => {
     const json = route.request().headers()['content-type']?.startsWith('application/json')
     if (!json) {
@@ -566,32 +567,33 @@ export async function mockSpotify(page: Page, { connected = false } = {}) {
 }
 
 /**
- * `startScan` と `getScanStatus` の偽物。始めてから `polls` 回目の `getScanStatus` で終わったことにする。
+ * `startScan` と `/api/scan` の偽物。始めてから `polls` 回目の `/api/scan` で終わったことにし、`last` を最後の結果にする。
  * 呼ばれた `startScan` の引数を `starts` に残す。
  */
-export async function mockScan(page: Page, { polls = 2, running = false } = {}) {
-  const state = { scanning: running, count: 0, left: running ? polls : 0 }
+export async function mockScan(page: Page, { polls = 2, running = false, last = null as null | Record<string, unknown>, result = {} as Record<string, unknown> } = {}) {
+  const state = { scanning: running, count: 0, left: running ? polls : 0, last }
   const starts: URLSearchParams[] = []
   const ok = (body: object) => ({ json: { 'subsonic-response': { status: 'ok', version: '1.16.1', ...body } } })
-  const status = () => ({ scanStatus: { scanning: state.scanning, count: state.count, folderCount: 1 } })
   await page.route(/\/rest\/startScan(\?|$)/, (route) => {
-    starts.push(new URL(route.request().url()).searchParams)
+    const params = new URL(route.request().url()).searchParams
+    starts.push(params)
     if (!state.scanning) {
       state.scanning = true
       state.count = 0
       state.left = polls
     }
-    return route.fulfill(ok(status()))
+    return route.fulfill(ok({ scanStatus: { scanning: state.scanning, count: state.count, folderCount: 1 } }))
   })
-  await page.route(/\/rest\/getScanStatus(\?|$)/, (route) => {
+  await page.route('**/api/scan', (route) => {
     if (state.scanning) {
       state.count += 100
       state.left -= 1
       if (state.left <= 0) {
         state.scanning = false
+        state.last = { at: Date.now(), full: starts.at(-1)?.get('fullScan') === 'true', elapsedMs: 1000, files: state.count, read: 3, failed: 0, failedPaths: [], ...result }
       }
     }
-    return route.fulfill(ok(status()))
+    return route.fulfill({ json: { scanning: state.scanning, count: state.count, last: state.last } })
   })
   return { state, starts }
 }
