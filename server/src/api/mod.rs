@@ -6,6 +6,7 @@ mod history;
 mod lyrics;
 mod media;
 mod playlist;
+mod scan_status;
 mod search;
 mod session;
 mod settings;
@@ -69,6 +70,7 @@ pub fn router_with(state: AppState, web: Web) -> Router {
         .route("/api/login", post(session::login))
         .route("/api/logout", post(session::logout))
         .route("/api/me", get(session::me))
+        .route("/api/scan", get(scan_status::get))
         .route("/api/settings", get(settings::get).put(settings::put))
         .route(
             "/api/spotify",

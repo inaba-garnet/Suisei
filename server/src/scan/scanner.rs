@@ -3,11 +3,11 @@
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::{Instant, SystemTime};
+use std::time::{Duration, Instant, SystemTime};
 
 use tokio::sync::{Mutex as AsyncMutex, OwnedMutexGuard, watch};
 
-use super::{Mode, Options, run_with_progress};
+use super::{Mode, Options, Summary, run_with_progress};
 use crate::db::Pool;
 use crate::settings::Settings;
 
@@ -23,8 +23,20 @@ pub struct Scanner {
     /// スキャン中に見つけた音声の数
     progress: Arc<AtomicUsize>,
     last: Mutex<Option<Finished>>,
+    /// 最後のスキャンの結果。失敗したものも持つ（docs/schema.md の「スキャン」）
+    report: Mutex<Option<Report>>,
     /// 成功したスキャンの数。スキャンの後の処理（Spotify の対応の付け直しなど）を起こす
     finished: watch::Sender<u64>,
+}
+
+/// 最後のスキャンの結果。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Report {
+    pub finished_at: SystemTime,
+    pub mode: Mode,
+    pub elapsed: Duration,
+    /// 失敗したら理由
+    pub result: Result<Summary, String>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -54,6 +66,7 @@ impl Scanner {
             scanning: AtomicBool::new(false),
             progress: Arc::default(),
             last: Mutex::new(None),
+            report: Mutex::new(None),
             finished: watch::Sender::new(0),
         })
     }
@@ -109,6 +122,11 @@ impl Scanner {
         }
     }
 
+    /// 最後のスキャンの結果。まだ一度も終わっていなければ None。
+    pub fn report(&self) -> Option<Report> {
+        self.report.lock().expect("状態のロックが壊れた").clone()
+    }
+
     /// スキャンが成功するたびに値が変わる受け口。
     pub fn subscribe(&self) -> watch::Receiver<u64> {
         self.finished.subscribe()
@@ -152,7 +170,8 @@ impl Scanner {
             Arc::clone(&self.progress),
         )
         .await;
-        match result {
+        let elapsed = started.elapsed();
+        match &result {
             Ok(summary) => {
                 tracing::info!(
                     ?mode,
@@ -178,6 +197,12 @@ impl Scanner {
             }
             Err(err) => tracing::error!(?mode, error = %err, "scan failed"),
         }
+        *self.report.lock().expect("状態のロックが壊れた") = Some(Report {
+            finished_at: SystemTime::now(),
+            mode,
+            elapsed,
+            result: result.map_err(|err| err.to_string()),
+        });
         self.scanning.store(false, Ordering::Release);
     }
 }

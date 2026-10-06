@@ -424,6 +424,7 @@ async fn unreadable_file_is_kept() {
     std::fs::write(lib.path("a/01.flac"), b"broken").unwrap();
     let summary = lib.scan().await;
     assert_eq!(summary.failed, 1);
+    assert_eq!(summary.failed_paths, ["a/01.flac"]);
     assert_eq!(lib.files().await, before);
 }
 
@@ -554,4 +555,92 @@ async fn periodic_scan_follows_settings() {
             .await
             .is_err()
     );
+}
+
+/// 最後のスキャンの結果を、成功しても失敗しても `/api/scan` で返す。
+#[tokio::test]
+async fn scan_report_api() {
+    use sha2::{Digest, Sha256};
+
+    let lib = Library::new().await;
+    lib.put("full.flac", "a/01.flac");
+    std::fs::create_dir_all(lib.path("b")).unwrap();
+    std::fs::write(lib.path("b/broken.flac"), b"broken").unwrap();
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as i64;
+    db::session::create(&lib.pool, &hex::encode(Sha256::digest("token")), now)
+        .await
+        .unwrap();
+
+    let app = |scanner: std::sync::Arc<Scanner>| {
+        let settings = suisei::settings::Store::new(lib.pool.clone(), Default::default());
+        suisei::router(AppState {
+            credentials: Credentials {
+                user: "inaba".into(),
+                password: "sesame".into(),
+                api_key: None,
+            },
+            db: lib.pool.clone(),
+            scanner,
+            now_playing: Default::default(),
+            cache_dir: "/nonexistent".into(),
+            ffmpeg: "ffmpeg".into(),
+            dev: false,
+            throttle: Default::default(),
+            trust_forwarded_for: false,
+            spotify: suisei::spotify::Spotify::new(
+                lib.pool.clone(),
+                settings.clone(),
+                Default::default(),
+            ),
+            settings,
+        })
+    };
+    let get = |app: axum::Router| async move {
+        let res = app
+            .oneshot(
+                Request::get("/api/scan")
+                    .header("cookie", "suisei_session=token")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let body = res.into_body().collect().await.unwrap().to_bytes();
+        serde_json::from_slice::<Value>(&body).unwrap()
+    };
+
+    let scanner = Scanner::new(
+        lib.pool.clone(),
+        lib.dir.path().to_owned(),
+        Default::default(),
+    );
+    assert_eq!(get(app(scanner.clone())).await["last"], Value::Null);
+    assert!(scanner.start(Mode::Full));
+    scanner.wait().await;
+    let body = get(app(scanner)).await;
+    assert_eq!(body["scanning"], false);
+    let last = &body["last"];
+    assert_eq!(last["full"], true);
+    assert_eq!(last["files"], 1);
+    assert_eq!(last["read"], 2);
+    assert_eq!(last["failed"], 1);
+    assert_eq!(last["failedPaths"], serde_json::json!(["b/broken.flac"]));
+    assert_eq!(last["error"], Value::Null);
+    assert!(last["at"].as_u64().unwrap() > 0);
+
+    // 音楽フォルダが読めなければ、理由を返す
+    let missing = Scanner::new(lib.pool.clone(), lib.path("missing"), Default::default());
+    assert!(missing.start(Mode::Quick));
+    missing.wait().await;
+    let last = get(app(missing)).await["last"].clone();
+    assert!(
+        last["error"]
+            .as_str()
+            .unwrap()
+            .contains("音楽フォルダを読めない")
+    );
+    assert_eq!(last["full"], false);
 }
