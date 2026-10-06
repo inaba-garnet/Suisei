@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { albumsAsAlbumArtist, artistSort, artistView, groupByAlbum, sortAlbums, sortGroups, sortSongs } from '~/utils/artist'
+import { albumsAsAlbumArtist, artistSort, artistView, groupByAlbum, sortAlbums, sortGroups, sortSongs, viewForRoles } from '~/utils/artist'
 
 describe('artistView', () => {
   it('知らない値はアルバムアーティストの表示にする', () => {
@@ -7,6 +7,19 @@ describe('artistView', () => {
     expect(artistView('composer')).toBe('composer')
     expect(artistView(undefined)).toBe('albums')
     expect(artistView('x')).toBe('albums')
+  })
+})
+
+describe('viewForRoles', () => {
+  it('曲のアーティスト、アルバムアーティスト、作曲家の順に表示を選ぶ', () => {
+    expect(viewForRoles({ roles: ['albumartist', 'artist', 'composer'] })).toBe('tracks')
+    expect(viewForRoles({ roles: ['albumartist', 'composer'] })).toBe('albums')
+    expect(viewForRoles({ roles: ['composer', 'arranger'] })).toBe('composer')
+    expect(viewForRoles({ roles: ['lyricist'] })).toBe('composer')
+  })
+
+  it('役割がなければ曲のアーティストの表示にする', () => {
+    expect(viewForRoles({})).toBe('tracks')
   })
 })
 

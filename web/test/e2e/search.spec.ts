@@ -28,9 +28,13 @@ test('打ち終えてから一度だけ検索し、検索語を URL に入れて
   expect(requests[0]?.get('songCount')).toBe('11')
   await expect(results.getByRole('link', { name: 'すべて見る' })).toHaveCount(3)
 
-  // アーティストは曲のアーティストの表示で開く
-  await results.getByRole('link', { name: 'ひかりのアーティスト 0' }).click()
-  await expect(page).toHaveURL('/library/artists/ar-0?view=tracks')
+  // アーティストは役割に合う表示で開く
+  const views = ['tracks', 'albums', 'composer', 'tracks']
+  for (const [i, view] of views.entries()) {
+    await expect(results.getByRole('link', { name: `ひかりのアーティスト ${i}` })).toHaveAttribute('href', `/library/artists/ar-${i}?view=${view}`)
+  }
+  await results.getByRole('link', { name: 'ひかりのアーティスト 2' }).click()
+  await expect(page).toHaveURL('/library/artists/ar-2?view=composer')
 })
 
 test('件数に収まる種類には「すべて見る」を出さず、見つからなければそう出す', async ({ page }) => {
