@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO spotify_track (spotify_id, isrc, title, artists, album, disc_number,\n                 track_number, duration_ms, added_at)\n             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)\n             ON CONFLICT (spotify_id) DO UPDATE SET isrc = excluded.isrc, title = excluded.title,\n                 artists = excluded.artists, album = excluded.album,\n                 disc_number = excluded.disc_number, track_number = excluded.track_number,\n                 duration_ms = excluded.duration_ms, added_at = excluded.added_at",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 9
+    },
+    "nullable": []
+  },
+  "hash": "f3cf76fbadb08bf25c551aa4dd2b459147885b92b9a0ed9af5b9608f83f206aa"
+}

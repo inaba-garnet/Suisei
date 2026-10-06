@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM spotify_account",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "0f2e1d3d5642a25a706b6cecbb8b0bf2fe6ccb52f35837e7dde68b326850c3c8"
+}

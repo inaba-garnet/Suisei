@@ -45,6 +45,7 @@ impl App {
             dev: false,
             throttle: Default::default(),
             trust_forwarded_for,
+            spotify: None,
         });
         Self { router, db }
     }

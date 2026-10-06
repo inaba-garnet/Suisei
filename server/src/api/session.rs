@@ -104,6 +104,21 @@ pub(super) async fn me(State(state): State<Arc<AppState>>, headers: HeaderMap) -
     }
 }
 
+/// `/api` の認証。Cookie のセッションが有効でなければ、返す状態コードを Err にする。
+pub(super) async fn require(state: &AppState, headers: &HeaderMap) -> Result<(), StatusCode> {
+    let Some(token) = cookie(headers) else {
+        return Err(StatusCode::UNAUTHORIZED);
+    };
+    match verify(state, token).await {
+        Ok(true) => Ok(()),
+        Ok(false) => Err(StatusCode::UNAUTHORIZED),
+        Err(err) => {
+            tracing::error!(%err, "failed to verify session");
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
 /// Subsonic API の認証。認証の引数がなく Cookie があるときだけ、セッションで認証する。
 pub(super) async fn authenticate(
     state: &AppState,
@@ -223,7 +238,7 @@ fn is_https(headers: &HeaderMap) -> bool {
         .is_some_and(|v| v.trim().eq_ignore_ascii_case("https"))
 }
 
-fn is_json(headers: &HeaderMap) -> bool {
+pub(super) fn is_json(headers: &HeaderMap) -> bool {
     headers
         .get(CONTENT_TYPE)
         .and_then(|v| v.to_str().ok())

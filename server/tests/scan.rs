@@ -240,6 +240,44 @@ async fn merged_track_keeps_play_history() {
     assert_eq!(played, [(kept.clone(), 1), (kept, 2)]);
 }
 
+/// マージで消える曲と対応していた Spotify の曲は、残る曲へ付け替える。曲が消えたら未対応に戻す。
+#[tokio::test]
+async fn spotify_link_follows_merge_and_deletion() {
+    let lib = Library::new().await;
+    lib.put("full.flac", "a/01.flac");
+    lib.put("full.flac", "a/02.flac");
+    lib.set_title("a/02.flac", "別の曲");
+    lib.scan().await;
+    let kept = lib.track_id("a/01.flac").await;
+    let merged = lib.track_id("a/02.flac").await;
+    sqlx::query(
+        "INSERT INTO spotify_track (spotify_id, title, artists, album, duration_ms, added_at,
+             track_id, match_method)
+         VALUES ('s', '別の曲', '[]', '', 1000, 0, ?, 'manual')",
+    )
+    .bind(&merged)
+    .execute(&lib.pool)
+    .await
+    .unwrap();
+    let linked = || async {
+        sqlx::query_scalar::<_, Option<String>>("SELECT track_id FROM spotify_track")
+            .fetch_one(&lib.pool)
+            .await
+            .unwrap()
+    };
+
+    lib.set_title("a/02.flac", "テスト曲");
+    lib.scan().await;
+    assert_eq!(linked().await, Some(kept));
+
+    std::fs::remove_file(lib.path("a/01.flac")).unwrap();
+    std::fs::remove_file(lib.path("a/02.flac")).unwrap();
+    lib.put("full.flac", "b/01.flac");
+    lib.set_title("b/01.flac", "残る曲");
+    lib.scan().await;
+    assert_eq!(linked().await, None);
+}
+
 /// マージで消える曲のお気に入りは古い日時を、評価は残る曲の値を優先して引き継ぐ。
 #[tokio::test]
 async fn merged_track_carries_star_and_rating() {
@@ -413,6 +451,7 @@ async fn scan_endpoints() {
         dev: false,
         throttle: Default::default(),
         trust_forwarded_for: false,
+        spotify: None,
     });
     let status = |endpoint: &'static str| {
         let app = app.clone();

@@ -27,6 +27,7 @@ async fn suisei(endpoint: &str, query: &str) -> Map<String, Value> {
         dev: false,
         throttle: Default::default(),
         trust_forwarded_for: false,
+        spotify: None,
     });
     let uri = format!("/rest/{endpoint}?u=inaba&p=sesame&f=json{query}");
     let res = app

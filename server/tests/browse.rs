@@ -104,6 +104,7 @@ async fn start_with_ffmpeg(dir: TempDir, ffmpeg: std::path::PathBuf) -> Server {
         dev: false,
         throttle: Default::default(),
         trust_forwarded_for: false,
+        spotify: None,
     });
     Server {
         dir,

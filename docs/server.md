@@ -27,6 +27,11 @@
 - 辞書は `server/dict/` のクレートの build.rs で取得して変換し、バイナリに埋め込む。版とハッシュは build.rs で固定する。一つのバイナリで配れるようにするため。別のクレートにするのは、CI のキャッシュに依存クレートとして残し、毎回作り直さないため。
 - UT 辞書の jawiki は CC BY-SA なので、出典とライセンスを `server/dict/README.md` に書く。
 
+## HTTP クライアント
+- 外部の API（Spotify、docs/spotify.md）は `reqwest` で呼ぶ。TLS は rustls にし、暗号の実装に ring を使う。musl の静的バイナリに OpenSSL を持ち込まないため。reqwest の既定の aws-lc-rs は、ライセンスに OpenSSL を含み、ビルドも重い。
+- 証明書は OS の証明書ストアで確かめる（`rustls-platform-verifier`）。同梱のルート証明書は、更新にバイナリの作り直しが要るため。Docker イメージには `ca-certificates` を入れる。
+- ring などが使う `ISC` を、ライセンスの `accepted` に足した。MIT と同じ程度の許諾で、表示の義務も同じため。
+
 ## キャッシュ
 - 作り直せるデータは、データの置き場所の下の `cache/` に、種類ごとのディレクトリを作って置く。音楽フォルダには書き込まない。
 

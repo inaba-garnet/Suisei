@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime};
 
-use tokio::sync::{Mutex as AsyncMutex, OwnedMutexGuard};
+use tokio::sync::{Mutex as AsyncMutex, OwnedMutexGuard, watch};
 
 use super::{Mode, Options, run_with_progress};
 use crate::db::Pool;
@@ -21,6 +21,8 @@ pub struct Scanner {
     /// スキャン中に見つけた音声の数
     progress: Arc<AtomicUsize>,
     last: Mutex<Option<Finished>>,
+    /// 成功したスキャンの数。スキャンの後の処理（Spotify の対応の付け直しなど）を起こす
+    finished: watch::Sender<u64>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -50,6 +52,7 @@ impl Scanner {
             scanning: AtomicBool::new(false),
             progress: Arc::default(),
             last: Mutex::new(None),
+            finished: watch::Sender::new(0),
         })
     }
 
@@ -80,6 +83,11 @@ impl Scanner {
             }
             tokio::time::sleep(interval).await;
         }
+    }
+
+    /// スキャンが成功するたびに値が変わる受け口。
+    pub fn subscribe(&self) -> watch::Receiver<u64> {
+        self.finished.subscribe()
     }
 
     pub fn music_dir(&self) -> &Path {
@@ -141,6 +149,7 @@ impl Scanner {
                     files: summary.files,
                     folders: summary.folders,
                 });
+                self.finished.send_modify(|n| *n += 1);
             }
             Err(err) => tracing::error!(?mode, error = %err, "scan failed"),
         }

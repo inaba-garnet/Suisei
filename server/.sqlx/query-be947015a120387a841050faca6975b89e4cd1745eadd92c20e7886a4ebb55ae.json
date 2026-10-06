@@ -1,0 +1,146 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT spotify_id AS \"spotify_id!\", isrc, title, artists, album, disc_number,\n                  track_number, duration_ms, added_at, track_id, match_method\n           FROM spotify_track\n           WHERE ? IS NULL OR (track_id IS NOT NULL) = ?\n           ORDER BY added_at DESC, spotify_id",
+  "describe": {
+    "columns": [
+      {
+        "name": "spotify_id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "spotify_track",
+            "name": "spotify_id"
+          }
+        }
+      },
+      {
+        "name": "isrc",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "spotify_track",
+            "name": "isrc"
+          }
+        }
+      },
+      {
+        "name": "title",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "spotify_track",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "name": "artists",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "spotify_track",
+            "name": "artists"
+          }
+        }
+      },
+      {
+        "name": "album",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "spotify_track",
+            "name": "album"
+          }
+        }
+      },
+      {
+        "name": "disc_number",
+        "ordinal": 5,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "spotify_track",
+            "name": "disc_number"
+          }
+        }
+      },
+      {
+        "name": "track_number",
+        "ordinal": 6,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "spotify_track",
+            "name": "track_number"
+          }
+        }
+      },
+      {
+        "name": "duration_ms",
+        "ordinal": 7,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "spotify_track",
+            "name": "duration_ms"
+          }
+        }
+      },
+      {
+        "name": "added_at",
+        "ordinal": 8,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "spotify_track",
+            "name": "added_at"
+          }
+        }
+      },
+      {
+        "name": "track_id",
+        "ordinal": 9,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "spotify_track",
+            "name": "track_id"
+          }
+        }
+      },
+      {
+        "name": "match_method",
+        "ordinal": 10,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "spotify_track",
+            "name": "match_method"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "be947015a120387a841050faca6975b89e4cd1745eadd92c20e7886a4ebb55ae"
+}

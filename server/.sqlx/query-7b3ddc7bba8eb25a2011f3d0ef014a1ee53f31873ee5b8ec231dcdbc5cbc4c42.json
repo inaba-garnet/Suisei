@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE track SET starred_at = CASE WHEN starred_at IS NULL OR starred_at > ? THEN ?\n                                                 ELSE starred_at END\n             WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "7b3ddc7bba8eb25a2011f3d0ef014a1ee53f31873ee5b8ec231dcdbc5cbc4c42"
+}

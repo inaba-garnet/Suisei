@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT track_artist.track_id AS \"track_id!\", artist.match_key\n           FROM track_artist JOIN artist ON artist.id = track_artist.artist_id\n           ORDER BY track_artist.track_id, track_artist.position",
+  "describe": {
+    "columns": [
+      {
+        "name": "track_id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track_artist",
+            "name": "track_id"
+          }
+        }
+      },
+      {
+        "name": "match_key",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "match_key"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "2f7c46043bc548669a869f706b49304fbfb4f5e662fbfd444d428bb2efa2f74e"
+}

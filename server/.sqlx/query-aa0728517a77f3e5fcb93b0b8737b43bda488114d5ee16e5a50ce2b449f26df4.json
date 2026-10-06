@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT spotify_id AS \"id!\" FROM spotify_track",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "spotify_track",
+            "name": "spotify_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "aa0728517a77f3e5fcb93b0b8737b43bda488114d5ee16e5a50ce2b449f26df4"
+}

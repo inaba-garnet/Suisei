@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT track_id AS \"track_id!\", tags FROM file ORDER BY path",
+  "describe": {
+    "columns": [
+      {
+        "name": "track_id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "track_id"
+          }
+        }
+      },
+      {
+        "name": "tags",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "file",
+            "name": "tags"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "0deff4043d8014d0d1645ab95b49628d2e2112fc747942d8e0a07cf7d3fff0ed"
+}

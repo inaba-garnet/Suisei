@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO spotify_account (id, refresh_token, connected_at) VALUES (1, ?, ?)\n         ON CONFLICT (id) DO UPDATE SET refresh_token = excluded.refresh_token,\n             connected_at = excluded.connected_at, fetched_at = NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "f33e319cb8ac799eab6dbd3effbdd8f192401628e4081b281dbade59afc29fff"
+}

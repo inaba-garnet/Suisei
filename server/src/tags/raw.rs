@@ -34,11 +34,13 @@ pub struct RawTags {
     pub compilation: bool,
     /// 埋め込みの画像があるか。カバーアートを探すのに使う
     pub has_picture: bool,
+    /// Spotify の曲と対応させるのに使う（docs/spotify.md の「曲の対応」）
+    pub isrc: Option<String>,
 }
 
 /// DB に保存するタグの版。タグから読む項目を足したら上げ、古い版で保存したファイルを読み直させる。
-/// 版 1 で `has_picture`、版 2 で `composers`、`lyricists`、`arrangers` を足した。
-const STORED_VERSION: u32 = 2;
+/// 版 1 で `has_picture`、版 2 で `composers`、`lyricists`、`arrangers`、版 3 で `isrc` を足した。
+const STORED_VERSION: u32 = 3;
 
 #[derive(serde::Serialize, serde::Deserialize)]
 struct Stored {
@@ -121,6 +123,7 @@ fn from_tag(tag: &Tag) -> RawTags {
             .get_string(ItemKey::FlagCompilation)
             .is_some_and(|value| matches!(value.trim(), "1") || value.eq_ignore_ascii_case("true")),
         has_picture: !tag.pictures().is_empty(),
+        isrc: one(ItemKey::Isrc),
     }
 }
 
@@ -215,6 +218,7 @@ mod tests {
             arrangers: Vec::new(),
             compilation: true,
             has_picture: false,
+            isrc: Some("JPXX01500001".into()),
         }
     }
 

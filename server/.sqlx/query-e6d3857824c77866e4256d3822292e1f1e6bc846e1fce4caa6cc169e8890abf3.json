@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT refresh_token, fetched_at FROM spotify_account WHERE id = 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "refresh_token",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "spotify_account",
+            "name": "refresh_token"
+          }
+        }
+      },
+      {
+        "name": "fetched_at",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "spotify_account",
+            "name": "fetched_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "e6d3857824c77866e4256d3822292e1f1e6bc846e1fce4caa6cc169e8890abf3"
+}

@@ -35,7 +35,7 @@ RUN touch src/main.rs src/lib.rs \
 
 FROM debian:trixie-slim
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg \
+    && apt-get install -y --no-install-recommends ffmpeg ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 RUN groupadd --gid 1000 suisei \
     && useradd --uid 1000 --gid 1000 --no-create-home --shell /usr/sbin/nologin suisei \

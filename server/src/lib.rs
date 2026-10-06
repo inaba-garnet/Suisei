@@ -2,6 +2,7 @@ mod api;
 mod config;
 pub mod db;
 pub mod scan;
+pub mod spotify;
 pub mod subsonic;
 pub mod tags;
 

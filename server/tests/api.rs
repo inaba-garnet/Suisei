@@ -28,6 +28,7 @@ async fn app_with(web: Web) -> axum::Router {
             dev: false,
             throttle: Default::default(),
             trust_forwarded_for: false,
+            spotify: None,
         },
         web,
     )
