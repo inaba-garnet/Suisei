@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { albumsAsAlbumArtist, artistSort, artistView, groupByAlbum, sortAlbums, sortGroups, sortSongs, viewForRoles } from '~/utils/artist'
+import { albumsAsAlbumArtist, artistSort, artistView, groupByAlbum, sortAlbums, sortGroups, sortSongs, switchableViews, viewForRoles } from '~/utils/artist'
 
 describe('artistView', () => {
   it('知らない値はアルバムアーティストの表示にする', () => {
@@ -20,6 +20,22 @@ describe('viewForRoles', () => {
 
   it('役割がなければ曲のアーティストの表示にする', () => {
     expect(viewForRoles({})).toBe('tracks')
+  })
+})
+
+describe('switchableViews', () => {
+  it('曲やアルバムと作曲などの両方で関わった人だけ切り替えを出す', () => {
+    const both = { roles: ['albumartist', 'artist', 'lyricist'] }
+    expect(switchableViews(both, 'tracks')).toEqual(['tracks', 'composer'])
+    expect(switchableViews(both, 'albums')).toEqual(['albums', 'composer'])
+    expect(switchableViews(both, 'composer')).toEqual(['tracks', 'composer'])
+    expect(switchableViews({ roles: ['albumartist', 'arranger'] }, 'composer')).toEqual(['albums', 'composer'])
+  })
+
+  it('片方だけの人や役割のない人には出さない', () => {
+    expect(switchableViews({ roles: ['albumartist', 'artist'] }, 'tracks')).toEqual([])
+    expect(switchableViews({ roles: ['composer'] }, 'composer')).toEqual([])
+    expect(switchableViews({}, 'tracks')).toEqual([])
   })
 })
 

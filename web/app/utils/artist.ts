@@ -17,6 +17,22 @@ export function viewForRoles(artist: Pick<Artist, 'roles'>): ArtistView {
   return roles.includes('albumartist') ? 'albums' : 'composer'
 }
 
+const composerRoles = ['composer', 'lyricist', 'arranger']
+
+/**
+ * 詳細で切り替えられる表示。曲やアルバムと、作曲などの両方で関わった人だけ二つ返し、ほかは空にする（docs/web.md の「一覧」）。
+ * 曲やアルバムの側は、開いている表示がそちらならそれを、作曲家の表示なら役割から選ぶ。
+ */
+export function switchableViews(artist: Pick<Artist, 'roles'>, view: ArtistView): ArtistView[] {
+  const roles = artist.roles ?? []
+  const performs = roles.includes('artist') || roles.includes('albumartist')
+  const composes = roles.some(role => composerRoles.includes(role))
+  if (!performs || !composes) {
+    return []
+  }
+  return [view === 'composer' ? viewForRoles(artist) : view, 'composer']
+}
+
 /** 表示ごとに `getArtist` の `songs` に渡す役割。 */
 export const songRoles: Record<ArtistView, string | undefined> = {
   albums: undefined,

@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import type { ArtistView } from '~/utils/artist'
 import type { ArtistWithAlbums, Song } from '~/utils/subsonic'
 import { useElementSize, useLocalStorage, useScroll } from '@vueuse/core'
 import { Music } from 'lucide-vue-next'
-import { albumsAsAlbumArtist, artistSort, artistView, groupByAlbum, songRoles, sortAlbums, sortGroups, sortOptions, sortSongs } from '~/utils/artist'
+import { albumsAsAlbumArtist, artistSort, artistView, groupByAlbum, songRoles, sortAlbums, sortGroups, sortOptions, sortSongs, switchableViews } from '~/utils/artist'
 import { formatDuration } from '~/utils/subsonic'
 
 const route = useRoute()
@@ -21,6 +22,16 @@ const { data: artist, status, refresh } = useAsyncData(
 )
 
 useHead({ title: () => artist.value?.name ?? 'アーティスト' })
+
+// 曲やアルバムと作曲の両方で関わった人は、詳細の中で表示を切り替える（docs/web.md の「一覧」）
+const viewLabels: Record<ArtistView, string> = { albums: 'アルバム', tracks: '曲', composer: '作曲' }
+const viewOptions = computed(() => artist.value ? switchableViews(artist.value, view.value).map(value => ({ value, label: viewLabels[value] })) : [])
+const router = useRouter()
+const selectedView = computed({
+  get: () => view.value,
+  // 履歴は積まない。「戻る」で開く前の画面に戻れるようにするため
+  set: value => router.replace({ query: { ...route.query, view: value } }),
+})
 
 // 選んだ並び順は表示ごとに残す（docs/web.md の「一覧」）
 const stored = {
@@ -101,10 +112,11 @@ const titleVisible = computed(() => {
       </header>
 
       <div
-        class="sticky z-[6] -mx-4 mb-2 flex justify-end bg-surface-0 px-4 py-2 md:mx-0 md:bg-surface-1 md:px-0"
+        class="sticky z-[6] -mx-4 mb-2 flex items-center justify-end gap-3 bg-surface-0 px-4 py-2 md:mx-0 md:bg-surface-1 md:px-0"
         :style="{ top: `${barHeight}px` }"
         data-testid="artist-sort"
       >
+        <SegmentedControl v-if="viewOptions.length" v-model="selectedView" label="表示" :options="viewOptions" class="mr-auto" />
         <SortSelect v-model="sort" :options="sortOptions[view]" />
       </div>
 
