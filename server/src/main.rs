@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 
 use clap::Parser;
-use suisei::{AppState, Config, db, scan, spotify};
+use suisei::{AppState, Config, MOVED_TO_WEB, db, scan, settings, spotify};
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
 
@@ -16,27 +16,31 @@ async fn main() -> std::io::Result<()> {
     let db = db::open(&config.data_dir, &backup_dir)
         .await
         .map_err(std::io::Error::other)?;
-    let backup = db::backup::Periodic {
-        dir: backup_dir,
-        interval: config.backup_interval,
-        keep: config.backup_keep as usize,
-    };
-    tokio::spawn(backup.run(db.clone()));
-    let options = scan::Options {
-        split_characters: config.split_characters,
-    };
-    let scanner = scan::Scanner::new(db.clone(), config.music_dir.clone(), options);
-    let spotify = config
-        .spotify_client_id
-        .clone()
-        .filter(|id| !id.trim().is_empty())
-        .map(|client_id| spotify::Spotify::new(db.clone(), client_id, Default::default(), options));
-    // 最初のスキャンの後にも動くよう、スキャンを始める前に受け口を作る
-    if let Some(spotify) = &spotify {
-        let periodic = !config.scan_interval.is_zero();
-        tokio::spawn(spotify.clone().follow_scans(scanner.subscribe(), periodic));
+    for name in MOVED_TO_WEB {
+        if std::env::var_os(name).is_some() {
+            tracing::warn!(
+                name,
+                "this environment variable is ignored; use the settings page instead"
+            );
+        }
     }
-    tokio::spawn(scanner.clone().run_periodically(config.scan_interval));
+    let settings = settings::Store::load(db.clone())
+        .await
+        .map_err(std::io::Error::other)?;
+    tokio::spawn(db::backup::Periodic::run(
+        backup_dir,
+        db.clone(),
+        settings.subscribe(),
+    ));
+    let scanner = scan::Scanner::new(
+        db.clone(),
+        config.music_dir.clone(),
+        settings.get().tag_options(),
+    );
+    let spotify = spotify::Spotify::new(db.clone(), settings.clone(), Default::default());
+    // 最初のスキャンの後にも動くよう、スキャンを始める前に受け口を作る
+    tokio::spawn(spotify.clone().follow_scans(scanner.subscribe()));
+    tokio::spawn(scanner.clone().run_periodically(settings.subscribe()));
     let state = AppState {
         credentials: config.credentials,
         db,
@@ -47,6 +51,7 @@ async fn main() -> std::io::Result<()> {
         dev: config.dev,
         throttle: Default::default(),
         trust_forwarded_for: config.trust_forwarded_for,
+        settings,
         spotify,
     };
     let listener = TcpListener::bind(config.listen).await?;

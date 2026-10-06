@@ -1,0 +1,74 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT scan_interval_secs, backup_interval_secs, backup_keep,\n                  split_characters AS \"split_characters: bool\", spotify_client_id\n           FROM settings WHERE id = 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "scan_interval_secs",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "settings",
+            "name": "scan_interval_secs"
+          }
+        }
+      },
+      {
+        "name": "backup_interval_secs",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "settings",
+            "name": "backup_interval_secs"
+          }
+        }
+      },
+      {
+        "name": "backup_keep",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "settings",
+            "name": "backup_keep"
+          }
+        }
+      },
+      {
+        "name": "split_characters: bool",
+        "ordinal": 3,
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "settings",
+            "name": "split_characters"
+          }
+        }
+      },
+      {
+        "name": "spotify_client_id",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "settings",
+            "name": "spotify_client_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "b7e3eec2210a04a8b64d9663fa6899196f4b8246b7d898014532713c82dfe942"
+}

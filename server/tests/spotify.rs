@@ -19,6 +19,7 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use suisei::db::{self, Pool};
 use suisei::scan::{Mode, Scanner};
+use suisei::settings::{Settings, Store};
 use suisei::spotify::{Endpoints, REDIRECT_URI, Spotify};
 use suisei::{AppState, Credentials};
 use tempfile::TempDir;
@@ -171,14 +172,20 @@ impl Fixture {
         db::session::create(&pool, &hex::encode(Sha256::digest(SESSION)), now_ms())
             .await
             .unwrap();
+        let settings = Store::new(
+            pool.clone(),
+            Settings {
+                spotify_client_id: Some("client".into()),
+                ..Settings::default()
+            },
+        );
         let spotify = Spotify::new(
             pool.clone(),
-            "client".into(),
+            settings.clone(),
             Endpoints {
                 accounts: base.clone(),
                 api: base,
             },
-            Default::default(),
         );
         let router = suisei::router(AppState {
             credentials: Credentials {
@@ -194,7 +201,8 @@ impl Fixture {
             dev: false,
             throttle: Default::default(),
             trust_forwarded_for: false,
-            spotify: Some(spotify.clone()),
+            settings,
+            spotify: spotify.clone(),
         });
         let fixture = Self {
             dir,
@@ -429,7 +437,7 @@ async fn manual_link_and_unlink() {
 async fn scans_fetch_hourly_and_rematch() {
     let f = Fixture::new().await;
     let scanner = Scanner::new(f.pool.clone(), f.dir.path().to_owned(), Default::default());
-    tokio::spawn(f.spotify.clone().follow_scans(scanner.subscribe(), true));
+    tokio::spawn(f.spotify.clone().follow_scans(scanner.subscribe()));
 
     // 接続していなければ Spotify を呼ばない
     scanner.start(Mode::Quick);
@@ -575,4 +583,30 @@ where
         tokio::time::sleep(Duration::from_millis(20)).await;
     }
     panic!("condition was not met");
+}
+
+#[tokio::test]
+async fn changing_client_id_disconnects() {
+    let f = Fixture::new().await;
+    f.connect().await;
+    let (status, body) = f.request("GET", "/api/settings", None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["spotifyClientId"], "client");
+    assert_eq!(body["scanInterval"], 3600);
+
+    let mut changed = body.clone();
+    changed["spotifyClientId"] = json!("other");
+    let (status, _) = f.request("PUT", "/api/settings", Some(changed)).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(f.status().await["connected"], false);
+
+    // 空欄にすると Spotify 連携を使わない
+    let mut cleared = body.clone();
+    cleared["spotifyClientId"] = json!(" ");
+    let (status, saved) = f.request("PUT", "/api/settings", Some(cleared)).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(saved["spotifyClientId"], Value::Null);
+    assert_eq!(f.status().await, json!({ "configured": false }));
+    let (status, _) = f.request("POST", "/api/spotify/authorize", None).await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
 }

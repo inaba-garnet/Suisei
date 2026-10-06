@@ -90,6 +90,7 @@ async fn start_with_ffmpeg(dir: TempDir, ffmpeg: std::path::PathBuf) -> Server {
     assert!(scanner.start(Mode::Quick));
     scanner.wait().await;
     let cache = tempfile::tempdir().unwrap();
+    let settings = suisei::settings::Store::new(db.clone(), Default::default());
     let app = suisei::router(AppState {
         credentials: Credentials {
             user: "inaba".into(),
@@ -104,7 +105,8 @@ async fn start_with_ffmpeg(dir: TempDir, ffmpeg: std::path::PathBuf) -> Server {
         dev: false,
         throttle: Default::default(),
         trust_forwarded_for: false,
-        spotify: None,
+        spotify: suisei::spotify::Spotify::new(db.clone(), settings.clone(), Default::default()),
+        settings,
     });
     Server {
         dir,

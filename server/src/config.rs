@@ -1,6 +1,5 @@
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::time::Duration;
 
 /// 起動引数と環境変数から読む設定。
 #[derive(Debug, Clone, clap::Parser)]
@@ -17,17 +16,9 @@ pub struct Config {
     #[arg(long, env = "SUISEI_MUSIC_DIR")]
     pub music_dir: PathBuf,
 
-    /// 定期スキャンの間隔（`1h`、`30m` など）。前のスキャンが終わってから数える。`0` で起動時の一度だけ。
-    #[arg(long, env = "SUISEI_SCAN_INTERVAL", default_value = "1h", value_parser = humantime::parse_duration)]
-    pub scan_interval: Duration,
-
     /// トランスコードに使う ffmpeg。見つからなければ元のファイルを返す。
     #[arg(long, env = "SUISEI_FFMPEG", default_value = "ffmpeg")]
     pub ffmpeg: PathBuf,
-
-    /// `キャラクター(CV:声優)` の形のアーティスト名を、キャラクターと声優に分ける。
-    #[arg(long, env = "SUISEI_SPLIT_CHARACTERS", default_value_t = true, action = clap::ArgAction::Set)]
-    pub split_characters: bool,
 
     /// 送り主の IP を `X-Forwarded-For` の最後の要素から取る。リバースプロキシの後ろに置くときだけ付ける。
     #[arg(long, env = "SUISEI_TRUST_FORWARDED_FOR", default_value_t = false, action = clap::ArgAction::Set)]
@@ -37,18 +28,6 @@ pub struct Config {
     #[arg(long, env = "SUISEI_BACKUP_DIR")]
     pub backup_dir: Option<PathBuf>,
 
-    /// DB のバックアップの間隔（`1d`、`12h` など）。最新の写しの時刻から数える。`0` で定期の写しを止める。
-    #[arg(long, env = "SUISEI_BACKUP_INTERVAL", default_value = "1d", value_parser = humantime::parse_duration)]
-    pub backup_interval: Duration,
-
-    /// 残す定期の写しの数。`0` で定期の写しを止める。
-    #[arg(long, env = "SUISEI_BACKUP_KEEP", default_value_t = 7)]
-    pub backup_keep: u32,
-
-    /// Spotify のアプリの Client ID。渡したときだけ Spotify 連携を使える（docs/spotify.md）。
-    #[arg(long, env = "SUISEI_SPOTIFY_CLIENT_ID")]
-    pub spotify_client_id: Option<String>,
-
     /// 開発モード。Web クライアントが未完成の UI を出す。
     #[arg(long, env = "SUISEI_DEV", default_value_t = false, action = clap::ArgAction::Set)]
     pub dev: bool,
@@ -56,6 +35,15 @@ pub struct Config {
     #[command(flatten)]
     pub credentials: Credentials,
 }
+
+/// 設定の画面に移した環境変数（docs/server.md の「設定」）。渡されていたら、効かないことを知らせる。
+pub const MOVED_TO_WEB: [&str; 5] = [
+    "SUISEI_SCAN_INTERVAL",
+    "SUISEI_BACKUP_INTERVAL",
+    "SUISEI_BACKUP_KEEP",
+    "SUISEI_SPLIT_CHARACTERS",
+    "SUISEI_SPOTIFY_CLIENT_ID",
+];
 
 impl Config {
     pub fn backup_dir(&self) -> PathBuf {
@@ -99,22 +87,13 @@ mod tests {
     }
 
     #[test]
-    fn characters_are_split_by_default() {
-        assert!(parse(&[]).split_characters);
-        assert!(!parse(&["--split-characters", "false"]).split_characters);
-    }
-
-    #[test]
     fn backups_default_to_data_dir() {
         let config = parse(&["--data-dir", "d"]);
         assert_eq!(config.backup_dir(), PathBuf::from("d/backup"));
-        assert_eq!(config.backup_interval, Duration::from_secs(24 * 60 * 60));
-        assert_eq!(config.backup_keep, 7);
         assert_eq!(
             parse(&["--backup-dir", "b"]).backup_dir(),
             PathBuf::from("b")
         );
-        assert_eq!(parse(&["--backup-keep", "0"]).backup_keep, 0);
     }
 
     #[test]

@@ -27,6 +27,7 @@ impl App {
 
     async fn with_forwarded_for(trust_forwarded_for: bool) -> Self {
         let db = db::open_in_memory().await.unwrap();
+        let settings = suisei::settings::Store::new(db.clone(), Default::default());
         let router = suisei::router(AppState {
             credentials: Credentials {
                 user: "inaba".into(),
@@ -45,7 +46,12 @@ impl App {
             dev: false,
             throttle: Default::default(),
             trust_forwarded_for,
-            spotify: None,
+            spotify: suisei::spotify::Spotify::new(
+                db.clone(),
+                settings.clone(),
+                Default::default(),
+            ),
+            settings,
         });
         Self { router, db }
     }

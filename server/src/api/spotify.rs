@@ -17,7 +17,10 @@ use crate::spotify::{ConnectError, REDIRECT_URI, Spotify};
 /// ログインを確かめ、Spotify 連携が設定されていればそれを返す。
 async fn require(state: &AppState, headers: &HeaderMap) -> Result<Arc<Spotify>, StatusCode> {
     session::require(state, headers).await?;
-    state.spotify.clone().ok_or(StatusCode::NOT_FOUND)
+    if state.spotify.client_id().is_none() {
+        return Err(StatusCode::NOT_FOUND);
+    }
+    Ok(state.spotify.clone())
 }
 
 /// 書き込む要求は `Content-Type: application/json` に限る。別のサイトのフォームから送らせないため。
@@ -37,9 +40,10 @@ pub(super) async fn status(State(state): State<Arc<AppState>>, headers: HeaderMa
     if let Err(status) = session::require(&state, &headers).await {
         return status.into_response();
     }
-    let Some(spotify) = &state.spotify else {
+    let spotify = &state.spotify;
+    if spotify.client_id().is_none() {
         return Json(json!({ "configured": false })).into_response();
-    };
+    }
     match spotify.status().await {
         Ok(status) => Json(json!({
             "configured": true,
@@ -62,7 +66,10 @@ pub(super) async fn status(State(state): State<Arc<AppState>>, headers: HeaderMa
 
 pub(super) async fn authorize(State(state): State<Arc<AppState>>, headers: HeaderMap) -> Response {
     match require_json(&state, &headers).await {
-        Ok(spotify) => Json(json!({ "url": spotify.authorize_url() })).into_response(),
+        Ok(spotify) => match spotify.authorize_url() {
+            Some(url) => Json(json!({ "url": url })).into_response(),
+            None => StatusCode::NOT_FOUND.into_response(),
+        },
         Err(status) => status.into_response(),
     }
 }

@@ -437,6 +437,7 @@ async fn scan_endpoints() {
         lib.dir.path().to_owned(),
         Default::default(),
     );
+    let settings = suisei::settings::Store::new(lib.pool.clone(), Default::default());
     let app = suisei::router(AppState {
         credentials: Credentials {
             user: "inaba".into(),
@@ -451,7 +452,12 @@ async fn scan_endpoints() {
         dev: false,
         throttle: Default::default(),
         trust_forwarded_for: false,
-        spotify: None,
+        spotify: suisei::spotify::Spotify::new(
+            lib.pool.clone(),
+            settings.clone(),
+            Default::default(),
+        ),
+        settings,
     });
     let status = |endpoint: &'static str| {
         let app = app.clone();
@@ -499,4 +505,53 @@ async fn stored_tags_of_old_version_are_read_again() {
     let summary = lib.scan().await;
     assert_eq!(summary.read, 1);
     assert_eq!(lib.scan().await.read, 0);
+}
+
+/// 定期スキャンは設定の間隔で繰り返し、設定を変えたら新しい間隔とタグの解釈で続ける。
+#[tokio::test]
+async fn periodic_scan_follows_settings() {
+    use std::time::Duration;
+    use suisei::settings::{Settings, Store};
+
+    let lib = Library::new().await;
+    lib.put("full.flac", "a/01.flac");
+    // 下限より短い間隔は Web からは選べないが、テストを速くするため直に渡す
+    let settings = Store::new(
+        lib.pool.clone(),
+        Settings {
+            scan_interval: Duration::from_millis(50),
+            ..Settings::default()
+        },
+    );
+    let scanner = Scanner::new(
+        lib.pool.clone(),
+        lib.dir.path().to_owned(),
+        Default::default(),
+    );
+    let mut finished = scanner.subscribe();
+    tokio::spawn(scanner.clone().run_periodically(settings.subscribe()));
+    for _ in 0..3 {
+        tokio::time::timeout(Duration::from_secs(5), finished.changed())
+            .await
+            .unwrap()
+            .unwrap();
+    }
+
+    // 間隔を 0 にすると、それ以上は繰り返さない
+    settings
+        .update(Settings {
+            scan_interval: Duration::ZERO,
+            split_characters: false,
+            ..Settings::default()
+        })
+        .await
+        .unwrap();
+    // 走っていた回が終わるのを待ってから数える
+    scanner.wait().await;
+    finished.borrow_and_update();
+    assert!(
+        tokio::time::timeout(Duration::from_millis(300), finished.changed())
+            .await
+            .is_err()
+    );
 }
