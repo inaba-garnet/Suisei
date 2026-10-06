@@ -240,10 +240,10 @@ async fn outside_rest_is_not_found() {
 #[tokio::test]
 async fn database_is_created_and_migrated() {
     let dir = std::env::temp_dir().join(format!("suisei-test-{}", std::process::id()));
-    let pool = suisei::db::open(&dir).await.unwrap();
+    let pool = suisei::db::open(&dir, &dir.join("backup")).await.unwrap();
     // 二回目に開いても、適用済みのマイグレーションで失敗しない
     drop(pool);
-    suisei::db::open(&dir).await.unwrap();
+    suisei::db::open(&dir, &dir.join("backup")).await.unwrap();
     assert!(dir.join("suisei.db").exists());
     std::fs::remove_dir_all(dir).unwrap();
 }

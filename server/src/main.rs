@@ -12,9 +12,16 @@ async fn main() -> std::io::Result<()> {
         .init();
 
     let config = Config::parse();
-    let db = db::open(&config.data_dir)
+    let backup_dir = config.backup_dir();
+    let db = db::open(&config.data_dir, &backup_dir)
         .await
         .map_err(std::io::Error::other)?;
+    let backup = db::backup::Periodic {
+        dir: backup_dir,
+        interval: config.backup_interval,
+        keep: config.backup_keep as usize,
+    };
+    tokio::spawn(backup.run(db.clone()));
     let options = scan::Options {
         split_characters: config.split_characters,
     };
