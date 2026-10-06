@@ -1,6 +1,7 @@
 //! DB 層。クエリはこのモジュールの中に閉じ込める（docs/server.md）。
 
 pub mod annotation;
+pub mod backup;
 pub mod browse;
 pub mod history;
 mod id;
@@ -10,7 +11,9 @@ pub mod search;
 pub mod session;
 
 use std::path::Path;
+use std::time::SystemTime;
 
+use sqlx::migrate::Migrator;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode};
 
 pub use id::{IdKind, new_id};
@@ -21,8 +24,11 @@ pub type Connection = sqlx::SqliteConnection;
 
 const DB_FILE: &str = "suisei.db";
 
+pub static MIGRATOR: Migrator = sqlx::migrate!();
+
 /// データの置き場所にある DB を開き、マイグレーションを適用する。
-pub async fn open(data_dir: &Path) -> Result<Pool, sqlx::Error> {
+/// 未適用のマイグレーションがあれば、適用の前に `backup_dir` へ写す。
+pub async fn open(data_dir: &Path, backup_dir: &Path) -> Result<Pool, sqlx::Error> {
     std::fs::create_dir_all(data_dir)?;
     let options = SqliteConnectOptions::new()
         .filename(data_dir.join(DB_FILE))
@@ -30,6 +36,11 @@ pub async fn open(data_dir: &Path) -> Result<Pool, sqlx::Error> {
         .journal_mode(SqliteJournalMode::Wal)
         .foreign_keys(true);
     let pool = Pool::connect_with(options).await?;
+    if let Some(path) =
+        backup::before_migrate(&pool, &MIGRATOR, backup_dir, SystemTime::now()).await?
+    {
+        tracing::info!(path = %path.display(), "backed up database before migration");
+    }
     migrate(&pool).await?;
     Ok(pool)
 }
@@ -49,6 +60,6 @@ pub async fn open_in_memory() -> Result<Pool, sqlx::Error> {
 }
 
 async fn migrate(pool: &Pool) -> Result<(), sqlx::Error> {
-    sqlx::migrate!().run(pool).await?;
+    MIGRATOR.run(pool).await?;
     Ok(())
 }
