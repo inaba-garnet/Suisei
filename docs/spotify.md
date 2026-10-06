@@ -12,6 +12,11 @@
 - 開発モードのアプリは、登録した人が Spotify Premium に入っている必要がある（2026 年 2 月の変更）。README の手順に書く。
 - 認可は Authorization Code with PKCE で行い、Client Secret は持たない。秘密を設定に置かずに済むため。
 - 未設定なら Spotify 連携の API と画面を出さない。
+- 登録の手順は README に書く。
+  1. Spotify for Developers のダッシュボードでアプリを作り、使う API に Web API を選ぶ。
+  2. Redirect URI に、`SUISEI_SPOTIFY_REDIRECT_URI` と同じ値を登録する（「認可の戻り先」）。
+  3. アプリの Client ID を `SUISEI_SPOTIFY_CLIENT_ID` に、Redirect URI を `SUISEI_SPOTIFY_REDIRECT_URI` に設定してサーバーを起動し直す。
+  4. Web の設定の画面で「Spotify に接続」を押し、Spotify で許可する。
 
 ## 認可の戻り先
 - Spotify はリダイレクト URI に HTTPS か、ループバックの IP（`http://127.0.0.1:<port>`）しか認めない。LAN の `http://192.168.x.x` には戻せない。
