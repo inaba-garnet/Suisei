@@ -211,3 +211,31 @@ test('お気に入りに絞り込むと、お気に入りのアーティスト�
   await page.getByRole('button', { name: 'お気に入り', exact: true }).click()
   await expect(list.getByRole('link')).toHaveCount(2)
 })
+
+test('曲と作曲の両方で関わった人は詳細で表示を切り替え、「戻る」で開く前の画面に戻る', async ({ page }) => {
+  await mockApi(page, { loggedIn: true })
+  const { songs } = await mockArtists(page)
+  await page.goto('/library/composers')
+  await page.getByRole('link', { name: /^composer,lyricist,arranger:アのアーティスト 0/ }).click()
+  await expect(page).toHaveURL(/\?view=composer$/)
+  const views = page.getByRole('radiogroup', { name: '表示' })
+  await expect(views.getByRole('radio')).toHaveText(['曲', '作曲'])
+  await expect(views.getByRole('radio', { name: '作曲' })).toHaveAttribute('aria-checked', 'true')
+
+  await views.getByRole('radio', { name: '曲', exact: true }).click()
+  await expect(page).toHaveURL(/\?view=tracks$/)
+  await expect(page.getByTestId('song-group')).toHaveCount(2)
+  expect(songs).toEqual(['composer,lyricist,arranger', 'artist'])
+
+  // 切り替えは履歴に積まない
+  await page.getByRole('button', { name: '戻る', exact: true }).click()
+  await expect(page).toHaveURL('/library/composers')
+})
+
+test('片方の役割だけの人には表示の切り替えを出さない', async ({ page }) => {
+  await mockApi(page, { loggedIn: true })
+  await mockArtists(page)
+  await page.goto('/library/artists/ar-ア-1?view=tracks')
+  await expect(page.getByTestId('song-group')).toHaveCount(2)
+  await expect(page.getByRole('radiogroup', { name: '表示' })).toHaveCount(0)
+})

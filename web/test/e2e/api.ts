@@ -119,12 +119,15 @@ export async function mockArtists(page: Page, { rows = ['ア', 'カ', 'サ', '�
     const params = new URL(route.request().url()).searchParams
     const id = params.get('id')!
     const artist = index.flatMap(group => group.artist).find(a => a.id === id)
+    // 先頭の人だけ、曲と作曲の両方で関わる
+    const roles = id === index[0]!.artist[0]!.id ? ['albumartist', 'artist', 'composer'] : ['albumartist', 'artist']
     const self = [{ id, name: artist?.name ?? '' }]
     const guest = { id: `${id}-al-g`, name: '客演のアルバム', artist: 'ほかの人', artists: [{ id: 'ar-other', name: 'ほかの人' }], year: 2015, songCount: 8, duration: 2000 }
     songs.push(params.get('songs') ?? '')
     return route.fulfill(ok({
       artist: {
         ...artist,
+        roles,
         album: [
           { id: `${id}-al-1`, name: `${artist?.name} の一枚目`, artist: artist?.name, artists: self, year: 2010, songCount: 10, duration: 2400 },
           { id: `${id}-al-2`, name: `${artist?.name} の二枚目`, artist: artist?.name, artists: self, year: 2020, songCount: 12, duration: 2800 },
