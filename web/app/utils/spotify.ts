@@ -1,5 +1,7 @@
 /** Spotify 連携の API（`/api/spotify`）の応答の型と、表示の補助（docs/web.md の「Spotify」）。 */
 
+import { formatAgo } from '~/utils/time'
+
 export interface SpotifyLastSync {
   /** 終わった日時（UNIX 時刻のミリ秒） */
   at: number
@@ -62,22 +64,6 @@ export function lastSyncMessage(last: SpotifyLastSync, now: number): string {
   return last.matched > 0
     ? `${when}、${last.matched} 曲をお気に入りにしました`
     : `${when}、新しく取り込んだ曲はありませんでした`
-}
-
-/** 経過時間を「たった今」「5 分前」「3 時間前」「2 日前」の形にする。 */
-export function formatAgo(at: number, now: number): string {
-  const minutes = Math.floor(Math.max(0, now - at) / 60_000)
-  if (minutes < 1) {
-    return 'たった今'
-  }
-  if (minutes < 60) {
-    return `${minutes} 分前`
-  }
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) {
-    return `${hours} 時間前`
-  }
-  return `${Math.floor(hours / 24)} 日前`
 }
 
 /** 未対応の曲の行から、ローカルの曲を探す検索語を作る。曲名だけにする。アーティストの表記は Spotify とローカルで違うことが多いため。 */
