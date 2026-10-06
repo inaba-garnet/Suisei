@@ -18,7 +18,7 @@ use crate::tags;
 
 pub use crate::tags::Options;
 use build::Scanned;
-pub use scanner::{Scanner, Status};
+pub use scanner::{Report, Scanner, Status};
 
 /// 読む拡張子。lofty が読める音声に限る
 const AUDIO_EXTENSIONS: &[&str] = &[
@@ -33,6 +33,9 @@ pub enum Mode {
     Full,
 }
 
+/// 読めなかったファイルのパスを持つ上限。壊れたフォルダを丸ごと置いたときに膨らまないため。
+pub const MAX_FAILED_PATHS: usize = 100;
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Summary {
     pub files: usize,
@@ -42,6 +45,8 @@ pub struct Summary {
     pub read: usize,
     /// 読めなかったファイル
     pub failed: usize,
+    /// 読めなかったファイルの、音楽フォルダからの相対パス。[`MAX_FAILED_PATHS`] 件まで
+    pub failed_paths: Vec<String>,
     pub tracks: usize,
     pub albums: usize,
     pub artists: usize,
@@ -256,6 +261,9 @@ fn collect(
             Err(err) => {
                 summary.failed += 1;
                 tracing::warn!(path = rel, error = %err, "タグを読めない");
+                if summary.failed_paths.len() < MAX_FAILED_PATHS {
+                    summary.failed_paths.push(rel.clone());
+                }
                 // 一時的に読めないだけかもしれないので、前回の行を残す
                 if let Some(row) = previous {
                     files.push(unchanged(row));
