@@ -21,6 +21,9 @@ services:
       # SUISEI_TRUST_FORWARDED_FOR: "true"
       # `キャラクター(CV:声優)` を分けない
       # SUISEI_SPLIT_CHARACTERS: "false"
+      # DB のバックアップの間隔（既定は 1d）と残す数（既定は 7）。どちらかを 0 にすると定期の写しを止める。置き場所は /data/backup
+      # SUISEI_BACKUP_INTERVAL: 1d
+      # SUISEI_BACKUP_KEEP: "7"
     volumes:
       # DB とキャッシュ（SUISEI_DATA_DIR）
       - ./data:/data

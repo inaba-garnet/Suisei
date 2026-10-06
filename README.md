@@ -148,8 +148,42 @@ docker compose up -d
 | `SUISEI_SPLIT_CHARACTERS` | `true` | `キャラクター(CV:声優)` 形式を分離するか |
 | `SUISEI_FFMPEG` | `ffmpeg` | トランスコードに使用する ffmpeg のパス |
 | `SUISEI_TRUST_FORWARDED_FOR` | `false` | 信頼できるリバースプロキシの背後で利用する場合のみ `true` |
+| `SUISEI_BACKUP_DIR` | `SUISEI_DATA_DIR` の下の `backup` | データベースのバックアップの保存先 |
+| `SUISEI_BACKUP_INTERVAL` | `1d` | データベースのバックアップの間隔。`12h` などを指定可能。`0` で定期的なバックアップを停止 |
+| `SUISEI_BACKUP_KEEP` | `7` | 残す定期的なバックアップの数。`0` で定期的なバックアップを停止 |
 
 Docker イメージ内には ffmpeg が含まれています。
+
+## バックアップ
+
+お気に入り、評価、プレイリスト、再生回数はデータベースにのみ保存され、音楽フォルダから作り直せません。
+Suisei はデータベースを定期的に `SUISEI_BACKUP_DIR` へ書き出します。
+
+- `suisei-<日時>.db`：定期的なバックアップ。デフォルトでは 1 日ごとに作成し、7 世代を残します。
+- `suisei-pre-migrate-<版>-<日時>.db`：更新でデータベースの形式が変わるときに、変換の直前に作成します。直近の 3 つを残します。定期的なバックアップを停止しても作成します。
+
+日時は UTC です。
+
+デフォルトの保存先はデータベースと同じディスクにあるため、ディスクの故障には備えられません。
+NAS のバックアップ機能などで、`backup` ディレクトリを別のディスクや外部へ複製してください。
+
+### 復元
+
+Docker の例です。
+`./data` は `compose.yaml` で `/data` にマウントしたディレクトリです。
+
+```sh
+docker compose stop
+mkdir -p data/replaced
+mv data/suisei.db data/suisei.db-wal data/suisei.db-shm data/replaced/ 2>/dev/null
+cp data/backup/suisei-20261005T000000Z.db data/suisei.db
+docker compose start
+```
+
+`suisei.db-wal` と `suisei.db-shm` は、復元するファイルと組み合わせると壊れるおそれがあるため、必ず退避します。
+動作を確かめたら `data/replaced` を削除できます。
+
+古い版のイメージへ戻す場合は、`suisei-pre-migrate-` のバックアップを復元してから、`compose.yaml` の `image:` を元の版にします。
 
 ## 対応クライアント
 
