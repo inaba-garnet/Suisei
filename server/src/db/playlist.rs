@@ -169,10 +169,11 @@ pub async fn delete(pool: &Pool, id: &str) -> Result<bool, sqlx::Error> {
 
 /// お気に入りのプレイリストの ID。ふつうのプレイリストの ID（`pl-` と 16 進 8 文字）とは重ならない。
 pub const STARRED_ID: &str = "pl-starred";
-pub const STARRED_NAME: &str = "お気に入り";
+pub const STARRED_NAME: &str = "お気に入り（読み取り専用）";
+pub const STARRED_COMMENT: &str = "お気に入りの曲から自動で作られます。曲の追加と削除はできません";
 
 /// お気に入りのプレイリスト。曲はお気に入りの曲から作る（docs/schema.md の「お気に入りのプレイリスト」）。
-/// お気に入りの曲と日時の指紋が前に見たものと違えば、`changed_at` を `now` にする。
+/// お気に入りの曲と日時、名前とコメントの指紋が前に見たものと違えば、`changed_at` を `now` にする。
 /// お気に入りを変える処理ごとに日時を書くと、書き忘れた処理でクライアントが取り直さなくなるため。
 pub async fn starred(pool: &Pool, now: i64) -> Result<Playlist, sqlx::Error> {
     let rows = sqlx::query!(
@@ -187,6 +188,8 @@ pub async fn starred(pool: &Pool, now: i64) -> Result<Playlist, sqlx::Error> {
     .fetch_all(pool)
     .await?;
     let mut hasher = Sha256::new();
+    // 名前やコメントを変えた版に上げたときも、クライアントが取り直すように指紋に含める
+    hasher.update(format!("{STARRED_NAME}\n{STARRED_COMMENT}\n"));
     for row in &rows {
         hasher.update(format!("{}:{}\n", row.id, row.starred_at));
     }
@@ -215,7 +218,7 @@ pub async fn starred(pool: &Pool, now: i64) -> Result<Playlist, sqlx::Error> {
     Ok(Playlist {
         id: STARRED_ID.to_owned(),
         name: STARRED_NAME.to_owned(),
-        comment: None,
+        comment: Some(STARRED_COMMENT.to_owned()),
         public: false,
         created_at: state.created_at,
         changed_at,
