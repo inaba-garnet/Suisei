@@ -1376,7 +1376,11 @@ async fn starred_playlist() {
     let res = server.get("getPlaylists", "").await;
     let playlist = &res["playlists"]["playlist"][0];
     assert_eq!(playlist["id"], "pl-starred");
-    assert_eq!(playlist["name"], "お気に入り");
+    assert_eq!(playlist["name"], "お気に入り（読み取り専用）");
+    assert_eq!(
+        playlist["comment"],
+        "お気に入りの曲から自動で作られます。曲の追加と削除はできません"
+    );
     assert_eq!(playlist["songCount"], 0);
     assert_eq!(playlist["readonly"], true);
     let empty = playlist["changed"].clone();
