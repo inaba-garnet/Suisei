@@ -2,8 +2,8 @@
 # 同じディレクトリの .env に SUISEI_USER と SUISEI_PASSWORD を書き、`docker compose up -d` で起動する。
 services:
   suisei:
-    # 0.1 系の修正版を取り込む。リポジトリから手元でビルドするなら `build: .` に置き換える
-    image: ghcr.io/inaba-garnet/suisei:0.1
+    # 0.2 系の修正版を取り込む。リポジトリから手元でビルドするなら `build: .` に置き換える
+    image: ghcr.io/inaba-garnet/suisei:0.2
     restart: unless-stopped
     ports:
       - "4533:4533"
