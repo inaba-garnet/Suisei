@@ -21,6 +21,8 @@ const MAX_RETRY_AFTER: Duration = Duration::from_secs(120);
 pub struct Endpoints {
     pub accounts: String,
     pub api: String,
+    /// 一ページの一時的な失敗（接続、タイムアウト、5xx）をやり直すまでの間隔。数だけやり直す。テストでは短くする
+    pub retry_delays: Vec<Duration>,
 }
 
 impl Default for Endpoints {
@@ -28,6 +30,7 @@ impl Default for Endpoints {
         Self {
             accounts: "https://accounts.spotify.com".into(),
             api: "https://api.spotify.com".into(),
+            retry_delays: [1, 2, 4].map(Duration::from_secs).into(),
         }
     }
 }
@@ -49,6 +52,19 @@ impl std::fmt::Display for Error {
             Self::Unauthorized => write!(f, "access token was rejected"),
             Self::Status(status, body) => write!(f, "spotify returned {status}: {body}"),
             Self::Http(err) => write!(f, "{err}"),
+        }
+    }
+}
+
+impl Error {
+    /// やり直せば通りそうな失敗。接続の切断、タイムアウト、5xx。JSON として読めない応答はやり直さない
+    fn is_transient(&self) -> bool {
+        match self {
+            Self::Status(status, _) => status.is_server_error(),
+            Self::Http(err) => {
+                err.is_connect() || err.is_timeout() || err.is_request() || err.is_body()
+            }
+            Self::InvalidGrant | Self::Unauthorized => false,
         }
     }
 }
@@ -158,7 +174,28 @@ impl Client {
     }
 
     /// お気に入りの曲の一ページ。次のページがあれば true も返す。
+    /// 一時的な失敗は `retry_delays` の間隔でやり直す。曲が多いと、途中のページで切れやすいため。
     pub async fn saved_tracks(
+        &self,
+        access_token: &str,
+        offset: usize,
+    ) -> Result<(Vec<SpotifyTrack>, bool), Error> {
+        let mut delays = self.endpoints.retry_delays.iter();
+        loop {
+            match self.saved_tracks_once(access_token, offset).await {
+                Err(err) if err.is_transient() => {
+                    let Some(&wait) = delays.next() else {
+                        return Err(err);
+                    };
+                    tracing::info!(%err, offset, ?wait, "spotify request failed; retrying");
+                    tokio::time::sleep(wait).await;
+                }
+                result => return result,
+            }
+        }
+    }
+
+    async fn saved_tracks_once(
         &self,
         access_token: &str,
         offset: usize,

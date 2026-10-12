@@ -38,6 +38,8 @@ struct Mock {
     /// 取り消されたリフレッシュトークン
     revoked: Vec<String>,
     track_requests: usize,
+    /// これから `/v1/me/tracks` に返す失敗の応答。一つ返すごとに減る
+    failures: Vec<StatusCode>,
 }
 
 type Shared = Arc<Mutex<Mock>>;
@@ -95,6 +97,9 @@ async fn saved_tracks(
     // アーティストの名前を日本語の表記で受け取る
     assert_eq!(headers[header::ACCEPT_LANGUAGE], "ja");
     mock.track_requests += 1;
+    if !mock.failures.is_empty() {
+        return mock.failures.remove(0).into_response();
+    }
     let (offset, limit) = (query["offset"], query["limit"]);
     let items: Vec<Value> = mock
         .tracks
@@ -187,6 +192,7 @@ impl Fixture {
             Endpoints {
                 accounts: base.clone(),
                 api: base,
+                retry_delays: vec![Duration::from_millis(10); 3],
             },
         );
         let router = suisei::router(AppState {
@@ -373,6 +379,55 @@ async fn sync_stars_matched_tracks() {
             .iter()
             .all(|t| t["trackId"].is_null())
     );
+}
+
+#[tokio::test]
+async fn transient_failures_are_retried() {
+    let f = Fixture::new().await;
+    f.connect().await;
+    // 一ページ目が二度続けて 5xx になっても、やり直して最後まで読む
+    f.mock.lock().unwrap().failures = vec![
+        StatusCode::SERVICE_UNAVAILABLE,
+        StatusCode::INTERNAL_SERVER_ERROR,
+    ];
+    f.request("POST", "/api/spotify/sync", None).await;
+    let status = f.wait_idle().await;
+    assert_eq!(status["lastSync"]["error"], Value::Null);
+    assert_eq!(status["lastSync"]["fetched"], 53);
+    assert_eq!(f.mock.lock().unwrap().track_requests, 4);
+}
+
+#[tokio::test]
+async fn gives_up_after_retries_and_keeps_links() {
+    let f = Fixture::new().await;
+    let scanner = Scanner::new(f.pool.clone(), f.dir.path().to_owned(), Default::default());
+    scanner.start(Mode::Quick);
+    scanner.wait().await;
+    f.connect().await;
+    f.request("POST", "/api/spotify/sync", None).await;
+    f.wait_idle().await;
+    let before = f.links().await;
+    assert_eq!(before.len(), 53);
+
+    // 一度目と三回のやり直しがどれも 5xx なら諦め、前に読んだ対応を残す
+    for (failure, requests) in [
+        (StatusCode::SERVICE_UNAVAILABLE, 4),
+        // 4xx はやり直さない
+        (StatusCode::FORBIDDEN, 1),
+    ] {
+        {
+            let mut mock = f.mock.lock().unwrap();
+            mock.track_requests = 0;
+            mock.failures = vec![failure; 5];
+        }
+        // 前の取り込みは、ロックを放す前に終わったと示す。始まるまで待つ
+        wait_for(|| async { f.spotify.start_sync() }).await;
+        let status = f.wait_idle().await;
+        let error = status["lastSync"]["error"].as_str().unwrap();
+        assert!(error.contains(failure.as_str()), "{error}");
+        assert_eq!(f.mock.lock().unwrap().track_requests, requests);
+        assert_eq!(f.links().await, before);
+    }
 }
 
 #[tokio::test]
