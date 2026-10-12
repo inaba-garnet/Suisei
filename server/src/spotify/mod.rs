@@ -196,11 +196,13 @@ impl Spotify {
     }
 
     pub async fn status(&self) -> Result<Status, sqlx::Error> {
+        // finish は結果を書いてから syncing を下ろすので、syncing を先に読む。逆だと、終わったと示しながら前の結果を返しうる
+        let syncing = self.syncing.load(Ordering::Acquire);
         // ロックを持ったまま待たないよう、先に写す
         let last_sync = self.last.lock().expect("状態のロックが壊れた").clone();
         Ok(Status {
             connected: db::spotify::account(&self.pool).await?.is_some(),
-            syncing: self.syncing.load(Ordering::Acquire),
+            syncing,
             last_sync,
             counts: db::spotify::counts(&self.pool).await?,
         })
