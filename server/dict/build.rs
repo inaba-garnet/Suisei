@@ -1,5 +1,6 @@
 //! 形態素解析の辞書を作る（docs/server.md の「形態素解析」）。
 //! IPADIC に Mozc UT 辞書の漢字を含む語を固有名詞として足し、lindera の形式に変換する。
+//! IPADIC の一般語（固有名詞を除く）と同じ表記の語は足さない。
 //! 取得したファイルは `SUISEI_DICT_CACHE`（なければ `OUT_DIR`）に置き、ハッシュが合えば取得し直さない。
 
 use std::collections::HashSet;
@@ -87,7 +88,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     for source in &UT {
         ut.push(fetch(source, &sources_dir)?);
     }
-    write_ut(&ut, &input_dir.join("ut.csv"))?;
+    let common = common_surfaces(&input_dir)?;
+    write_ut(&ut, &common, &input_dir.join("ut.csv"))?;
 
     let metadata: Metadata = serde_json::from_str(METADATA)?;
     DictionaryBuilder::new(metadata).build_dictionary(&input_dir, &out_dir.join("suisei"))?;
@@ -142,9 +144,34 @@ fn extract_ipadic(archive: &Path, dir: &Path) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+/// IPADIC の固有名詞を除く語の表記。
+fn common_surfaces(dir: &Path) -> Result<HashSet<String>, Box<dyn Error>> {
+    let mut surfaces = HashSet::new();
+    for entry in fs::read_dir(dir)? {
+        let path = entry?.path();
+        if path.extension().is_none_or(|ext| ext != "csv") {
+            continue;
+        }
+        for line in BufReader::new(fs::File::open(&path)?).lines() {
+            let line = line?;
+            // 表記、左文脈 ID、右文脈 ID、コスト、品詞、品詞細分類 1、…
+            let mut fields = line.split(',');
+            let (Some(surface), Some(subcategory)) = (fields.next(), fields.nth(4)) else {
+                continue;
+            };
+            if subcategory != "固有名詞" {
+                surfaces.insert(surface.to_owned());
+            }
+        }
+    }
+    Ok(surfaces)
+}
+
 /// UT 辞書の漢字を含む語を、IPADIC の固有名詞の行にする。
 /// 長い語ほど小さいコストにする。同じコストだと、短い語に分けたほうが安くなるため。
-fn write_ut(files: &[PathBuf], out: &Path) -> Result<(), Box<dyn Error>> {
+/// `common`（IPADIC の一般語）と同じ表記の語は足さない。足すとコストが一般語より小さく、
+/// `大切`（タイセツ）を地名の `オオギリ` で読むように、曲名の一般語を人名や記事名の読みで読み違えるため。
+fn write_ut(files: &[PathBuf], common: &HashSet<String>, out: &Path) -> Result<(), Box<dyn Error>> {
     let mut seen = HashSet::new();
     let mut csv = std::io::BufWriter::new(fs::File::create(out)?);
     for file in files {
@@ -158,6 +185,7 @@ fn write_ut(files: &[PathBuf], out: &Path) -> Result<(), Box<dyn Error>> {
             };
             if !surface.chars().any(is_kanji)
                 || surface.contains([',', '"'])
+                || common.contains(surface)
                 || !reading.chars().all(|c| is_hiragana(c) || c == 'ー')
                 || !seen.insert(surface.to_owned())
             {
