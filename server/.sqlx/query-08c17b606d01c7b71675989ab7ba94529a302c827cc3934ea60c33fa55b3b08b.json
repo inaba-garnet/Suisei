@@ -1,0 +1,86 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id AS \"id!\", name, sort_name, sort_name_source, auto_sort_name,\n                      auto_sort_name_source\n               FROM artist WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "name": "sort_name",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "sort_name"
+          }
+        }
+      },
+      {
+        "name": "sort_name_source",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "sort_name_source"
+          }
+        }
+      },
+      {
+        "name": "auto_sort_name",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "auto_sort_name"
+          }
+        }
+      },
+      {
+        "name": "auto_sort_name_source",
+        "ordinal": 5,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "auto_sort_name_source"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "08c17b606d01c7b71675989ab7ba94529a302c827cc3934ea60c33fa55b3b08b"
+}

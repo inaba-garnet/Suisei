@@ -1,5 +1,4 @@
 //! 読みの規則（docs/schema.md の「日本語の並べ替え」）。
-//! 手動設定はここでは扱わない。
 
 use unicode_normalization::UnicodeNormalization;
 use wana_kana::ConvertJapanese;
@@ -14,6 +13,7 @@ pub struct Reading {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReadingSource {
+    Manual,
     SortTag,
     Name,
     Estimated,
@@ -23,11 +23,23 @@ impl ReadingSource {
     /// DB の `sort_name_source` に入れる値
     pub fn as_str(self) -> &'static str {
         match self {
+            Self::Manual => "manual",
             Self::SortTag => "sort_tag",
             Self::Name => "name",
             Self::Estimated => "estimated",
         }
     }
+}
+
+/// 手動で入力した読みを、保存する形にそろえる。ひらがなはカタカナにし、英字、数字、記号は残す。
+/// 空か、漢字を含めば None。漢字の混ざった読みは五十音の行に並ばないため。
+pub fn manual(input: &str) -> Option<String> {
+    let input: String = input.nfkc().collect();
+    let input = input.trim();
+    if input.is_empty() || input.chars().any(is_kanji) {
+        return None;
+    }
+    Some(hiragana_to_katakana(input))
 }
 
 /// 名前とソート用タグから読みを決める。どちらからも得られなければ、形態素解析で推定する。
@@ -365,6 +377,15 @@ mod tests {
             source(reading("返信願望", Some("Henshin Ganbou (Short ver.)"))),
             Some(ReadingSource::Estimated)
         );
+    }
+
+    #[test]
+    fn manual_reading() {
+        assert_eq!(manual(" よねづ けんし "), Some("ヨネヅ ケンシ".into()));
+        assert_eq!(manual("ｶﾀｶﾅ"), Some("カタカナ".into()));
+        assert_eq!(manual("ClariS"), Some("ClariS".into()));
+        assert_eq!(manual("米津"), None);
+        assert_eq!(manual(" "), None);
     }
 
     #[test]

@@ -1,0 +1,98 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id AS \"id!\", name, display_artist, sort_name, sort_name_source,\n                      auto_sort_name, auto_sort_name_source\n               FROM album WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "name": "display_artist",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "display_artist"
+          }
+        }
+      },
+      {
+        "name": "sort_name",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "sort_name"
+          }
+        }
+      },
+      {
+        "name": "sort_name_source",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "sort_name_source"
+          }
+        }
+      },
+      {
+        "name": "auto_sort_name",
+        "ordinal": 5,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "auto_sort_name"
+          }
+        }
+      },
+      {
+        "name": "auto_sort_name_source",
+        "ordinal": 6,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "auto_sort_name_source"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "f4ed056774822547776bd3797dec562c57a1f6d7fd45c150b3ff06b308ea5929"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE album SET manual_sort_name = ?, manual_name = ?, sort_name = ?,\n                     sort_name_source = ?, sort_key = ?\n                 WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "201f69d65c9b125565a183adcf31f2994887e61badc74b95d6d3a12c1a113dde"
+}

@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id AS \"id!\", manual_name AS \"name!\", manual_sort_name AS \"reading!\" FROM artist\n               WHERE manual_sort_name IS NOT NULL AND manual_name IS NOT NULL\n           UNION ALL\n           SELECT id, manual_name, manual_sort_name FROM album\n               WHERE manual_sort_name IS NOT NULL AND manual_name IS NOT NULL\n           UNION ALL\n           SELECT id, manual_name, manual_sort_name FROM track\n               WHERE manual_sort_name IS NOT NULL AND manual_name IS NOT NULL",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "name!",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "manual_name"
+          }
+        }
+      },
+      {
+        "name": "reading!",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "manual_sort_name"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "400b9a9dd0000a84f7d837a1d7ecc25aad30d92d90758a5402d7a6cebb43bb41"
+}

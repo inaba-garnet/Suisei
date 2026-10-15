@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT name, sort_name, display_artist FROM album WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "name",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "name": "sort_name",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "sort_name"
+          }
+        }
+      },
+      {
+        "name": "display_artist",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "album",
+            "name": "display_artist"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "593e4571224a66dd1bf3ae44d4a00703497ea619acf8b78b47359a64cda970af"
+}

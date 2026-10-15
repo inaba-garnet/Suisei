@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT name, auto_sort_name, auto_sort_name_source FROM artist WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "name",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "name": "auto_sort_name",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "auto_sort_name"
+          }
+        }
+      },
+      {
+        "name": "auto_sort_name_source",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "auto_sort_name_source"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "738e7198b519b484ed21ffc10f86c6842deaa6e95cf1b1e642827f21997e4c51"
+}

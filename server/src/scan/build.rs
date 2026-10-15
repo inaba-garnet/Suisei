@@ -6,11 +6,13 @@ use std::path::Path;
 
 use super::Images;
 use crate::db::library::{
-    AlbumRow, ArtistRow, ContributorRow, CreditRow, FileRow, GenreRow, Library, Snapshot, TrackRow,
+    AlbumRow, ArtistRow, ContributorRow, CreditRow, FileRow, GenreRow, Library, Manual, Snapshot,
+    TrackRow,
 };
 use crate::db::{IdKind, new_id};
 use crate::tags::{
-    Contributor, Credit, Options, RawTags, TrackInfo, reading, search_text, sort_key, to_stored,
+    Contributor, Credit, Options, RawTags, Reading, ReadingSource, TrackInfo, album_text,
+    artist_text, reading, sort_key, to_stored, track_text,
 };
 
 /// スキャンで見つけたファイル。
@@ -96,6 +98,18 @@ fn fresh_id(kind: IdKind, taken: &mut HashSet<String>) -> String {
         if taken.insert(id.clone()) {
             return id;
         }
+    }
+}
+
+/// 手動の読みは、設定したときと名前が同じときだけ採る（docs/schema.md の「日本語の並べ替え」）。
+/// 名前が変われば、手動の読みが合わなくなっているかもしれないため。
+fn with_manual(auto: Option<&Reading>, manual: Option<&Manual>, name: &str) -> Option<Reading> {
+    match manual {
+        Some(manual) if manual.name == name => Some(Reading {
+            kana: manual.reading.clone(),
+            source: ReadingSource::Manual,
+        }),
+        _ => auto.cloned(),
     }
 }
 
@@ -300,7 +314,19 @@ pub fn build(
         .map(|(k, id)| (k.as_str(), id.as_str()))
         .collect();
 
-    let artists = artist_rows(&infos, &artist_keys, &artist_ids);
+    // ID ごとの手動の読み。マージで消える ID の読みは、残る ID に読みがなければ引き継ぐ
+    let mut manual: HashMap<&str, &Manual> = snapshot
+        .manual
+        .iter()
+        .map(|(id, m)| (id.as_str(), m))
+        .collect();
+    for (old_id, new_id) in &aliases {
+        if let Some(m) = snapshot.manual.get(old_id) {
+            manual.entry(new_id.as_str()).or_insert(m);
+        }
+    }
+
+    let artists = artist_rows(&infos, &artist_keys, &artist_ids, &manual);
     let created_at: HashMap<&str, i64> = snapshot
         .albums
         .iter()
@@ -329,6 +355,7 @@ pub fn build(
                 .collect();
             AlbumRow {
                 cover_path: cover_path(&members, &files, images),
+                created_at: created_at.get(id.as_str()).copied().unwrap_or(now),
                 ..album_row(
                     id,
                     key,
@@ -336,7 +363,7 @@ pub fn build(
                     &files,
                     &infos,
                     &readings(credits),
-                    created_at.get(id.as_str()).copied().unwrap_or(now),
+                    manual.get(id.as_str()).copied(),
                 )
             }
         })
@@ -355,25 +382,26 @@ pub fn build(
     for (t, id) in track_ids.iter().enumerate() {
         let primary = primaries[t];
         let info = &infos[primary];
-        let reading = info.reading.as_ref();
+        let auto = info.reading.as_ref();
+        let reading = with_manual(auto, manual.get(id.as_str()).copied(), &info.title);
+        let kana = reading.as_ref().map(|r| r.kana.as_str());
         tracks.push(TrackRow {
             id: id.clone(),
             match_key: track_keys[t].clone(),
             album_id: album_ids[track_album[t]].clone(),
             title: info.title.clone(),
             display_artist: info.display_artist.clone(),
-            sort_name: reading.map(|r| r.kana.clone()),
-            sort_name_source: reading.map(|r| r.source.as_str().to_owned()),
-            sort_key: sort_key(&info.title, reading.map(|r| r.kana.as_str())),
-            search_text: search_text(
-                [
-                    info.title.as_str(),
-                    reading.map_or("", |r| r.kana.as_str()),
-                    &info.display_artist,
-                    &albums[track_album[t]].name,
-                ]
-                .into_iter()
-                .chain(readings(&info.artists)),
+            sort_name: kana.map(str::to_owned),
+            sort_name_source: reading.as_ref().map(|r| r.source.as_str().to_owned()),
+            auto_sort_name: auto.map(|r| r.kana.clone()),
+            auto_sort_name_source: auto.map(|r| r.source.as_str().to_owned()),
+            sort_key: sort_key(&info.title, kana),
+            search_text: track_text(
+                &info.title,
+                kana,
+                &info.display_artist,
+                &albums[track_album[t]].name,
+                readings(&info.artists),
             ),
             disc_number: info.disc_number.map(i64::from),
             track_number: info.track_number.map(i64::from),
@@ -526,7 +554,7 @@ fn album_row(
     files: &[Scanned],
     infos: &[TrackInfo],
     artist_readings: &[&str],
-    created_at: i64,
+    manual: Option<&Manual>,
 ) -> AlbumRow {
     let albums = || members.iter().map(|&f| &infos[f].album);
     let name = majority(albums().map(|a| a.name.as_str()))
@@ -540,32 +568,33 @@ fn album_row(
             .iter()
             .filter_map(|&f| files[f].tags.album_sort.as_deref()),
     );
-    let reading = reading(&name, sort);
-    let text = search_text(
-        [
-            name.as_str(),
-            reading.as_ref().map_or("", |r| r.kana.as_str()),
-            &display_artist,
-        ]
-        .into_iter()
-        .chain(artist_readings.iter().copied()),
+    let auto = reading(&name, sort);
+    let reading = with_manual(auto.as_ref(), manual, &name);
+    let kana = reading.as_ref().map(|r| r.kana.as_str());
+    let text = album_text(
+        &name,
+        kana,
+        &display_artist,
+        artist_readings.iter().copied(),
     );
     AlbumRow {
         id: id.to_owned(),
         match_key: key.to_owned(),
         display_artist,
-        sort_name: reading.as_ref().map(|r| r.kana.clone()),
+        sort_name: kana.map(str::to_owned),
         sort_name_source: reading.as_ref().map(|r| r.source.as_str().to_owned()),
-        sort_key: sort_key(&name, reading.as_ref().map(|r| r.kana.as_str())),
+        auto_sort_name: auto.as_ref().map(|r| r.kana.clone()),
+        auto_sort_name_source: auto.as_ref().map(|r| r.source.as_str().to_owned()),
+        sort_key: sort_key(&name, kana),
         search_text: text,
         year: members
             .iter()
             .filter_map(|&f| infos[f].year)
             .max()
             .map(i64::from),
-        created_at,
+        // 初回検出の日時とカバーアートは呼び出し側で埋める
+        created_at: 0,
         compilation: members.iter().any(|&f| infos[f].album.compilation),
-        // カバーアートは呼び出し側で埋める
         cover_path: None,
         name,
     }
@@ -589,7 +618,12 @@ fn genre_names(infos: &[TrackInfo]) -> HashMap<&str, &str> {
 
 /// アーティストの表記と読みは、そのアーティストが載っているファイルの多数決で決める。
 /// 一つのファイルは、曲とアルバムの両方に載っていても一票とする。
-fn artist_rows(infos: &[TrackInfo], keys: &[String], ids: &[String]) -> Vec<ArtistRow> {
+fn artist_rows(
+    infos: &[TrackInfo],
+    keys: &[String],
+    ids: &[String],
+    manual: &HashMap<&str, &Manual>,
+) -> Vec<ArtistRow> {
     let index: HashMap<&str, usize> = keys
         .iter()
         .enumerate()
@@ -625,17 +659,18 @@ fn artist_rows(infos: &[TrackInfo], keys: &[String], ids: &[String]) -> Vec<Arti
             let name = majority(names[i].iter().copied())
                 .unwrap_or_default()
                 .to_owned();
-            let reading = reading(&name, majority(sorts[i].iter().copied()));
+            let auto = reading(&name, majority(sorts[i].iter().copied()));
+            let reading = with_manual(auto.as_ref(), manual.get(id.as_str()).copied(), &name);
+            let kana = reading.as_ref().map(|r| r.kana.as_str());
             ArtistRow {
                 id: id.clone(),
                 match_key: key.clone(),
-                sort_name: reading.as_ref().map(|r| r.kana.clone()),
+                sort_name: kana.map(str::to_owned),
                 sort_name_source: reading.as_ref().map(|r| r.source.as_str().to_owned()),
-                sort_key: sort_key(&name, reading.as_ref().map(|r| r.kana.as_str())),
-                search_text: search_text([
-                    name.as_str(),
-                    reading.as_ref().map_or("", |r| r.kana.as_str()),
-                ]),
+                auto_sort_name: auto.as_ref().map(|r| r.kana.clone()),
+                auto_sort_name_source: auto.as_ref().map(|r| r.source.as_str().to_owned()),
+                sort_key: sort_key(&name, kana),
+                search_text: artist_text(&name, kana),
                 name,
             }
         })

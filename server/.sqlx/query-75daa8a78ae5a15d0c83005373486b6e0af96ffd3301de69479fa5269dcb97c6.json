@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT title, auto_sort_name, auto_sort_name_source FROM track WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "title",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "name": "auto_sort_name",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "auto_sort_name"
+          }
+        }
+      },
+      {
+        "name": "auto_sort_name_source",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "track",
+            "name": "auto_sort_name_source"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "75daa8a78ae5a15d0c83005373486b6e0af96ffd3301de69479fa5269dcb97c6"
+}

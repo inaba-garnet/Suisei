@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE album SET\n             manual_name = CASE WHEN manual_sort_name IS NULL\n                 THEN (SELECT manual_name FROM album WHERE id = ?) ELSE manual_name END,\n             manual_sort_name = COALESCE(manual_sort_name,\n                 (SELECT manual_sort_name FROM album WHERE id = ?))\n         WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "37d106d18d67ae075a39dc384b397201a406453dc6e8e57edf130e3e9d1532e5"
+}

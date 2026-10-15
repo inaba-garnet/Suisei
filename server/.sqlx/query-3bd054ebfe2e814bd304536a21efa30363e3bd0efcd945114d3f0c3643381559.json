@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE artist SET manual_sort_name = ?, manual_name = ?, sort_name = ?,\n                     sort_name_source = ?, sort_key = ?, search_text = ?\n                 WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": []
+  },
+  "hash": "3bd054ebfe2e814bd304536a21efa30363e3bd0efcd945114d3f0c3643381559"
+}

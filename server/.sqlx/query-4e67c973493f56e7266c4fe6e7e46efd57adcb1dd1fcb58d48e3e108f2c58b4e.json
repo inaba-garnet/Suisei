@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE track SET\n             manual_name = CASE WHEN manual_sort_name IS NULL\n                 THEN (SELECT manual_name FROM track WHERE id = ?) ELSE manual_name END,\n             manual_sort_name = COALESCE(manual_sort_name,\n                 (SELECT manual_sort_name FROM track WHERE id = ?))\n         WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "4e67c973493f56e7266c4fe6e7e46efd57adcb1dd1fcb58d48e3e108f2c58b4e"
+}

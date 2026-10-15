@@ -35,6 +35,40 @@ pub fn search_text<'a>(fields: impl IntoIterator<Item = &'a str>) -> String {
     text
 }
 
+/// アーティストの照らす文字列。名前と読み。
+pub fn artist_text(name: &str, reading: Option<&str>) -> String {
+    search_text([name, reading.unwrap_or_default()])
+}
+
+/// アルバムの照らす文字列。名前と読み、表示用アーティスト、アルバムアーティストの読み。
+pub fn album_text<'a>(
+    name: &'a str,
+    reading: Option<&'a str>,
+    display_artist: &'a str,
+    artist_readings: impl IntoIterator<Item = &'a str>,
+) -> String {
+    search_text(
+        [name, reading.unwrap_or_default(), display_artist]
+            .into_iter()
+            .chain(artist_readings),
+    )
+}
+
+/// 曲の照らす文字列。曲名と読み、表示用アーティスト、アルバム名、曲のアーティストの読み。
+pub fn track_text<'a>(
+    title: &'a str,
+    reading: Option<&'a str>,
+    display_artist: &'a str,
+    album: &'a str,
+    artist_readings: impl IntoIterator<Item = &'a str>,
+) -> String {
+    search_text(
+        [title, reading.unwrap_or_default(), display_artist, album]
+            .into_iter()
+            .chain(artist_readings),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

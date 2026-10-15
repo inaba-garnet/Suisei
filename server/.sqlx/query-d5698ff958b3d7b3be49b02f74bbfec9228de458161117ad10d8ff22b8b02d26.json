@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT a.sort_name AS \"sort_name!\" FROM album_artist aa\n           JOIN artist a ON a.id = aa.artist_id\n           WHERE aa.album_id = ? AND a.sort_name IS NOT NULL ORDER BY aa.position",
+  "describe": {
+    "columns": [
+      {
+        "name": "sort_name!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "artist",
+            "name": "sort_name"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "d5698ff958b3d7b3be49b02f74bbfec9228de458161117ad10d8ff22b8b02d26"
+}

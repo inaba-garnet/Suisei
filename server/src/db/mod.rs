@@ -7,6 +7,7 @@ pub mod history;
 mod id;
 pub mod library;
 pub mod playlist;
+pub mod reading;
 pub mod search;
 pub mod session;
 pub mod settings;
