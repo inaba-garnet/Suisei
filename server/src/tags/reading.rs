@@ -242,6 +242,12 @@ mod tests {
             estimated("サンガツノパンタシア")
         );
         assert_eq!(reading("第2章", None), estimated("ダイ2ショウ"));
+        // IPADIC の一般語は、UT 辞書の地名や人名の読み（オオギリ）で読まない
+        assert_eq!(
+            reading("大切なお知らせ", None),
+            estimated("タイセツナオシラセ")
+        );
+        assert_eq!(reading("大切な事", None), estimated("タイセツナコト"));
         // ソート用タグがあれば、そちらを採る
         assert_eq!(
             reading("米津玄師", Some("よねず けんし")),
