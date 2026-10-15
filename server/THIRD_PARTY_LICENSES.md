@@ -2363,7 +2363,7 @@ DEALINGS IN THE SOFTWARE.
 
 ## MIT License
 
-[hyper-rustls 0.27.10](https://github.com/rustls/hyper-rustls)、[rustls-native-certs 0.8.4](https://github.com/rustls/rustls-native-certs)、[rustls 0.23.45](https://github.com/rustls/rustls)
+[hyper-rustls 0.27.10](https://github.com/rustls/hyper-rustls)、[rustls-native-certs 0.8.4](https://github.com/rustls/rustls-native-certs)、[rustls 0.23.46](https://github.com/rustls/rustls)
 
 ~~~~text
 Copyright (c) 2016 Joseph Birr-Pixton <jpixton@gmail.com>
