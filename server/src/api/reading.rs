@@ -76,6 +76,22 @@ pub(super) async fn list(
     }
 }
 
+/// 一件の読みと出どころ、自動の読みを返す。
+pub(super) async fn get(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Response {
+    if let Err(status) = session::require(&state, &headers).await {
+        return status.into_response();
+    }
+    match reading::find(&state.db, &id).await {
+        Ok(Some(entry)) => Json(to_json(entry)).into_response(),
+        Ok(None) => StatusCode::NOT_FOUND.into_response(),
+        Err(err) => internal(err),
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub(super) struct Body {
     /// None なら手動の読みを外し、自動の読みに戻す

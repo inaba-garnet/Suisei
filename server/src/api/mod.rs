@@ -73,7 +73,7 @@ pub fn router_with(state: AppState, web: Web) -> Router {
         .route("/api/me", get(session::me))
         .route("/api/scan", get(scan_status::get))
         .route("/api/readings", get(reading::list))
-        .route("/api/readings/{id}", put(reading::put))
+        .route("/api/readings/{id}", get(reading::get).put(reading::put))
         .route("/api/settings", get(settings::get).put(settings::put))
         .route(
             "/api/spotify",

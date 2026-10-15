@@ -139,6 +139,15 @@ pub async fn list(
     Ok(entries)
 }
 
+/// 一件を返す。知らない ID なら None。
+pub async fn find(pool: &Pool, id: &str) -> Result<Option<Entry>, sqlx::Error> {
+    let Some(kind) = Kind::of(id) else {
+        return Ok(None);
+    };
+    let mut conn = pool.acquire().await?;
+    get(&mut conn, kind, id).await
+}
+
 /// 手動の読みを設定する。`reading` が None なら手動の読みを外し、自動の読みに戻す。
 /// 知らない ID なら None。`reading` は [`crate::tags::manual_reading`] でそろえたものを渡す。
 pub async fn set(

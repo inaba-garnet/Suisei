@@ -166,6 +166,10 @@ async fn manual_reading_is_used_and_kept_by_scans() {
     assert_eq!(body["source"], "manual");
     assert_eq!(body["autoReading"], auto);
 
+    let (status, found) = s.get(&format!("/api/readings/{id}")).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(found, body);
+
     // 並べ替えと検索にすぐ効く。アーティストの読みで、そのアルバムと曲も見つかる
     let artists = s.rest("getArtists", "").await;
     assert_eq!(
@@ -264,6 +268,10 @@ async fn rejects_bad_requests() {
         StatusCode::NOT_FOUND
     );
     assert_eq!(s.set("pl-1", json!("ア")).await.0, StatusCode::NOT_FOUND);
+    assert_eq!(
+        s.get("/api/readings/ar-ffffffff").await.0,
+        StatusCode::NOT_FOUND
+    );
 
     let (status, _) = s
         .send(
