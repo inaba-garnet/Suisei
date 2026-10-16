@@ -1,7 +1,13 @@
 import type { Album, Song } from '~/utils/subsonic'
 
-/** メニューで操作する対象。アルバムは、操作をアルバムの全曲に対して行う。 */
-export type SongMenuTarget = { kind: 'song', song: Song } | { kind: 'album', album: Album, songs: Song[] }
+/**
+ * メニューで操作する対象。アルバムは、操作をアルバムの全曲に対して行う。
+ * アーティストは、詳細で並べている順の全曲に対して行う。曲をまだ読んでいない表示もあるので、押したときに読む。
+ */
+export type SongMenuTarget =
+  | { kind: 'song', song: Song }
+  | { kind: 'album', album: Album, songs: Song[] }
+  | { kind: 'artist', artist: { id: string, name: string }, songs: () => Promise<Song[]> }
 
 interface SongMenuState {
   target: SongMenuTarget
@@ -10,7 +16,7 @@ interface SongMenuState {
 }
 
 /**
- * 曲とアルバムの「…」のメニュー（docs/web.md の「メニュー」）。メニューは layout に一つだけ置き、行の「…」は開く対象とボタンを渡す。
+ * 曲、アルバム、アーティストの「…」のメニュー（docs/web.md の「メニュー」）。メニューは layout に一つだけ置き、行の「…」は開く対象とボタンを渡す。
  * 曲の一覧は見える行だけを描いて行を作り直すので、行ごとにメニューを持たせないため。
  */
 export function useSongMenu() {

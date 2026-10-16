@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import type { Playlist } from '~/utils/subsonic'
+import type { Playlist, Song } from '~/utils/subsonic'
 import { onKeyStroke, useEventListener, useMediaQuery } from '@vueuse/core'
-import { ChevronLeft, Disc3, ListEnd, ListPlus, ListStart, MicVocal, Plus } from 'lucide-vue-next'
+import { ChevronLeft, Disc3, ListEnd, ListPlus, ListStart, MicVocal, PencilLine, Plus } from 'lucide-vue-next'
 
 /**
- * 曲とアルバムの「…」のメニュー（docs/web.md の「メニュー」）。layout に一つだけ置く。
+ * 曲、アルバム、アーティストの「…」のメニュー（docs/web.md の「メニュー」）。layout に一つだけ置く。
  * PC は「…」のボタンの横に小さく出し、スマホは下から出すシートにする。
  */
 const { state, close } = useSongMenu()
+const { open: editInfo } = useInfoEditor()
 const { playNext, addToQueue } = usePlayer()
 const { show } = useToast()
 const subsonic = useSubsonic()
@@ -16,29 +17,45 @@ const route = useRoute()
 const wide = useMediaQuery('(min-width: 48rem)')
 
 const target = computed(() => state.value?.target)
-const songs = computed(() => {
+
+/** 操作する曲。アーティストは押したときに読む。 */
+async function songsOf(): Promise<Song[]> {
   const t = target.value
-  return t ? (t.kind === 'song' ? [t.song] : [...t.songs]) : []
-})
-const title = computed(() => {
+  if (!t) {
+    return []
+  }
+  switch (t.kind) {
+    case 'song':
+      return [t.song]
+    case 'album':
+      return [...t.songs]
+    case 'artist':
+      return await t.songs()
+  }
+}
+
+/** 名前、それに添える文、ジャケット。情報を直すモーダルにも、名前と ID を渡す */
+const about = computed(() => {
   const t = target.value
-  return t?.kind === 'song' ? t.song.title : t?.album.name ?? ''
+  switch (t?.kind) {
+    case 'song':
+      return { id: t.song.id, title: t.song.title, subtitle: [t.song.artist, t.song.album].filter(Boolean).join(' · '), coverArt: t.song.coverArt }
+    case 'album':
+      return { id: t.album.id, title: t.album.name, subtitle: t.album.artist ?? '', coverArt: t.album.coverArt }
+    case 'artist':
+      return { id: t.artist.id, title: t.artist.name, subtitle: 'アーティスト', coverArt: undefined }
+    default:
+      return { id: '', title: '', subtitle: '', coverArt: undefined }
+  }
 })
-const subtitle = computed(() => {
-  const t = target.value
-  return t?.kind === 'song' ? [t.song.artist, t.song.album].filter(Boolean).join(' · ') : t?.album.artist ?? ''
-})
-const coverArt = computed(() => {
-  const t = target.value
-  return t?.kind === 'song' ? t.song.coverArt : t?.album.coverArt
-})
+const title = computed(() => about.value.title)
 
 interface Item { label: string, icon: Component, action: () => void }
 
 /** 移る先。いま開いている画面と同じ先は出さない。 */
 const links = computed<Item[]>(() => {
   const t = target.value
-  if (!t) {
+  if (!t || t.kind === 'artist') {
     return []
   }
   const items: Item[] = []
@@ -60,16 +77,32 @@ const links = computed<Item[]>(() => {
 })
 
 const items = computed<Item[]>(() => [
-  { label: '次に再生', icon: ListStart, action: () => run(() => playNext(songs.value), '次に再生します') },
-  { label: 'キューの最後に追加', icon: ListEnd, action: () => run(() => addToQueue(songs.value), 'キューに追加しました') },
+  { label: '次に再生', icon: ListStart, action: () => run(playNext, '次に再生します') },
+  { label: 'キューの最後に追加', icon: ListEnd, action: () => run(addToQueue, 'キューに追加しました') },
   { label: 'プレイリストに追加', icon: ListPlus, action: openPlaylists },
   ...links.value,
+  { label: '情報を編集', icon: PencilLine, action: openInfo },
 ])
 
-function run(action: () => void, message: string) {
-  action()
+async function run(action: (songs: Song[]) => void, message: string) {
+  let songs: Song[]
+  try {
+    songs = await songsOf()
+  }
+  catch {
+    close()
+    show('曲を読み込めませんでした')
+    return
+  }
+  action(songs)
   close()
   show(message)
+}
+
+function openInfo() {
+  const { id, title } = about.value
+  close()
+  editInfo({ id, name: title })
 }
 
 function go(to: Parameters<typeof navigateTo>[0]) {
@@ -103,7 +136,7 @@ async function openPlaylists() {
 
 async function addTo(playlist: Playlist) {
   await save(
-    () => subsonic('updatePlaylist', { playlistId: playlist.id, songIdToAdd: songs.value.map(s => s.id) }, { post: true }),
+    async () => subsonic('updatePlaylist', { playlistId: playlist.id, songIdToAdd: (await songsOf()).map(s => s.id) }, { post: true }),
     `「${playlist.name}」に追加しました`,
   )
 }
@@ -114,7 +147,7 @@ async function create() {
     return
   }
   await save(
-    () => subsonic('createPlaylist', { name, songId: songs.value.map(s => s.id) }, { post: true }),
+    async () => subsonic('createPlaylist', { name, songId: (await songsOf()).map(s => s.id) }, { post: true }),
     `「${name}」を作って追加しました`,
   )
 }
@@ -218,10 +251,11 @@ function onKeydown(e: KeyboardEvent) {
       >
         <!-- スマホは、何に対するメニューかを上に出す -->
         <div v-if="!wide" class="mb-1 flex items-center gap-3 border-b border-divider px-2 pt-1 pb-3">
-          <CoverArt :id="coverArt" :size="48" :alt="title" class="size-12 shrink-0" />
+          <ArtistInitial v-if="target?.kind === 'artist'" :name="title" class="size-12 shrink-0 text-h3" />
+          <CoverArt v-else :id="about.coverArt" :size="48" :alt="title" class="size-12 shrink-0" />
           <span class="min-w-0">
             <span class="block truncate text-body-lg font-medium">{{ title }}</span>
-            <span class="block truncate text-body-sm text-fg-subtle">{{ subtitle }}</span>
+            <span class="block truncate text-body-sm text-fg-subtle">{{ about.subtitle }}</span>
           </span>
         </div>
 

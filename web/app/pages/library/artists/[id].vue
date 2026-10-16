@@ -2,7 +2,7 @@
 import type { ArtistView } from '~/utils/artist'
 import type { ArtistWithAlbums, Song } from '~/utils/subsonic'
 import { useElementSize, useLocalStorage, useScroll } from '@vueuse/core'
-import { Music } from 'lucide-vue-next'
+import { Music, Play } from 'lucide-vue-next'
 import { albumsAsAlbumArtist, artistSort, artistView, groupByAlbum, songRoles, sortAlbums, sortGroups, sortOptions, sortSongs, switchableViews } from '~/utils/artist'
 import { formatDuration } from '~/utils/subsonic'
 
@@ -53,6 +53,35 @@ const groups = computed(() => sortGroups(groupByAlbum(songs.value), sort.value, 
 // 行を押すと、アルバムの見出しごとに並んだ順で全曲をキューに入れる（docs/web.md の「再生」）
 const queue = computed(() => groups.value.flatMap(group => group.songs))
 const { current, start } = usePlayer()
+const { show } = useToast()
+
+/**
+ * 「すべて再生」とメニューで操作する曲。いまの表示で並べている順にする（docs/web.md の「再生」）。
+ * アルバムの表示は曲を読んでいないので、アルバムアーティストとしての曲を読み、並べているアルバムの順にそろえる。
+ */
+async function artistSongs(): Promise<Song[]> {
+  if (view.value === 'tracks') {
+    return queue.value
+  }
+  if (view.value === 'composer') {
+    return sortedSongs.value
+  }
+  const loaded = (await subsonic<{ artist: ArtistWithAlbums }>('getArtist', { id: id.value, songs: 'albumartist' })).artist.song ?? []
+  return albums.value.flatMap(album => loaded.filter(song => song.albumId === album.id))
+}
+const playable = computed(() => view.value === 'albums' ? albums.value.length > 0 : songs.value.length > 0)
+
+async function playAll() {
+  try {
+    const all = await artistSongs()
+    if (all.length) {
+      start(all)
+    }
+  }
+  catch {
+    show('曲を読み込めませんでした')
+  }
+}
 const summary = computed(() => view.value === 'albums' ? `アルバム ${albums.value.length} 枚` : `${songs.value.length} 曲`)
 
 /** 曲のアーティストがこのアーティストだけなら出さない。 */
@@ -110,6 +139,14 @@ const titleVisible = computed(() => {
           </p>
         </div>
       </header>
+      <div class="mb-2 flex items-center gap-3">
+        <Button size="lg" :disabled="!playable" @click="playAll">
+          <Play class="size-4" />
+          すべて再生
+        </Button>
+        <HeartButton :id="artist.id" target="artist" :starred="!!artist.starred" label="アーティストをお気に入りにする" size="lg" />
+        <SongMenuButton :target="{ kind: 'artist', artist: { id: artist.id, name: artist.name }, songs: artistSongs }" label="アーティストのメニュー" size="lg" />
+      </div>
 
       <div
         class="sticky z-[6] -mx-4 mb-2 flex items-center justify-end gap-3 bg-surface-0 px-4 py-2 md:mx-0 md:bg-surface-1 md:px-0"

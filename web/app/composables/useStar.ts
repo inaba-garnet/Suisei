@@ -1,5 +1,7 @@
-/** お気に入りにする対象。アルバムは Subsonic の `albumId`、曲は `id` で渡す。 */
-export type StarTarget = 'album' | 'song'
+/** お気に入りにする対象。アルバムは Subsonic の `albumId`、アーティストは `artistId`、曲は `id` で渡す。 */
+export type StarTarget = 'album' | 'artist' | 'song'
+
+const PARAMS: Record<StarTarget, string> = { album: 'albumId', artist: 'artistId', song: 'id' }
 
 /**
  * お気に入りの付け外し（docs/web.md の「一覧」）。`starred` はすぐに切り替え、サーバーが失敗を返したら元に戻す。
@@ -22,7 +24,7 @@ export function useStar(target: StarTarget, id: MaybeRefOrGetter<string>, initia
     overrides.value[k] = next
     pending.value = true
     try {
-      await subsonic(next ? 'star' : 'unstar', { [target === 'album' ? 'albumId' : 'id']: toValue(id) })
+      await subsonic(next ? 'star' : 'unstar', { [PARAMS[target]]: toValue(id) })
     }
     catch {
       overrides.value[k] = !next
@@ -34,4 +36,13 @@ export function useStar(target: StarTarget, id: MaybeRefOrGetter<string>, initia
   }
 
   return { starred, toggle }
+}
+
+/**
+ * 付け外しの結果を反映した、お気に入りかどうかを返す関数。
+ * 読み込んだ一覧をお気に入りで絞り込むとき、詳細で付け外ししたものを読み直さずに反映するため。
+ */
+export function useStarred() {
+  const overrides = useState<Record<string, boolean>>('starred', () => ({}))
+  return (target: StarTarget, id: string, initial: boolean) => overrides.value[`${target}:${id}`] ?? initial
 }

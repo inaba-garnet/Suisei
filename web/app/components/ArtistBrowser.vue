@@ -10,6 +10,7 @@ import type { ArtistIndex } from '~/utils/subsonic'
 const props = defineProps<{ role: string, view: ArtistView, favorite: boolean, emptyIcon: Component, emptyTitle: string }>()
 
 const subsonic = useSubsonic()
+const isStarred = useStarred()
 
 // getArtists は全件を一度に返すので、一回で読み終える
 const { items, done, loading, error, loadMore } = useInfiniteList<ArtistIndex>(`artists:${props.role}`, async () => {
@@ -20,7 +21,7 @@ const { items, done, loading, error, loadMore } = useInfiniteList<ArtistIndex>(`
 // 読みの行の見出しは残し、お気に入りのいない行は外す
 const index = computed(() => props.favorite
   ? items.value
-      .map(group => ({ ...group, artist: group.artist?.filter(artist => artist.starred) }))
+      .map(group => ({ ...group, artist: group.artist?.filter(artist => isStarred('artist', artist.id, !!artist.starred)) }))
       .filter(group => group.artist?.length)
   : items.value)
 </script>

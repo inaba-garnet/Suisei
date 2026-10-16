@@ -602,3 +602,33 @@ export async function mockScan(page: Page, { polls = 2, running = false, last = 
   })
   return { state, starts }
 }
+
+/**
+ * 読みの API（`/api/readings/{id}`）の偽物。知らない ID は推定の読み `ヨミ` を持つことにする。
+ * `PUT` で受けた本文を `requests` に残す。`invalid` なら `PUT` を 400（`invalidReading`）で拒む。
+ */
+export async function mockReadings(page: Page, { invalid = false } = {}) {
+  const entries = new Map<string, Record<string, unknown>>()
+  const requests: { id: string, reading: string | null }[] = []
+  const entryOf = (id: string) => entries.get(id)
+    ?? { id, name: id, artist: null, reading: 'ヨミ', source: 'estimated', autoReading: 'ヨミ', autoSource: 'estimated' }
+  await page.route(/\/api\/readings\/[^/?]+$/, async (route) => {
+    const request = route.request()
+    const id = decodeURIComponent(new URL(request.url()).pathname.split('/').pop()!)
+    if (request.method() === 'GET') {
+      return route.fulfill({ json: entryOf(id) })
+    }
+    const { reading } = request.postDataJSON() as { reading: string | null }
+    requests.push({ id, reading })
+    if (invalid) {
+      return route.fulfill({ status: 400, json: { error: 'invalidReading' } })
+    }
+    const entry = entryOf(id)
+    const next = reading === null
+      ? { ...entry, reading: entry.autoReading, source: entry.autoSource }
+      : { ...entry, reading, source: 'manual' }
+    entries.set(id, next)
+    return route.fulfill({ json: next })
+  })
+  return { requests }
+}

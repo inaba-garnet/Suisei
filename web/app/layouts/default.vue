@@ -49,6 +49,7 @@ watch(() => route.fullPath, () => {
     <PlayerQueueDrawer />
     <PlayerAudio />
     <SongMenu />
+    <InfoEditDialog />
     <AppToast />
   </div>
 </template>
