@@ -28,6 +28,8 @@ use axum::http::{HeaderMap, Method, StatusCode, Uri};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{any, get, post, put};
 use serde_json::{Map, Value, json};
+use tower_http::CompressionLevel;
+use tower_http::compression::CompressionLayer;
 
 use crate::Credentials;
 use crate::db::Pool;
@@ -87,9 +89,17 @@ pub fn router_with(state: AppState, web: Web) -> Router {
         .route("/api/spotify/tracks", get(spotify::tracks))
         .route("/api/spotify/tracks/{id}", put(spotify::link))
         .with_state(Arc::new(state))
+        .fallback_service(web_router(web))
+}
+
+/// Web のファイルを配るルーター。圧縮はここだけにかけ、音声や Range で返す応答にはかけない（docs/server.md の「Web クライアントの配信」）。
+fn web_router(web: Web) -> Router {
+    Router::new()
         .fallback(move |method: Method, uri: Uri, headers: HeaderMap| {
             web::serve(web.clone(), method, uri, headers)
         })
+        // 既定（brotli は 4）では brotli が gzip より縮まない。11 は JS 一つに 200ms かかるので、6 にする
+        .layer(CompressionLayer::new().quality(CompressionLevel::Precise(6)))
 }
 
 /// Subsonic のエンドポイントは `ping` と `ping.view` のどちらでも呼ばれるので、名前で振り分ける。
