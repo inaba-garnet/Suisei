@@ -144,6 +144,7 @@ const titleVisible = computed(() => {
           <Play class="size-4" />
           すべて再生
         </Button>
+        <HeartButton :id="artist.id" target="artist" :starred="!!artist.starred" label="アーティストをお気に入りにする" size="lg" />
         <SongMenuButton :target="{ kind: 'artist', artist: { id: artist.id, name: artist.name }, songs: artistSongs }" label="アーティストのメニュー" size="lg" />
       </div>
 

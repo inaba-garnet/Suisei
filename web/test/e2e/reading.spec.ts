@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { mockApi, mockArtists, mockLibrary, mockReadings, mockStream } from './api'
+import { mockApi, mockArtists, mockLibrary, mockReadings, mockStar, mockStream } from './api'
 
 const menu = (page: import('@playwright/test').Page) => page.getByRole('menu')
 
@@ -82,4 +82,23 @@ test('アーティストの詳細の「すべて再生」は並べたアルバ�
   await page.getByRole('button', { name: 'アーティストのメニュー' }).click()
   await menu(page).getByRole('menuitem', { name: '読みを編集' }).click()
   await expect(page.getByRole('dialog', { name: '読みを編集' })).toContainText('アのアーティスト 0')
+})
+
+test('アーティストの詳細のハートで付け外しし、一覧のお気に入りの絞り込みに読み直さずに反映する', async ({ page }) => {
+  await mockApi(page, { loggedIn: true })
+  const { calls } = await mockArtists(page)
+  const star = await mockStar(page)
+  await page.goto('/library/artists')
+  await page.getByRole('link', { name: /アのアーティスト 0/ }).click()
+
+  const heart = page.getByRole('button', { name: 'アーティストをお気に入りにする' })
+  await expect(heart).toHaveAttribute('aria-pressed', 'false')
+  await heart.click()
+  await expect(heart).toHaveAttribute('aria-pressed', 'true')
+  expect(star.calls.map(c => [c.endpoint, c.params.get('artistId')])).toEqual([['star', 'ar-ア-0']])
+
+  await page.getByRole('button', { name: '戻る', exact: true }).click()
+  await page.getByRole('button', { name: 'お気に入り', exact: true }).click()
+  await expect(page.getByRole('link', { name: /アのアーティスト 0/ })).toBeVisible()
+  expect(calls.artists).toBe(1)
 })
