@@ -48,20 +48,8 @@ export function useInfiniteList<T>(
       await loadMore()
       return
     }
-    // グリッドの幅を測るまでは高さが足りず、位置が頭打ちになる。届くまで数フレーム試す
     await nextTick()
-    let frames = 0
-    const restore = () => {
-      const el = scroller.value
-      if (!el) {
-        return
-      }
-      el.scrollTop = saved.scrollTop
-      if (Math.abs(el.scrollTop - saved.scrollTop) > 1 && ++frames < 30) {
-        requestAnimationFrame(restore)
-      }
-    }
-    requestAnimationFrame(restore)
+    restoreScroll(scroller, saved.scrollTop)
   })
 
   onBeforeRouteLeave(() => {

@@ -7,7 +7,7 @@ const scrollTo = (page: Page, top: number) => page.getByTestId('scroller').evalu
   el.scrollTop = top
 }, top)
 
-test('アルバムを名前順に 100 件ずつ読み足し、見える分だけ描く', async ({ page }) => {
+test('アルバムを名前順に、見えた範囲を 100 件ずつ読み、見える分だけ描く', async ({ page }) => {
   await mockApi(page, { loggedIn: true })
   const { requests } = await mockLibrary(page)
   await page.goto('/library/albums')
@@ -20,13 +20,40 @@ test('アルバムを名前順に 100 件ずつ読み足し、見える分だけ
   // 仮想スクロールなので、読み込んだ 100 件より少ない数だけ描く
   expect(await grid.getByRole('link').count()).toBeLessThan(100)
 
-  // 末尾まで送ると続きを読み足す
-  await scrollTo(page, 1e6)
-  await expect.poll(() => requests.map(r => r.get('offset'))).toContain('100')
-  await scrollTo(page, 1e6)
-  await expect.poll(() => requests.map(r => r.get('offset'))).toContain('200')
+  // 全体の件数を先に読むので、末尾まで送ると間を読まずに末尾のページを読む
   await scrollTo(page, 1e6)
   await expect(grid.getByRole('link', { name: 'アルバム 249' })).toBeVisible()
+  expect(requests.map(r => r.get('offset'))).not.toContain('100')
+})
+
+test('索引の頭文字を押すと、まだ読んでいないページを読み、その頭文字の先頭を帯のすぐ下まで送る', async ({ page }) => {
+  await mockApi(page, { loggedIn: true })
+  const { requests, headings } = await mockLibrary(page, { count: 1000 })
+  await page.goto('/library/albums')
+  await expect(page.getByRole('link', { name: 'アルバム 000' })).toBeVisible()
+  expect(headings[0]?.get('list')).toBe('albums')
+  expect(headings[0]?.get('sort')).toBe('name')
+
+  // 偽物の索引は 50 件ごとに A、B、C…。Q は 800 件目
+  await page.getByTestId('index-rail').getByRole('button', { name: 'Q', exact: true }).click()
+  const album = page.getByTestId('album-grid').getByRole('link', { name: 'アルバム 800' })
+  const header = (await page.getByTestId('page-header').boundingBox())!
+  await expect.poll(async () => Math.round((await album.boundingBox())?.y ?? 0)).toBe(Math.round(header.y + header.height))
+  const offsets = requests.map(r => r.get('offset'))
+  expect(offsets).toContain('800')
+  expect(offsets).not.toContain('400')
+})
+
+test('索引のない並び順では索引を出さず、末尾に近づいたら読み足す', async ({ page }) => {
+  await mockApi(page, { loggedIn: true })
+  const { requests, headings } = await mockLibrary(page)
+  await page.goto('/library/albums?sort=newest')
+  await expect(page.getByRole('link', { name: 'アルバム 000' })).toBeVisible()
+  await expect(page.getByTestId('index-rail')).toHaveCount(0)
+  expect(headings).toHaveLength(0)
+
+  await scrollTo(page, 1e6)
+  await expect.poll(() => requests.map(r => r.get('offset'))).toContain('100')
 })
 
 test('詳細から「戻る」と読み直さずに元の位置に戻り、リンクで開き直すと先頭から読む', async ({ page }) => {
@@ -165,6 +192,15 @@ test('セッションが切れていればログインの画面に移す', async
   await page.route(/\/rest\/getAlbumList2/, route => route.fulfill({
     json: { 'subsonic-response': { status: 'failed', error: { code: 40, message: 'Wrong username or password' } } },
   }))
+  // 索引のない並び順は、最初の getAlbumList2 で気づく
+  await page.addInitScript(() => localStorage.setItem('suisei-album-sort', 'newest'))
+  await page.goto('/library/albums')
+  await expect(page).toHaveURL(/\/login\?redirect=(%2F|\/)library(%2F|\/)albums$/)
+})
+
+test('索引のある並び順は、索引の 401 でログインの画面に移す', async ({ page }) => {
+  await mockApi(page, { loggedIn: true })
+  await page.route(/\/api\/headings/, route => route.fulfill({ status: 401 }))
   await page.goto('/library/albums')
   await expect(page).toHaveURL(/\/login\?redirect=(%2F|\/)library(%2F|\/)albums$/)
 })

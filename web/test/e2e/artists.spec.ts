@@ -239,3 +239,41 @@ test('片方の役割だけの人には表示の切り替えを出さない', as
   await expect(page.getByTestId('song-group')).toHaveCount(2)
   await expect(page.getByRole('radiogroup', { name: '表示' })).toHaveCount(0)
 })
+
+test('右端の頭文字の索引を押すと、その見出しを帯のすぐ下まで送り、なぞると今の頭文字を大きく出す', async ({ page }) => {
+  await mockApi(page, { loggedIn: true })
+  await mockArtists(page)
+  await page.goto('/library/artists')
+
+  const rail = page.getByTestId('index-rail')
+  await expect(rail.getByRole('button')).toHaveText(['ア', 'カ', 'サ', 'タ', 'A', 'B'])
+  await rail.getByRole('button', { name: 'A', exact: true }).click()
+
+  const list = page.getByTestId('artist-list')
+  const heading = list.getByRole('heading', { name: 'A', exact: true })
+  const header = (await page.getByTestId('page-header').boundingBox())!
+  await expect.poll(async () => Math.round((await heading.boundingBox())!.y)).toBe(Math.round(header.y + header.height))
+  // 前の行の見出しは帯の下に残さず、送った見出しに重ねない
+  const previous = (await list.getByRole('heading', { name: 'タ', exact: true }).boundingBox())!
+  expect(previous.y + previous.height).toBeLessThanOrEqual(header.y + header.height)
+
+  // なぞっている間は、指の下の頭文字を大きく出す
+  const box = (await rail.getByRole('button', { name: 'カ', exact: true }).boundingBox())!
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.down()
+  await expect(page.getByTestId('index-rail-bubble')).toHaveText('カ')
+  const next = (await rail.getByRole('button', { name: 'サ', exact: true }).boundingBox())!
+  await page.mouse.move(next.x + next.width / 2, next.y + next.height / 2, { steps: 4 })
+  await expect(page.getByTestId('index-rail-bubble')).toHaveText('サ')
+  await expect.poll(async () => Math.round((await list.getByRole('heading', { name: 'サ', exact: true }).boundingBox())!.y)).toBe(Math.round(header.y + header.height))
+  await page.mouse.up()
+  await expect(page.getByTestId('index-rail-bubble')).toBeHidden()
+})
+
+test('アーティストが一画面に収まるほどなら、頭文字の索引を出さない', async ({ page }) => {
+  await mockApi(page, { loggedIn: true })
+  await mockArtists(page, { perRow: 1 })
+  await page.goto('/library/artists')
+  await expect(page.getByRole('link', { name: /アのアーティスト 0/ })).toBeVisible()
+  await expect(page.getByTestId('index-rail')).toHaveCount(0)
+})
