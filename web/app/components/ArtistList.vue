@@ -8,6 +8,7 @@ import { useElementSize } from '@vueuse/core'
 /**
  * 読みの行の見出しで区切ったアーティストの行（docs/web.md の「一覧」）。
  * 画面に見える行だけを描き、今いる行の見出しは見出しの帯の下に残す。詳細は `view` の表示で開く。
+ * 右端の頭文字の索引で、その見出しまで送る。
  */
 const props = defineProps<{ index: ArtistIndex[], view: ArtistView }>()
 
@@ -43,6 +44,8 @@ const virtualizer = useVirtualizer(computed(() => ({
   estimateSize: (i: number) => rows.value[i]?.kind === 'heading' ? HEADING : ROW,
   overscan: 8,
   scrollMargin: root.value?.offsetTop ?? 0,
+  // 索引で送った見出しを、見出しの帯の下に出す
+  scrollPaddingStart: headerHeight.value,
   rangeExtractor: (range: Range) => {
     const indexes = new Set([headingOf(range.startIndex), ...defaultRangeExtractor(range)])
     return [...indexes].sort((a, b) => a - b)
@@ -50,8 +53,23 @@ const virtualizer = useVirtualizer(computed(() => ({
 })))
 
 const items = computed(() => virtualizer.value.getVirtualItems())
-// 見える範囲の先頭が属する見出しを、帯の下に残す
-const active = computed(() => items.value.length ? headingOf(virtualizer.value.range?.startIndex ?? 0) : 0)
+// 帯のすぐ下の行が属する見出しを、帯の下に残す。帯に隠れた行で決めると、索引で送った見出しに前の見出しが重なるため
+const active = computed(() => {
+  if (!items.value.length) {
+    return 0
+  }
+  const below = virtualizer.value.getVirtualItemForOffset((virtualizer.value.scrollOffset ?? 0) + headerHeight.value)
+  return headingOf(below?.index ?? virtualizer.value.range?.startIndex ?? 0)
+})
+
+const headingNames = computed(() => headings.value.map(i => (rows.value[i] as { name: string }).name))
+
+function jump(name: string) {
+  const i = headings.value[headingNames.value.indexOf(name)]
+  if (i !== undefined) {
+    virtualizer.value.scrollToIndex(i, { align: 'start' })
+  }
+}
 </script>
 
 <template>
@@ -81,5 +99,6 @@ const active = computed(() => items.value.length ? headingOf(virtualizer.value.r
         </span>
       </NuxtLink>
     </template>
+    <IndexRail :headings="headingNames" :content-height="virtualizer.getTotalSize()" @select="jump" />
   </div>
 </template>
