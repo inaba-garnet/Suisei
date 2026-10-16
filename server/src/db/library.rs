@@ -1,6 +1,6 @@
 //! スキャンが読み書きするライブラリの表。
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use super::{Connection, Pool};
 
@@ -32,8 +32,12 @@ pub struct ArtistRow {
     pub id: String,
     pub match_key: String,
     pub name: String,
+    /// 手動の読みがあればそれ、なければ自動の読み
     pub sort_name: Option<String>,
     pub sort_name_source: Option<String>,
+    /// スキャンで得た自動の読み。手動の読みを外したときに戻す
+    pub auto_sort_name: Option<String>,
+    pub auto_sort_name_source: Option<String>,
     pub sort_key: String,
     pub search_text: String,
 }
@@ -44,8 +48,12 @@ pub struct AlbumRow {
     pub match_key: String,
     pub name: String,
     pub display_artist: String,
+    /// 手動の読みがあればそれ、なければ自動の読み
     pub sort_name: Option<String>,
     pub sort_name_source: Option<String>,
+    /// スキャンで得た自動の読み。手動の読みを外したときに戻す
+    pub auto_sort_name: Option<String>,
+    pub auto_sort_name_source: Option<String>,
     pub sort_key: String,
     pub search_text: String,
     pub year: Option<i64>,
@@ -61,8 +69,12 @@ pub struct TrackRow {
     pub album_id: String,
     pub title: String,
     pub display_artist: String,
+    /// 手動の読みがあればそれ、なければ自動の読み
     pub sort_name: Option<String>,
     pub sort_name_source: Option<String>,
+    /// スキャンで得た自動の読み。手動の読みを外したときに戻す
+    pub auto_sort_name: Option<String>,
+    pub auto_sort_name_source: Option<String>,
     pub sort_key: String,
     pub search_text: String,
     pub disc_number: Option<i64>,
@@ -100,6 +112,13 @@ pub struct GenreRow {
     pub genre: String,
 }
 
+/// 手動の読みと、設定したときの名前。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Manual {
+    pub name: String,
+    pub reading: String,
+}
+
 /// スキャンの前の DB の状態。ID を引き継ぐのに使う。
 #[derive(Debug, Clone, Default)]
 pub struct Snapshot {
@@ -118,6 +137,8 @@ pub struct Snapshot {
     pub track_contributors: Vec<(String, String, i64, String)>,
     /// 別名として使っている古い ID
     pub alias_ids: Vec<String>,
+    /// 曲、アルバム、アーティストの ID ごとの手動の読み
+    pub manual: HashMap<String, Manual>,
 }
 
 /// スキャンの結果として書き込む、ライブラリ全体の状態。
@@ -187,6 +208,27 @@ pub async fn snapshot(pool: &Pool) -> Result<Snapshot, sqlx::Error> {
     let alias_ids = sqlx::query_scalar!(r#"SELECT old_id AS "old_id!" FROM id_alias"#)
         .fetch_all(&mut *conn)
         .await?;
+    let manual = sqlx::query!(
+        r#"SELECT id AS "id!", manual_name AS "name!", manual_sort_name AS "reading!" FROM artist
+               WHERE manual_sort_name IS NOT NULL AND manual_name IS NOT NULL
+           UNION ALL
+           SELECT id, manual_name, manual_sort_name FROM album
+               WHERE manual_sort_name IS NOT NULL AND manual_name IS NOT NULL
+           UNION ALL
+           SELECT id, manual_name, manual_sort_name FROM track
+               WHERE manual_sort_name IS NOT NULL AND manual_name IS NOT NULL"#
+    )
+    .fetch_all(&mut *conn)
+    .await?
+    .into_iter()
+    .map(|r| {
+        let manual = Manual {
+            name: r.name,
+            reading: r.reading,
+        };
+        (r.id, manual)
+    })
+    .collect();
     Ok(Snapshot {
         files,
         tracks,
@@ -196,6 +238,7 @@ pub async fn snapshot(pool: &Pool) -> Result<Snapshot, sqlx::Error> {
         album_artists,
         track_contributors,
         alias_ids,
+        manual,
     })
 }
 
@@ -230,17 +273,21 @@ pub async fn replace(pool: &Pool, library: &Library) -> Result<(), sqlx::Error> 
 
     for a in &library.artists {
         sqlx::query!(
-            "INSERT INTO artist (id, match_key, name, sort_name, sort_name_source, sort_key,
-                 search_text)
-             VALUES (?, ?, ?, ?, ?, ?, ?)
+            "INSERT INTO artist (id, match_key, name, sort_name, sort_name_source, auto_sort_name,
+                 auto_sort_name_source, sort_key, search_text)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT (id) DO UPDATE SET match_key = excluded.match_key, name = excluded.name,
                  sort_name = excluded.sort_name, sort_name_source = excluded.sort_name_source,
+                 auto_sort_name = excluded.auto_sort_name,
+                 auto_sort_name_source = excluded.auto_sort_name_source,
                  sort_key = excluded.sort_key, search_text = excluded.search_text",
             a.id,
             a.match_key,
             a.name,
             a.sort_name,
             a.sort_name_source,
+            a.auto_sort_name,
+            a.auto_sort_name_source,
             a.sort_key,
             a.search_text
         )
@@ -250,11 +297,14 @@ pub async fn replace(pool: &Pool, library: &Library) -> Result<(), sqlx::Error> 
     for a in &library.albums {
         sqlx::query!(
             "INSERT INTO album (id, match_key, name, display_artist, sort_name, sort_name_source,
-                 year, created_at, sort_key, compilation, search_text, cover_path)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 auto_sort_name, auto_sort_name_source, year, created_at, sort_key, compilation,
+                 search_text, cover_path)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT (id) DO UPDATE SET match_key = excluded.match_key, name = excluded.name,
                  display_artist = excluded.display_artist, sort_name = excluded.sort_name,
-                 sort_name_source = excluded.sort_name_source, year = excluded.year,
+                 sort_name_source = excluded.sort_name_source,
+                 auto_sort_name = excluded.auto_sort_name,
+                 auto_sort_name_source = excluded.auto_sort_name_source, year = excluded.year,
                  sort_key = excluded.sort_key, compilation = excluded.compilation,
                  created_at = excluded.created_at, search_text = excluded.search_text,
                  cover_path = excluded.cover_path",
@@ -264,6 +314,8 @@ pub async fn replace(pool: &Pool, library: &Library) -> Result<(), sqlx::Error> 
             a.display_artist,
             a.sort_name,
             a.sort_name_source,
+            a.auto_sort_name,
+            a.auto_sort_name_source,
             a.year,
             a.created_at,
             a.sort_key,
@@ -277,13 +329,16 @@ pub async fn replace(pool: &Pool, library: &Library) -> Result<(), sqlx::Error> 
     for t in &library.tracks {
         sqlx::query!(
             "INSERT INTO track (id, match_key, album_id, title, display_artist, sort_name,
-                 sort_name_source, disc_number, track_number, year, primary_file_id, sort_key,
-                 created_at, search_text, display_composer)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 sort_name_source, auto_sort_name, auto_sort_name_source, disc_number,
+                 track_number, year, primary_file_id, sort_key, created_at, search_text,
+                 display_composer)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT (id) DO UPDATE SET match_key = excluded.match_key,
                  album_id = excluded.album_id, title = excluded.title,
                  display_artist = excluded.display_artist, sort_name = excluded.sort_name,
                  sort_name_source = excluded.sort_name_source,
+                 auto_sort_name = excluded.auto_sort_name,
+                 auto_sort_name_source = excluded.auto_sort_name_source,
                  disc_number = excluded.disc_number, track_number = excluded.track_number,
                  year = excluded.year, primary_file_id = excluded.primary_file_id,
                  sort_key = excluded.sort_key, created_at = excluded.created_at,
@@ -296,6 +351,8 @@ pub async fn replace(pool: &Pool, library: &Library) -> Result<(), sqlx::Error> 
             t.display_artist,
             t.sort_name,
             t.sort_name_source,
+            t.auto_sort_name,
+            t.auto_sort_name_source,
             t.disc_number,
             t.track_number,
             t.year,
@@ -436,10 +493,11 @@ pub async fn replace(pool: &Pool, library: &Library) -> Result<(), sqlx::Error> 
         .await?;
     }
 
-    // マージで消える曲、アルバム、アーティストのお気に入りと評価を、残る側へ引き継ぐ。
-    // お気に入りの日時は古いほう、評価は残る側を優先する（docs/schema.md）
+    // マージで消える曲、アルバム、アーティストのお気に入りと評価、手動の読みを、残る側へ引き継ぐ。
+    // お気に入りの日時は古いほう、評価と手動の読みは残る側を優先する（docs/schema.md）
     for (old_id, new_id) in &library.aliases {
         carry_annotation(&mut tx, old_id, new_id).await?;
+        carry_manual_reading(&mut tx, old_id, new_id).await?;
     }
 
     // 参照がなくなった行を消す。file と track_artist などは入れ直したので、残っているのは使われない行
@@ -548,5 +606,54 @@ async fn carry_annotation(
         .execute(&mut *tx)
         .await?;
     }
+    Ok(())
+}
+
+/// 消える行の手動の読みを、残る行に手動の読みがなければ引き継ぐ。
+async fn carry_manual_reading(
+    tx: &mut Connection,
+    old_id: &str,
+    new_id: &str,
+) -> Result<(), sqlx::Error> {
+    // SET の右辺は更新前の値で評価されるので、manual_name も残る側に読みがないときだけ移る
+    sqlx::query!(
+        "UPDATE track SET
+             manual_name = CASE WHEN manual_sort_name IS NULL
+                 THEN (SELECT manual_name FROM track WHERE id = ?) ELSE manual_name END,
+             manual_sort_name = COALESCE(manual_sort_name,
+                 (SELECT manual_sort_name FROM track WHERE id = ?))
+         WHERE id = ?",
+        old_id,
+        old_id,
+        new_id
+    )
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query!(
+        "UPDATE album SET
+             manual_name = CASE WHEN manual_sort_name IS NULL
+                 THEN (SELECT manual_name FROM album WHERE id = ?) ELSE manual_name END,
+             manual_sort_name = COALESCE(manual_sort_name,
+                 (SELECT manual_sort_name FROM album WHERE id = ?))
+         WHERE id = ?",
+        old_id,
+        old_id,
+        new_id
+    )
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query!(
+        "UPDATE artist SET
+             manual_name = CASE WHEN manual_sort_name IS NULL
+                 THEN (SELECT manual_name FROM artist WHERE id = ?) ELSE manual_name END,
+             manual_sort_name = COALESCE(manual_sort_name,
+                 (SELECT manual_sort_name FROM artist WHERE id = ?))
+         WHERE id = ?",
+        old_id,
+        old_id,
+        new_id
+    )
+    .execute(&mut *tx)
+    .await?;
     Ok(())
 }

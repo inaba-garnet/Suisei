@@ -86,6 +86,12 @@ impl Scanner {
         drop(self.lock.lock().await);
     }
 
+    /// スキャンを始めさせずに DB のライブラリを書き換えるためのロック。走っているスキャンがあれば終わるまで待つ。
+    /// スキャンは始めに読んだ DB の状態から組み立てて書き戻すので、その間の書き換えを消してしまうため。
+    pub async fn hold(&self) -> OwnedMutexGuard<()> {
+        Arc::clone(&self.lock).lock_owned().await
+    }
+
     /// 次のスキャンから使うタグの解釈を変える。
     pub fn set_options(&self, options: Options) {
         *self.options.lock().expect("設定のロックが壊れた") = options;

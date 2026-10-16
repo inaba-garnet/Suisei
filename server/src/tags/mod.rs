@@ -14,8 +14,8 @@ use std::path::Path;
 
 pub use match_key::normalize;
 pub use raw::{AudioProps, RawTags, from_stored, read, to_stored};
-pub use reading::{Reading, ReadingSource, reading};
-pub use search_text::{search_form, search_text};
+pub use reading::{Reading, ReadingSource, manual as manual_reading, reading};
+pub use search_text::{album_text, artist_text, search_form, search_text, track_text};
 pub use sort_key::{index_heading, sort_key};
 
 pub const UNKNOWN_ARTIST: &str = "[Unknown Artist]";

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE track SET manual_sort_name = ?, manual_name = ?, sort_name = ?,\n                     sort_name_source = ?, sort_key = ?\n                 WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "247f4c1478f3a78a6209f60cbbc6bbad305aa09edc84e3ef64329fcd025d7156"
+}
