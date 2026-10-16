@@ -254,6 +254,31 @@ pub async fn album(pool: &Pool, id: &str) -> Result<Option<Album>, sqlx::Error> 
     albums!("WHERE album.id = ?", id).fetch_optional(pool).await
 }
 
+/// 名前順（`by_artist` ならアーティスト順）の `album_list` と同じ順で、各アルバムの見出しを決めるキーを返す（docs/web.md の「一覧」）。
+/// 名前順はアルバムの、アーティスト順は先頭のアルバムアーティストの並べ替えキー。アルバムアーティストがいなければ `None`。
+pub async fn album_heading_keys(
+    pool: &Pool,
+    by_artist: bool,
+    starred_only: bool,
+) -> Result<Vec<Option<String>>, sqlx::Error> {
+    const FIRST_ARTIST: &str = "(SELECT artist.sort_key FROM album_artist
+        JOIN artist ON artist.id = album_artist.artist_id
+        WHERE album_artist.album_id = album.id AND album_artist.position = 0)";
+    let mut query = sqlx::QueryBuilder::<sqlx::Sqlite>::new(if by_artist {
+        format!("SELECT {FIRST_ARTIST} FROM album")
+    } else {
+        "SELECT album.sort_key FROM album".to_owned()
+    });
+    query.push(" WHERE (NOT ");
+    query.push_bind(starred_only);
+    query.push(" OR album.starred_at IS NOT NULL) ORDER BY ");
+    if by_artist {
+        query.push(format!("{FIRST_ARTIST}, "));
+    }
+    query.push("album.sort_key, album.id");
+    query.build_query_scalar().fetch_all(pool).await
+}
+
 /// `getAlbumList2` の並べ方。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AlbumOrder {
