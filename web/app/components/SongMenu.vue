@@ -9,7 +9,7 @@ import { ChevronLeft, Disc3, ListEnd, ListPlus, ListStart, MicVocal, PencilLine,
  * PC は「…」のボタンの横に小さく出し、スマホは下から出すシートにする。
  */
 const { state, close } = useSongMenu()
-const { open: editReading } = useReadingEditor()
+const { open: editInfo } = useInfoEditor()
 const { playNext, addToQueue } = usePlayer()
 const { show } = useToast()
 const subsonic = useSubsonic()
@@ -34,7 +34,7 @@ async function songsOf(): Promise<Song[]> {
   }
 }
 
-/** 名前、それに添える文、ジャケット。読みを直すモーダルにも、名前と ID を渡す */
+/** 名前、それに添える文、ジャケット。情報を直すモーダルにも、名前と ID を渡す */
 const about = computed(() => {
   const t = target.value
   switch (t?.kind) {
@@ -81,7 +81,7 @@ const items = computed<Item[]>(() => [
   { label: 'キューの最後に追加', icon: ListEnd, action: () => run(addToQueue, 'キューに追加しました') },
   { label: 'プレイリストに追加', icon: ListPlus, action: openPlaylists },
   ...links.value,
-  { label: '読みを編集', icon: PencilLine, action: openReading },
+  { label: '情報を編集', icon: PencilLine, action: openInfo },
 ])
 
 async function run(action: (songs: Song[]) => void, message: string) {
@@ -99,10 +99,10 @@ async function run(action: (songs: Song[]) => void, message: string) {
   show(message)
 }
 
-function openReading() {
+function openInfo() {
   const { id, title } = about.value
   close()
-  editReading({ id, name: title })
+  editInfo({ id, name: title })
 }
 
 function go(to: Parameters<typeof navigateTo>[0]) {

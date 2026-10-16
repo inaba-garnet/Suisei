@@ -4,10 +4,10 @@ import { DialogClose, DialogContent, DialogDescription, DialogOverlay, DialogPor
 import { sourceLabel } from '~/utils/reading'
 
 /**
- * 曲、アルバム、アーティストの読みを直すモーダル（docs/web.md の「読みの編集」）。layout に一つだけ置く。
- * 開いたら今の読みと出どころを読み、手動の読みを保存するか、自動の読みに戻す。
+ * 曲、アルバム、アーティストの情報を直すモーダル（docs/web.md の「情報の編集」）。layout に一つだけ置く。
+ * いまは読みだけを直す。開いたら今の読みと出どころを読み、手動の読みを保存するか、自動の読みに戻す。
  */
-const { target, close } = useReadingEditor()
+const { target, close } = useInfoEditor()
 const { show } = useToast()
 
 const entry = ref<ReadingEntry>()
@@ -57,7 +57,7 @@ async function save(reading: string | null) {
   try {
     await $fetch(`/api/readings/${encodeURIComponent(t.id)}`, { method: 'PUT', body: { reading } })
     close()
-    show(reading === null ? '自動の読みに戻しました' : '読みを保存しました')
+    show(reading === null ? '自動の読みに戻しました' : '保存しました')
     // 読みの順に並べた一覧を、直した読みで並べ直す
     await refreshNuxtData()
   }
@@ -88,11 +88,11 @@ function submit() {
       <DialogOverlay class="fixed inset-0 z-50 bg-black/50" />
       <DialogContent
         class="fixed top-1/2 left-1/2 z-50 flex w-[calc(100vw-32px)] max-w-sm -translate-x-1/2 -translate-y-1/2 flex-col gap-4 rounded-xl border border-border-default bg-surface-2 p-5 shadow-elevation-3"
-        data-testid="reading-dialog"
+        data-testid="info-edit-dialog"
       >
         <div class="flex flex-col gap-1">
           <DialogTitle class="text-h3 font-semibold">
-            読みを編集
+            情報を編集
           </DialogTitle>
           <DialogDescription class="break-words text-body text-fg-muted">
             {{ target?.name }}
@@ -100,7 +100,7 @@ function submit() {
         </div>
 
         <p v-if="loadFailed" class="text-body-sm text-danger">
-          読みを読み込めませんでした
+          情報を読み込めませんでした
         </p>
         <p v-else-if="!entry" class="text-body-sm text-fg-subtle">
           読み込み中…

@@ -3,16 +3,16 @@ import { mockApi, mockArtists, mockLibrary, mockReadings, mockStar, mockStream }
 
 const menu = (page: import('@playwright/test').Page) => page.getByRole('menu')
 
-test('アルバムの「…」から読みを直して保存し、手動の読みを自動の読みに戻す', async ({ page }) => {
+test('アルバムの「…」の「情報を編集」から読みを直して保存し、手動の読みを自動の読みに戻す', async ({ page }) => {
   await mockApi(page, { loggedIn: true })
   await mockLibrary(page, { count: 3 })
   const { requests } = await mockReadings(page)
   await page.goto('/library/albums/al-1')
 
   await page.getByRole('button', { name: 'アルバムのメニュー' }).click()
-  await menu(page).getByRole('menuitem', { name: '読みを編集' }).click()
+  await menu(page).getByRole('menuitem', { name: '情報を編集' }).click()
   await expect(menu(page)).toHaveCount(0)
-  const dialog = page.getByRole('dialog', { name: '読みを編集' })
+  const dialog = page.getByRole('dialog', { name: '情報を編集' })
   await expect(dialog).toContainText('アルバム 001')
   await expect(dialog.getByTestId('reading-current')).toHaveText('ヨミ（推定）')
   await expect(dialog.getByRole('button', { name: '自動の読みに戻す' })).toHaveCount(0)
@@ -22,12 +22,12 @@ test('アルバムの「…」から読みを直して保存し、手動の読�
   await input.fill('あるばむ')
   await dialog.getByRole('button', { name: '保存' }).click()
   await expect(dialog).toHaveCount(0)
-  await expect(page.getByRole('status')).toHaveText('読みを保存しました')
+  await expect(page.getByRole('status')).toHaveText('保存しました')
   expect(requests).toEqual([{ id: 'al-1', reading: 'あるばむ' }])
 
   // 手動の読みなら自動の読みを添え、戻せる
   await page.getByRole('button', { name: 'アルバムのメニュー' }).click()
-  await menu(page).getByRole('menuitem', { name: '読みを編集' }).click()
+  await menu(page).getByRole('menuitem', { name: '情報を編集' }).click()
   await expect(dialog.getByTestId('reading-current')).toHaveText('あるばむ（手動）')
   await expect(dialog.getByTestId('reading-auto')).toHaveText('ヨミ（推定）')
   await dialog.getByRole('button', { name: '自動の読みに戻す' }).click()
@@ -43,8 +43,8 @@ test('曲の「…」から開き、漢字を含む読みは理由を出して�
   await page.goto('/library/albums/al-1')
 
   await page.getByRole('button', { name: '一曲目のメニュー' }).click()
-  await menu(page).getByRole('menuitem', { name: '読みを編集' }).click()
-  const dialog = page.getByRole('dialog', { name: '読みを編集' })
+  await menu(page).getByRole('menuitem', { name: '情報を編集' }).click()
+  const dialog = page.getByRole('dialog', { name: '情報を編集' })
   await expect(dialog).toContainText('一曲目')
   await dialog.getByRole('textbox', { name: '新しい読み' }).fill('一きょくめ')
   await dialog.getByRole('button', { name: '保存' }).click()
@@ -80,8 +80,8 @@ test('アーティストの詳細の「すべて再生」は並べたアルバ�
   await expect(page.getByRole('status')).toHaveText('キューに追加しました')
 
   await page.getByRole('button', { name: 'アーティストのメニュー' }).click()
-  await menu(page).getByRole('menuitem', { name: '読みを編集' }).click()
-  await expect(page.getByRole('dialog', { name: '読みを編集' })).toContainText('アのアーティスト 0')
+  await menu(page).getByRole('menuitem', { name: '情報を編集' }).click()
+  await expect(page.getByRole('dialog', { name: '情報を編集' })).toContainText('アのアーティスト 0')
 })
 
 test('アーティストの詳細のハートで付け外しし、一覧のお気に入りの絞り込みに読み直さずに反映する', async ({ page }) => {
