@@ -3,7 +3,6 @@ import type { Range } from '@tanstack/vue-virtual'
 import type { ArtistView } from '~/utils/artist'
 import type { ArtistIndex } from '~/utils/subsonic'
 import { defaultRangeExtractor, useVirtualizer } from '@tanstack/vue-virtual'
-import { useElementSize } from '@vueuse/core'
 
 /**
  * 読みの行の見出しで区切ったアーティストの行（docs/web.md の「一覧」）。
@@ -27,11 +26,7 @@ const scroller = useScroller()
 const root = ref<HTMLElement>()
 
 // 見出しの帯の高さ。今いる行の見出しを、その下に残す
-const header = shallowRef<HTMLElement>()
-onMounted(() => {
-  header.value = scroller.value?.querySelector<HTMLElement>('[data-testid="page-header"]') ?? undefined
-})
-const { height: headerHeight } = useElementSize(header, undefined, { box: 'border-box' })
+const { height: headerHeight } = usePageHeader()
 
 /** `start` 番目の行が属する見出しの位置。 */
 function headingOf(start: number): number {

@@ -46,7 +46,20 @@ export interface MockAlbum {
   duration: number
 }
 
-/** `/rest` のライブラリの偽物。`count` 枚のアルバムを名前順で返し、呼ばれた引数を `requests` に残す。 */
+/** `/api/headings` の偽物。`total` 件を 50 件ごとに A、B、C… の頭文字で分け、受けた引数を `requests` に残す。 */
+async function mockHeadings(page: Page, total: (params: URLSearchParams) => number) {
+  const requests: URLSearchParams[] = []
+  await page.route(/\/api\/headings(\?|$)/, (route) => {
+    const params = new URL(route.request().url()).searchParams
+    requests.push(params)
+    const count = total(params)
+    const headings = Array.from({ length: Math.ceil(count / 50) }, (_, i) => ({ heading: String.fromCharCode(65 + i), offset: i * 50 }))
+    return route.fulfill({ json: { headings, total: count } })
+  })
+  return requests
+}
+
+/** `/rest` のライブラリの偽物。`count` 枚のアルバムを名前順で返し、呼ばれた引数を `requests` に、索引の引数を `headings` に残す。 */
 export async function mockLibrary(page: Page, { count = 250, songs = 2, name = (i: number) => `アルバム ${String(i).padStart(3, '0')}` } = {}) {
   const albums: MockAlbum[] = Array.from({ length: count }, (_, i) => ({
     id: `al-${i}`,
@@ -93,7 +106,8 @@ export async function mockLibrary(page: Page, { count = 250, songs = 2, name = (
     }))
   })
   await page.route(/\/rest\/getCoverArt(\?|$)/, route => route.fulfill({ status: 404 }))
-  return { albums, requests }
+  const headings = await mockHeadings(page, params => params.get('starred') === 'true' ? Math.ceil(count / 3) : count)
+  return { albums, requests, headings }
 }
 
 /**
@@ -151,7 +165,7 @@ export async function mockArtists(page: Page, { rows = ['ア', 'カ', 'サ', '�
   return { index, calls, roles, songs }
 }
 
-/** `search3` で全曲を返す偽物。並び順（`songSort`）を曲名の頭に付け、呼ばれた引数を `requests` に残す。 */
+/** `search3` で全曲を返す偽物。並び順（`songSort`）を曲名の頭に付け、呼ばれた引数を `requests` に、索引の引数を `headings` に残す。 */
 export async function mockTracks(page: Page, { count = 250 } = {}) {
   const requests: URLSearchParams[] = []
   const ok = (body: object) => ({ json: { 'subsonic-response': { status: 'ok', version: '1.16.1', ...body } } })
@@ -168,7 +182,8 @@ export async function mockTracks(page: Page, { count = 250 } = {}) {
     return route.fulfill(ok({ searchResult3: song.length ? { song } : {} }))
   })
   await page.route(/\/rest\/getCoverArt(\?|$)/, route => route.fulfill({ status: 404 }))
-  return { requests }
+  const headings = await mockHeadings(page, () => count)
+  return { requests, headings }
 }
 
 /** ジャンルと、ジャンルごとの曲の偽物。呼ばれた `getSongsByGenre` の引数を `requests` に残す。 */

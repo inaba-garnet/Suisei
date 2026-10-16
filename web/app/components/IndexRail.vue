@@ -15,10 +15,7 @@ const LEGIBLE = 13
 const MAX = 18
 
 const scroller = useScroller()
-const header = shallowRef<HTMLElement>()
-onMounted(() => {
-  header.value = scroller.value?.querySelector<HTMLElement>('[data-testid="page-header"]') ?? undefined
-})
+const { header } = usePageHeader()
 const scrollerBox = useElementBounding(scroller)
 const headerBox = useElementBounding(header)
 const { height: viewport } = useElementSize(scroller)
