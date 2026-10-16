@@ -2,6 +2,7 @@ mod annotation;
 mod browse;
 mod cover;
 mod empty;
+mod headings;
 mod history;
 mod lyrics;
 mod media;
@@ -72,6 +73,7 @@ pub fn router_with(state: AppState, web: Web) -> Router {
         .route("/api/logout", post(session::logout))
         .route("/api/me", get(session::me))
         .route("/api/scan", get(scan_status::get))
+        .route("/api/headings", get(headings::get))
         .route("/api/readings", get(reading::list))
         .route("/api/readings/{id}", get(reading::get).put(reading::put))
         .route("/api/settings", get(settings::get).put(settings::put))

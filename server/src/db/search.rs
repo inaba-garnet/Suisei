@@ -136,6 +136,24 @@ pub async fn starred_songs(pool: &Pool, sort: SongSort) -> Result<Vec<String>, s
     query.build_query_scalar().fetch_all(pool).await
 }
 
+/// `songs` の全件と同じ順で、各曲の見出しを決めるキーを返す（docs/web.md の「一覧」）。
+/// 曲名順は曲の、アルバム順はアルバムの、アーティスト順は曲のアーティストの一人目の並べ替えキー。アーティストがいなければ `None`。
+pub async fn song_heading_keys(
+    pool: &Pool,
+    sort: SongSort,
+) -> Result<Vec<Option<String>>, sqlx::Error> {
+    let key = match sort {
+        SongSort::Title => "track.sort_key",
+        SongSort::Album => "album.sort_key",
+        SongSort::Artist => FIRST_ARTIST,
+    };
+    let mut query = QueryBuilder::<Sqlite>::new(format!(
+        "SELECT {key} FROM track JOIN album ON album.id = track.album_id"
+    ));
+    push_song_order(&mut query, sort);
+    query.build_query_scalar().fetch_all(pool).await
+}
+
 fn push_song_order(query: &mut QueryBuilder<Sqlite>, sort: SongSort) {
     match sort {
         SongSort::Title => query.push(" ORDER BY track.sort_key, track.id"),
