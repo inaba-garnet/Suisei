@@ -1503,7 +1503,7 @@ CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 ## ISC License
 
-[rustls-webpki 0.103.15](https://github.com/rustls/webpki)
+[rustls-webpki 0.103.16](https://github.com/rustls/webpki)
 
 ~~~~text
 Except as otherwise noted, this project is licensed under the following
