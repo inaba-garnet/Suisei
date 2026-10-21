@@ -24,6 +24,11 @@ Subsonic 互換の音楽サーバー（`server/`、Rust）と Web クライア�
 - Symfonium は全件同期で `search3` を `query=""`（引用符二つの文字列）で呼ぶ。全件を返す。
 - Amperfy はログインの前にサーバーの URL（`/`）を GET し、400 以上（401 を除く）なら接続を諦める。`/` は 400 未満を返す。
 
+## 依存の更新
+- 依存を変えたら、同じコミットでライセンスの一覧を作り直す。CI が一覧と依存の食い違いで落ちる（docs/server.md と docs/web.md の「ライセンスの表示」）。
+  - server: `server/` で `cargo about generate about.hbs -o THIRD_PARTY_LICENSES.md`。cargo-about は CI と同じ 0.9.2 を `--features cli` で入れる。
+  - web: `web/` で `pnpm build`。
+
 ## ブランチ
 - `<type>/<scope>-<issue 番号>-<説明>`。type と scope はコミットと同じ。issue やチケットが出自でなければ番号は省く。
 - 説明は英小文字、数字、ハイフンで短く（例: `feat/server-42-search-post`、`fix/web-player-seek`）。
