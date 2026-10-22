@@ -228,6 +228,79 @@ async fn web_files_are_served() {
     );
 }
 
+/// `accept_encoding` を付けて GET し、状態と `Content-Encoding` と本文のバイト列を返す。
+async fn get_encoded(
+    app: axum::Router,
+    uri: &str,
+    accept_encoding: &str,
+) -> (StatusCode, Option<String>, Vec<u8>) {
+    let res = app
+        .oneshot(
+            Request::get(uri)
+                .header(header::ACCEPT_ENCODING, accept_encoding)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let status = res.status();
+    let encoding = res
+        .headers()
+        .get(header::CONTENT_ENCODING)
+        .map(|v| v.to_str().unwrap().to_owned());
+    let body = res.into_body().collect().await.unwrap().to_bytes();
+    (status, encoding, body.to_vec())
+}
+
+#[tokio::test]
+async fn web_files_are_compressed() {
+    let script = "console.log('suisei');\n".repeat(200);
+    let web = || {
+        Web::from_files([
+            (
+                "_nuxt/entry.abc123.js".to_owned(),
+                script.as_bytes().to_vec(),
+            ),
+            ("index.html".to_owned(), b"<!doctype html>index".to_vec()),
+        ])
+    };
+
+    // brotli を受けるなら brotli、gzip だけなら gzip で返す
+    let (status, encoding, body) =
+        get_encoded(app_with(web()).await, "/_nuxt/entry.abc123.js", "gzip, br").await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(encoding.as_deref(), Some("br"));
+    assert!(body.len() < script.len() / 4);
+
+    let (_, encoding, body) =
+        get_encoded(app_with(web()).await, "/_nuxt/entry.abc123.js", "gzip").await;
+    assert_eq!(encoding.as_deref(), Some("gzip"));
+    let mut decoded = String::new();
+    std::io::Read::read_to_string(&mut flate2::read::GzDecoder::new(&body[..]), &mut decoded)
+        .unwrap();
+    assert_eq!(decoded, script);
+
+    // 受けなければそのまま返す。小さな応答は縮まないので圧縮しない
+    let (_, encoding, body) =
+        get_encoded(app_with(web()).await, "/_nuxt/entry.abc123.js", "identity").await;
+    assert_eq!(encoding, None);
+    assert_eq!(body, script.as_bytes());
+    let (_, encoding, _) = get_encoded(app_with(web()).await, "/", "gzip, br").await;
+    assert_eq!(encoding, None);
+}
+
+#[tokio::test]
+async fn rest_responses_are_not_compressed() {
+    let (status, encoding, _) = get_encoded(
+        app().await,
+        &format!("/rest/getOpenSubsonicExtensions?{AUTH}&f=json"),
+        "gzip, br",
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(encoding, None);
+}
+
 #[tokio::test]
 async fn web_does_not_cover_api_or_missing_files() {
     for uri in [
