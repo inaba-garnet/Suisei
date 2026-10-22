@@ -235,6 +235,39 @@ async fn manual_reading_is_dropped_while_the_name_differs() {
 }
 
 #[tokio::test]
+async fn manual_reading_ranks_search_results() {
+    let s = server().await;
+    let titles = |result: &Value| -> Vec<String> {
+        result["searchResult3"]["song"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|song| song["title"].as_str().unwrap().to_owned())
+            .collect()
+    };
+    // どちらの曲もアーティストの読み（ヨネヅケンシ）で当たり、読みの順に並ぶ
+    let query = "query=%E3%82%88%E3%81%AD%E3%81%A5";
+    assert_eq!(
+        titles(&s.rest("search3", query).await),
+        ["馬と鹿", "大切な事"]
+    );
+
+    // 曲の読みを検索語と同じにすると、名前と同じ段に上がる
+    let track = s
+        .items("kind=track")
+        .await
+        .into_iter()
+        .find(|t| t["name"] == "大切な事")
+        .unwrap();
+    let id = track["id"].as_str().unwrap();
+    assert_eq!(s.set(id, json!("よねづ")).await.0, StatusCode::OK);
+    assert_eq!(
+        titles(&s.rest("search3", query).await),
+        ["大切な事", "馬と鹿"]
+    );
+}
+
+#[tokio::test]
 async fn list_filters_and_pages() {
     let s = server().await;
     let tracks = s.items("kind=track").await;

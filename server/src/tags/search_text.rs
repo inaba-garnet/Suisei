@@ -35,9 +35,14 @@ pub fn search_text<'a>(fields: impl IntoIterator<Item = &'a str>) -> String {
     text
 }
 
-/// アーティストの照らす文字列。名前と読み。
-pub fn artist_text(name: &str, reading: Option<&str>) -> String {
+/// 名前と読みだけの照らす文字列。一致の度合いを見るのに使う。
+pub fn name_text(name: &str, reading: Option<&str>) -> String {
     search_text([name, reading.unwrap_or_default()])
+}
+
+/// アーティストの照らす文字列。名前と読みなので、[`name_text`] と同じ。
+pub fn artist_text(name: &str, reading: Option<&str>) -> String {
+    name_text(name, reading)
 }
 
 /// アルバムの照らす文字列。名前と読み、表示用アーティスト、アルバムアーティストの読み。

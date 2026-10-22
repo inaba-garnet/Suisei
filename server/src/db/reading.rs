@@ -2,7 +2,7 @@
 //! 直したら、並べ替えのキーと検索の文字列もその場で作り直す。
 
 use super::{Connection, Pool};
-use crate::tags::{ReadingSource, album_text, artist_text, sort_key, track_text};
+use crate::tags::{ReadingSource, album_text, artist_text, name_text, sort_key, track_text};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
@@ -374,9 +374,15 @@ async fn refresh_track_text(conn: &mut Connection, id: &str) -> Result<(), sqlx:
         &track.album,
         readings.iter().map(String::as_str),
     );
-    sqlx::query!("UPDATE track SET search_text = ? WHERE id = ?", text, id)
-        .execute(&mut *conn)
-        .await?;
+    let name = name_text(&track.title, track.sort_name.as_deref());
+    sqlx::query!(
+        "UPDATE track SET search_text = ?, name_text = ? WHERE id = ?",
+        text,
+        name,
+        id
+    )
+    .execute(&mut *conn)
+    .await?;
     Ok(())
 }
 
@@ -405,8 +411,14 @@ async fn refresh_album_text(conn: &mut Connection, id: &str) -> Result<(), sqlx:
         &album.display_artist,
         readings.iter().map(String::as_str),
     );
-    sqlx::query!("UPDATE album SET search_text = ? WHERE id = ?", text, id)
-        .execute(&mut *conn)
-        .await?;
+    let name = name_text(&album.name, album.sort_name.as_deref());
+    sqlx::query!(
+        "UPDATE album SET search_text = ?, name_text = ? WHERE id = ?",
+        text,
+        name,
+        id
+    )
+    .execute(&mut *conn)
+    .await?;
     Ok(())
 }

@@ -12,7 +12,7 @@ use crate::db::library::{
 use crate::db::{IdKind, new_id};
 use crate::tags::{
     Contributor, Credit, Options, RawTags, Reading, ReadingSource, TrackInfo, album_text,
-    artist_text, reading, sort_key, to_stored, track_text,
+    artist_text, name_text, reading, sort_key, to_stored, track_text,
 };
 
 /// スキャンで見つけたファイル。
@@ -403,6 +403,7 @@ pub fn build(
                 &albums[track_album[t]].name,
                 readings(&info.artists),
             ),
+            name_text: name_text(&info.title, kana),
             disc_number: info.disc_number.map(i64::from),
             track_number: info.track_number.map(i64::from),
             year: info.year.map(i64::from),
@@ -587,6 +588,7 @@ fn album_row(
         auto_sort_name_source: auto.as_ref().map(|r| r.source.as_str().to_owned()),
         sort_key: sort_key(&name, kana),
         search_text: text,
+        name_text: name_text(&name, kana),
         year: members
             .iter()
             .filter_map(|&f| infos[f].year)

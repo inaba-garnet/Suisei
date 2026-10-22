@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO album (id, match_key, name, display_artist, sort_name, sort_name_source,\n                 auto_sort_name, auto_sort_name_source, year, created_at, sort_key, compilation,\n                 search_text, name_text, cover_path)\n             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n             ON CONFLICT (id) DO UPDATE SET match_key = excluded.match_key, name = excluded.name,\n                 display_artist = excluded.display_artist, sort_name = excluded.sort_name,\n                 sort_name_source = excluded.sort_name_source,\n                 auto_sort_name = excluded.auto_sort_name,\n                 auto_sort_name_source = excluded.auto_sort_name_source, year = excluded.year,\n                 sort_key = excluded.sort_key, compilation = excluded.compilation,\n                 created_at = excluded.created_at, search_text = excluded.search_text,\n                 name_text = excluded.name_text, cover_path = excluded.cover_path",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 15
+    },
+    "nullable": []
+  },
+  "hash": "70c47e48d96eb7ef7c06f55a7eca044707781d626920d127ff7378e76cadfc5a"
+}
