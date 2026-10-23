@@ -42,6 +42,13 @@ export interface PlayerState {
 /** 前の曲を押したとき、この秒数より先まで進んでいれば曲の頭に戻す。 */
 const RESTART_AFTER = 3
 
+/**
+ * 曲の残りがこの秒数を切ったら、次の曲を控えの `<audio>` で読み始める（#143）。
+ * 曲の切れ目で読み込みを待つ無音を作らないため。Android の Chrome は、音が止まって数秒経ったタブの処理と通信を抑え、
+ * 画面が消えている間に次の曲を読めずに止まる。
+ */
+const PRELOAD_BEFORE = 30
+
 /** 選んだ音量（0〜1）を残す `localStorage` の名前。 */
 const VOLUME_STORAGE_KEY = 'suisei-volume'
 
@@ -56,8 +63,14 @@ function shuffled(songs: Song[], first: number): Song[] {
   return head ? [head, ...rest] : rest
 }
 
-/** layout に一つだけ置く `<audio>`（PlayerAudio）。SPA なので、モジュールに持っても利用者の間で混ざらない。 */
+/**
+ * layout に一つだけ置く PlayerAudio の、鳴らしている方の `<audio>`。SPA なので、モジュールに持っても利用者の間で混ざらない。
+ * PlayerAudio は `<audio>` を二つ持ち、もう一方（`standby`）で次の曲を先に読む。曲が替わるときに入れ替える。
+ */
 const audio = shallowRef<HTMLAudioElement>()
+const standby = shallowRef<HTMLAudioElement>()
+/** 控えの `<audio>` に読んである曲。キューの曲のオブジェクトで、次に鳴らす曲と同じかを見る */
+let preloaded: { song: Song, transcode: boolean } | undefined
 
 /** ブラウザが鳴らせないと分かった形式。ページを読み直すまで覚え、同じ形式の曲は最初から変換する。 */
 const unplayable = new Set<string>()
@@ -94,7 +107,13 @@ export function usePlayer() {
   const state = useState<PlayerState>('player', initial)
   const current = computed<Song | undefined>(() => state.value.queue[state.value.index])
 
-  /** キューの `index` 番目の曲を読み込んで鳴らす。 */
+  /** 曲を変換して鳴らすか。鳴らせないと分かった形式なら、最初から変換する。 */
+  function shouldTranscode(song: Song) {
+    const key = formatKey(song)
+    return key !== undefined && unplayable.has(key)
+  }
+
+  /** キューの `index` 番目の曲を読み込んで鳴らす。控えの `<audio>` に読んであれば、入れ替えてすぐ鳴らす。 */
   function load(index: number) {
     const el = audio.value
     const song = state.value.queue[index]
@@ -106,8 +125,58 @@ export function usePlayer() {
     state.value.failure = null
     state.value.started++
     fallingBack = undefined
-    const key = formatKey(song)
-    openSong(song, key !== undefined && unplayable.has(key), 0, true)
+    const ready = standby.value
+    if (ready && preloaded?.song === song && !ready.error) {
+      audio.value = ready
+      standby.value = el
+      state.value.transcoding = preloaded.transcode
+      state.value.offset = 0
+      preloaded = undefined
+      resume()
+      clear(el)
+      return
+    }
+    clearStandby()
+    openSong(song, shouldTranscode(song), 0, true)
+  }
+
+  /** 次に鳴らすキューの位置。次がなければ -1。 */
+  function nextIndex() {
+    if (state.value.index < state.value.queue.length - 1) {
+      return state.value.index + 1
+    }
+    return state.value.repeat === 'all' && state.value.queue.length > 0 ? 0 : -1
+  }
+
+  /**
+   * 次の曲を控えの `<audio>` で読み始める。読んである曲が次の曲と違えば（キューを並べ替えたときなど）読み直す。
+   * 1 曲のリピートでは同じ `<audio>` を頭に戻すので読まない。
+   */
+  function preloadNext() {
+    const el = standby.value
+    const song = state.value.repeat === 'one' ? undefined : state.value.queue[nextIndex()]
+    if (!el || !song || preloaded?.song === song) {
+      return
+    }
+    const transcode = shouldTranscode(song)
+    preloaded = { song, transcode }
+    el.preload = 'auto'
+    el.src = streamUrl(song.id, transcode ? { offset: 0 } : undefined)
+    el.load()
+  }
+
+  /** `<audio>` の読み込みを止めて空にする。読みかけの曲の取得を続けさせないため。 */
+  function clear(el: HTMLAudioElement) {
+    el.pause()
+    el.removeAttribute('src')
+    el.load()
+  }
+
+  function clearStandby() {
+    preloaded = undefined
+    if (standby.value?.hasAttribute('src')) {
+      clear(standby.value)
+    }
   }
 
   /** 曲を `<audio>` に渡す。`transcode` なら MP3 に変換させ、`offset` 秒から頭出しさせる。 */
@@ -207,11 +276,9 @@ export function usePlayer() {
 
   /** 次の曲に移る。キューの最後なら、キュー全体のリピートのときだけ先頭に戻る。 */
   function next() {
-    if (state.value.index < state.value.queue.length - 1) {
-      load(state.value.index + 1)
-    }
-    else if (state.value.repeat === 'all' && state.value.queue.length > 0) {
-      load(0)
+    const index = nextIndex()
+    if (index >= 0) {
+      load(index)
     }
   }
 
@@ -368,71 +435,98 @@ export function usePlayer() {
     restart,
     fallback,
     resume,
+    preloadNext,
   }
 }
 
 /** 音量（0〜1）。PC だけで変え、`localStorage` に残す（docs/web.md の「再生」）。 */
 export function usePlayerVolume() {
   const volume = useLocalStorage(VOLUME_STORAGE_KEY, 1)
+  // 控えの `<audio>` にも当て、入れ替えたときに音量が変わらないようにする
   watchEffect(() => {
-    if (audio.value) {
-      audio.value.volume = Math.min(1, Math.max(0, Number(volume.value) || 0))
+    for (const el of [audio.value, standby.value]) {
+      if (el) {
+        el.volume = Math.min(1, Math.max(0, Number(volume.value) || 0))
+      }
     }
   })
   return volume
 }
 
-/** PlayerAudio が `<audio>` を渡し、その event で状態を更新する。 */
+/** 鳴らしている方の `<audio>`。曲が替わると控えと入れ替わるので、event はこれに付け直す。 */
+export function useActiveAudio(): Readonly<Ref<HTMLAudioElement | undefined>> {
+  return readonly(audio) as Readonly<Ref<HTMLAudioElement | undefined>>
+}
+
+/** PlayerAudio が `<audio>` を二つ渡し、鳴らしている方の event で状態を更新する。 */
 export function usePlayerAudio() {
   const state = useState<PlayerState>('player', initial)
-  const { next, restart, fallback, resume } = usePlayer()
+  const { current, next, restart, fallback, resume, preloadNext } = usePlayer()
 
-  function attach(el: HTMLAudioElement) {
-    audio.value = el
+  function attach(first: HTMLAudioElement, second: HTMLAudioElement) {
+    audio.value = first
+    standby.value = second
   }
 
   /** layout が外れる（ログアウトなど）ときは鳴らすものがなくなるので、キューごと捨てる。 */
   function detach() {
     audio.value?.pause()
+    standby.value?.pause()
     audio.value = undefined
+    standby.value = undefined
+    preloaded = undefined
     state.value = initial()
   }
 
+  /** 鳴らしている方の `<audio>` の event だけを扱う。控えの読み込みや、入れ替えた後の前の曲の event は捨てる。 */
+  function active(handler: (el: HTMLAudioElement) => void) {
+    return (e: Event) => {
+      if (e.target === audio.value) {
+        handler(e.target as HTMLAudioElement)
+      }
+    }
+  }
+
   const handlers = {
-    play: () => {
+    play: active(() => {
       state.value.playing = true
-    },
-    pause: () => {
+    }),
+    pause: active(() => {
       state.value.playing = false
-    },
+    }),
     // 変換して鳴らす曲を変換で鳴らせたら、その形式は鳴らせないと覚える。前に拒まれていても、鳴り出したら消す
-    playing: () => {
+    playing: active(() => {
       state.value.failure = null
       if (fallingBack !== undefined && state.value.transcoding) {
         unplayable.add(fallingBack)
       }
       fallingBack = undefined
-    },
-    timeupdate: (e: Event) => {
-      state.value.position = state.value.offset + (e.target as HTMLAudioElement).currentTime
-    },
+    }),
+    // 残りが短くなったら次の曲を読み始める。変換して鳴らしている曲は、`<audio>` の長さが頭出しした位置からの残りなので、曲の長さで見る
+    timeupdate: active((el) => {
+      state.value.position = state.value.offset + el.currentTime
+      const duration = !state.value.transcoding && Number.isFinite(el.duration) ? el.duration : current.value?.duration
+      if (duration !== undefined && duration - state.value.position <= PRELOAD_BEFORE) {
+        preloadNext()
+      }
+    }),
     // 1 曲のリピートなら同じ曲を頭から鳴らす。キューの最後の曲が終わったら、リピートがなければその曲を出したまま止める
-    ended: () => {
-      if (state.value.repeat === 'one' && audio.value) {
+    ended: active(() => {
+      if (state.value.repeat === 'one') {
         restart()
         resume()
         return
       }
       next()
-    },
-    // 元のファイルを鳴らせなければ変換で読み直し、それでも鳴らせなければ再生バーに出す
-    error: () => {
+    }),
+    // 元のファイルを鳴らせなければ変換で読み直し、それでも鳴らせなければ再生バーに出す。控えの読み込みの失敗は、鳴らすときに読み直す
+    error: active(() => {
       if (fallback()) {
         return
       }
       state.value.playing = false
       state.value.failure = 'unplayable'
-    },
+    }),
   }
 
   return { attach, detach, handlers }

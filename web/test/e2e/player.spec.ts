@@ -32,6 +32,35 @@ test('アルバムの「すべて再生」で一曲目から鳴らし、終わ�
   await expect(page.getByTestId('songs').getByText('二曲目')).toHaveClass(/text-accent-base/)
 })
 
+test('曲の残りが短くなったら次の曲を控えで先に読み、曲の切れ目では読み込みを待たずに鳴らす', async ({ page }) => {
+  await mockApi(page, { loggedIn: true })
+  await mockLibrary(page, { count: 3, songs: 3 })
+  const { ids } = await mockStream(page, { seconds: 4 })
+  const streams: string[] = []
+  page.on('request', (request) => {
+    const url = new URL(request.url())
+    if (url.pathname === '/rest/stream') {
+      streams.push(url.searchParams.get('id')!)
+    }
+  })
+  await page.goto('/library/albums/al-1')
+
+  await page.getByRole('button', { name: 'すべて再生' }).click()
+  const bar = page.getByTestId('player-bar')
+  // 一曲目を鳴らしている間に、二曲目を読み始める
+  await expect.poll(() => ids).toEqual(['al-1-1', 'al-1-2'])
+  await expect(bar).toContainText('一曲目')
+  const before = streams.filter(id => id === 'al-1-2').length
+
+  // 切れ目では控えと入れ替えて鳴らし、二曲目を読み直さない
+  await expect(bar).toContainText('二曲目', { timeout: 10_000 })
+  await expect(bar.getByRole('button', { name: '一時停止' })).toBeVisible()
+  await expect.poll(() => page.getByTestId('audio').evaluate(el => (el as HTMLAudioElement).currentSrc)).toContain('id=al-1-2')
+  expect(streams.filter(id => id === 'al-1-2').length).toBe(before)
+  // 二曲目の間に三曲目を読む
+  await expect.poll(() => ids).toEqual(['al-1-1', 'al-1-2', 'al-1-3'])
+})
+
 test('曲の行を押すとその曲から鳴らし、一時停止と再開ができ、画面を移っても途切れない', async ({ page }) => {
   await mockApi(page, { loggedIn: true })
   await mockTracks(page)

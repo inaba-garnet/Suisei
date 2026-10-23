@@ -263,8 +263,9 @@ function silence(seconds: number): Buffer {
  * シークで途中から読み直す要求と、ブラウザが同じ曲を続けて頭から読み直す要求は、同じ曲なので `ids` に残さない。
  * `unplayable` なら、元のファイルにはブラウザが鳴らせない中身を返し、`format` を付けた変換の要求にだけ無音を返す。
  * 変換の要求を含め、曲、形式、頭出しの位置が変わった要求を `requests` に残す。
+ * 既定の長さは、曲の残りが短くなると次の曲を先に読む（30 秒）より十分に長くし、読み込みを数えるテストに先読みが混ざらないようにする。
  */
-export async function mockStream(page: Page, { seconds = 30, fail = false, unplayable = false } = {}) {
+export async function mockStream(page: Page, { seconds = 120, fail = false, unplayable = false } = {}) {
   const ids: string[] = []
   const requests: { id: string, format: string | null, timeOffset: string | null }[] = []
   const body = silence(seconds)
