@@ -5,6 +5,18 @@ import { streamUrl } from '~/utils/subsonic'
 /** リピートの種類。`all` はキュー全体、`one` は再生中の曲だけを繰り返す。 */
 export type RepeatMode = 'off' | 'all' | 'one'
 
+/**
+ * 再生中の曲を鳴らせなかった理由。`unplayable` は変換しても鳴らせなかった、
+ * `blocked` はブラウザが `play()` を拒んだ（バックグラウンドで再生を始めさせないなど）。
+ */
+export type PlayFailure = 'unplayable' | 'blocked'
+
+/** 再生バーなどに出す、鳴らせなかった理由。 */
+export const PLAY_FAILURE_MESSAGES: Record<PlayFailure, string> = {
+  unplayable: '再生できませんでした',
+  blocked: 'ブラウザに再生を止められました',
+}
+
 /** 再生の状態（docs/web.md の「再生」）。画面を移っても途切れさせないため、ページの外に持つ。 */
 export interface PlayerState {
   queue: Song[]
@@ -13,8 +25,8 @@ export interface PlayerState {
   playing: boolean
   /** 再生位置（秒） */
   position: number
-  /** 再生中の曲を鳴らせなかったか */
-  failed: boolean
+  /** 再生中の曲を鳴らせなかった理由。鳴らせていれば null */
+  failure: PlayFailure | null
   shuffle: boolean
   /** シャッフルする前のキュー。オフに戻すときに使う */
   original: Song[]
@@ -75,7 +87,7 @@ function copiesOf(songs: Song[]): Song[] {
 }
 
 function initial(): PlayerState {
-  return { queue: [], index: -1, playing: false, position: 0, failed: false, shuffle: false, original: [], repeat: 'off', started: 0, transcoding: false, offset: 0 }
+  return { queue: [], index: -1, playing: false, position: 0, failure: null, shuffle: false, original: [], repeat: 'off', started: 0, transcoding: false, offset: 0 }
 }
 
 export function usePlayer() {
@@ -91,7 +103,7 @@ export function usePlayer() {
     }
     state.value.index = index
     state.value.position = 0
-    state.value.failed = false
+    state.value.failure = null
     state.value.started++
     fallingBack = undefined
     const key = formatKey(song)
@@ -157,8 +169,27 @@ export function usePlayer() {
   }
 
   function resume() {
-    // 鳴らせなかったときは error か pause の event で状態を戻すので、ここでは失敗を捨てる
-    audio.value?.play().catch(() => {})
+    const el = audio.value
+    if (!el) {
+      return
+    }
+    const song = current.value
+    el.play().catch((err: unknown) => {
+      const name = err instanceof DOMException ? err.name : 'Error'
+      // 止まった理由を実機で切り分けられるよう、拒否はすべて残す（#143）
+      console.warn('[player] play() was rejected', {
+        name,
+        message: err instanceof Error ? err.message : String(err),
+        visibility: document.visibilityState,
+        src: el.currentSrc,
+      })
+      // AbortError は読み込みの途中で曲を替えたとき、NotSupportedError は鳴らせない形式で、error の event が扱う
+      if (name === 'AbortError' || name === 'NotSupportedError' || current.value !== song) {
+        return
+      }
+      state.value.playing = false
+      state.value.failure = 'blocked'
+    })
   }
 
   function toggle() {
@@ -317,6 +348,8 @@ export function usePlayer() {
   return {
     state: readonly(state),
     current,
+    /** 再生中の曲を鳴らせなかった理由の文。鳴らせていれば undefined */
+    failureMessage: computed(() => state.value.failure ? PLAY_FAILURE_MESSAGES[state.value.failure] : undefined),
     /** 前の曲は曲の頭に戻すこともあるので、何か再生していれば押せる */
     canPrevious: computed(() => !!current.value),
     canNext: computed(() => state.value.index < state.value.queue.length - 1 || (state.value.repeat === 'all' && !!current.value)),
@@ -334,6 +367,7 @@ export function usePlayer() {
     addToQueue,
     restart,
     fallback,
+    resume,
   }
 }
 
@@ -351,7 +385,7 @@ export function usePlayerVolume() {
 /** PlayerAudio が `<audio>` を渡し、その event で状態を更新する。 */
 export function usePlayerAudio() {
   const state = useState<PlayerState>('player', initial)
-  const { next, restart, fallback } = usePlayer()
+  const { next, restart, fallback, resume } = usePlayer()
 
   function attach(el: HTMLAudioElement) {
     audio.value = el
@@ -371,8 +405,9 @@ export function usePlayerAudio() {
     pause: () => {
       state.value.playing = false
     },
-    // 変換して鳴らす曲を変換で鳴らせたら、その形式は鳴らせないと覚える
+    // 変換して鳴らす曲を変換で鳴らせたら、その形式は鳴らせないと覚える。前に拒まれていても、鳴り出したら消す
     playing: () => {
+      state.value.failure = null
       if (fallingBack !== undefined && state.value.transcoding) {
         unplayable.add(fallingBack)
       }
@@ -385,7 +420,7 @@ export function usePlayerAudio() {
     ended: () => {
       if (state.value.repeat === 'one' && audio.value) {
         restart()
-        audio.value.play().catch(() => {})
+        resume()
         return
       }
       next()
@@ -396,7 +431,7 @@ export function usePlayerAudio() {
         return
       }
       state.value.playing = false
-      state.value.failed = true
+      state.value.failure = 'unplayable'
     },
   }
 
