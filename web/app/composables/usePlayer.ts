@@ -133,7 +133,9 @@ export function usePlayer() {
       state.value.offset = 0
       preloaded = undefined
       resume()
-      clear(el)
+      // 前の曲は止めるだけにして、`src` は外さない。外すと鳴らしている `<audio>` が一瞬なくなり、
+      // Android の Chrome がメディアの通知を消すことがある。通知が消えると、画面が消えている間の再生を抑えられる
+      el.pause()
       return
     }
     clearStandby()
