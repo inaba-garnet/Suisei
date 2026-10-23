@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE track SET search_text = ?, name_text = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "ccbf8fff5a5bd8ad94d02b88b4da2481e8df3c21da9f9121a5a9f5878c836ae2"
+}

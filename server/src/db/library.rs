@@ -56,6 +56,8 @@ pub struct AlbumRow {
     pub auto_sort_name_source: Option<String>,
     pub sort_key: String,
     pub search_text: String,
+    /// 名前と読みだけの照らす文字列
+    pub name_text: String,
     pub year: Option<i64>,
     pub created_at: i64,
     pub compilation: bool,
@@ -77,6 +79,8 @@ pub struct TrackRow {
     pub auto_sort_name_source: Option<String>,
     pub sort_key: String,
     pub search_text: String,
+    /// 曲名と読みだけの照らす文字列
+    pub name_text: String,
     pub disc_number: Option<i64>,
     pub track_number: Option<i64>,
     pub year: Option<i64>,
@@ -298,8 +302,8 @@ pub async fn replace(pool: &Pool, library: &Library) -> Result<(), sqlx::Error> 
         sqlx::query!(
             "INSERT INTO album (id, match_key, name, display_artist, sort_name, sort_name_source,
                  auto_sort_name, auto_sort_name_source, year, created_at, sort_key, compilation,
-                 search_text, cover_path)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 search_text, name_text, cover_path)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT (id) DO UPDATE SET match_key = excluded.match_key, name = excluded.name,
                  display_artist = excluded.display_artist, sort_name = excluded.sort_name,
                  sort_name_source = excluded.sort_name_source,
@@ -307,7 +311,7 @@ pub async fn replace(pool: &Pool, library: &Library) -> Result<(), sqlx::Error> 
                  auto_sort_name_source = excluded.auto_sort_name_source, year = excluded.year,
                  sort_key = excluded.sort_key, compilation = excluded.compilation,
                  created_at = excluded.created_at, search_text = excluded.search_text,
-                 cover_path = excluded.cover_path",
+                 name_text = excluded.name_text, cover_path = excluded.cover_path",
             a.id,
             a.match_key,
             a.name,
@@ -321,6 +325,7 @@ pub async fn replace(pool: &Pool, library: &Library) -> Result<(), sqlx::Error> 
             a.sort_key,
             a.compilation,
             a.search_text,
+            a.name_text,
             a.cover_path
         )
         .execute(&mut *tx)
@@ -331,8 +336,8 @@ pub async fn replace(pool: &Pool, library: &Library) -> Result<(), sqlx::Error> 
             "INSERT INTO track (id, match_key, album_id, title, display_artist, sort_name,
                  sort_name_source, auto_sort_name, auto_sort_name_source, disc_number,
                  track_number, year, primary_file_id, sort_key, created_at, search_text,
-                 display_composer)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 name_text, display_composer)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT (id) DO UPDATE SET match_key = excluded.match_key,
                  album_id = excluded.album_id, title = excluded.title,
                  display_artist = excluded.display_artist, sort_name = excluded.sort_name,
@@ -342,7 +347,7 @@ pub async fn replace(pool: &Pool, library: &Library) -> Result<(), sqlx::Error> 
                  disc_number = excluded.disc_number, track_number = excluded.track_number,
                  year = excluded.year, primary_file_id = excluded.primary_file_id,
                  sort_key = excluded.sort_key, created_at = excluded.created_at,
-                 search_text = excluded.search_text,
+                 search_text = excluded.search_text, name_text = excluded.name_text,
                  display_composer = excluded.display_composer",
             t.id,
             t.match_key,
@@ -360,6 +365,7 @@ pub async fn replace(pool: &Pool, library: &Library) -> Result<(), sqlx::Error> 
             t.sort_key,
             t.created_at,
             t.search_text,
+            t.name_text,
             t.display_composer
         )
         .execute(&mut *tx)

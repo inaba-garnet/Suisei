@@ -785,6 +785,48 @@ async fn search_matches_reading_and_all_words() {
 }
 
 #[tokio::test]
+async fn search_ranks_name_matches_first() {
+    let titled = |path, title, artist, album| Song {
+        title: Some(title),
+        ..song(path, artist, album)
+    };
+    let server = server(&[
+        titled("1.flac", "SOS", "黛 冬優子", "Spring"),
+        titled("2.flac", "冬の魔法", "Snow 冬", "冬の魔法"),
+        titled("3.flac", "冬", "冬野", "冬"),
+        titled("4.flac", "真冬", "C", "真冬"),
+    ])
+    .await;
+    let res = server.get("search3", "&query=%E5%86%AC").await;
+    let result = &res["searchResult3"];
+    // 名前が同じ、名前が始まる、名前が含む、名前の外で当たるの順。段の中は読みの順
+    assert_eq!(
+        search_names(result, "song", "title"),
+        ["冬", "冬の魔法", "真冬", "SOS"]
+    );
+    assert_eq!(
+        search_names(result, "album", "name"),
+        ["冬", "冬の魔法", "真冬", "Spring"]
+    );
+    assert_eq!(
+        search_names(result, "artist", "name"),
+        ["冬野", "Snow 冬", "黛 冬優子"]
+    );
+
+    // 続きを読んでも順は崩れない
+    let res = server
+        .get(
+            "search3",
+            "&query=%E5%86%AC&artistCount=0&albumCount=0&songCount=2&songOffset=2",
+        )
+        .await;
+    assert_eq!(
+        search_names(&res["searchResult3"], "song", "title"),
+        ["真冬", "SOS"]
+    );
+}
+
+#[tokio::test]
 async fn search_sorts_songs() {
     let titled = |path, title, artist, album, track| Song {
         title: Some(title),

@@ -1,6 +1,7 @@
 //! 検索の問い合わせ。方式を替えやすいよう、このモジュールに閉じ込める（docs/server.md）。
 //!
 //! 今は `search_text` 列への `LIKE` の部分一致で、全行を順に見る。
+//! 結果は名前との一致の度合い（[`push_rank`]）で段に分け、段の中を読みの順に並べる。
 //! 語の数が決まらないので、ここだけは実行時に SQL を組み立て、コンパイル時の照合は使わない。
 
 use sqlx::{QueryBuilder, Sqlite};
@@ -49,7 +50,15 @@ pub async fn artists(
          FROM artist",
     );
     push_filter(&mut query, "artist", words);
-    push_page(&mut query, "artist", count, offset);
+    // アーティストの照らす文字列は名前と読みだけなので、そのまま一致の度合いに使う
+    push_page(
+        &mut query,
+        "artist",
+        "artist.search_text",
+        words,
+        count,
+        offset,
+    );
     query.build_query_as().fetch_all(pool).await
 }
 
@@ -62,7 +71,7 @@ pub async fn albums(
 ) -> Result<Vec<String>, sqlx::Error> {
     let mut query = QueryBuilder::<Sqlite>::new("SELECT album.id FROM album");
     push_filter(&mut query, "album", words);
-    push_page(&mut query, "album", count, offset);
+    push_page(&mut query, "album", "album.name_text", words, count, offset);
     query.build_query_scalar().fetch_all(pool).await
 }
 
@@ -101,7 +110,9 @@ pub async fn songs(
         "SELECT track.id FROM track JOIN album ON album.id = track.album_id",
     );
     push_filter(&mut query, "track", words);
-    push_song_order(&mut query, sort);
+    query.push(" ORDER BY ");
+    push_rank(&mut query, "track.name_text", words);
+    query.push(song_order(sort));
     push_limit(&mut query, count, offset);
     query.build_query_scalar().fetch_all(pool).await
 }
@@ -155,13 +166,40 @@ pub async fn song_heading_keys(
 }
 
 fn push_song_order(query: &mut QueryBuilder<Sqlite>, sort: SongSort) {
+    query.push(" ORDER BY ");
+    query.push(song_order(sort));
+}
+
+fn song_order(sort: SongSort) -> String {
     match sort {
-        SongSort::Title => query.push(" ORDER BY track.sort_key, track.id"),
-        SongSort::Album => query.push(format!(" ORDER BY {ALBUM_ORDER}")),
-        SongSort::Artist => query.push(format!(
-            " ORDER BY {FIRST_ARTIST} IS NULL, {FIRST_ARTIST}, {ALBUM_ORDER}"
-        )),
-    };
+        SongSort::Title => "track.sort_key, track.id".to_owned(),
+        SongSort::Album => ALBUM_ORDER.to_owned(),
+        SongSort::Artist => format!("{FIRST_ARTIST} IS NULL, {FIRST_ARTIST}, {ALBUM_ORDER}"),
+    }
+}
+
+/// 名前との一致の度合いで段に分ける並べ替えのキーを、後ろに `, ` を付けて足す。語がなければ足さない。
+/// 名前と読みの欄（`name`）のどれかが検索語と同じなら 0、検索語で始まれば 1、すべての語を含めば 2、
+/// 名前の外（アーティストやアルバム）だけで当たれば 3。検索語は語を空白一つでつないだもの。
+fn push_rank(query: &mut QueryBuilder<Sqlite>, name: &str, words: &[String]) {
+    if words.is_empty() {
+        return;
+    }
+    let phrase = escape_like(&words.join(" "));
+    query.push(format!("CASE WHEN char(31) || {name} || char(31) LIKE "));
+    query.push_bind(format!("%{SEP}{phrase}{SEP}%"));
+    query.push(format!(" ESCAPE '\\' THEN 0 WHEN char(31) || {name} LIKE "));
+    query.push_bind(format!("%{SEP}{phrase}%"));
+    query.push(" ESCAPE '\\' THEN 1 WHEN ");
+    for (i, word) in words.iter().enumerate() {
+        if i > 0 {
+            query.push(" AND ");
+        }
+        query.push(format!("{name} LIKE "));
+        query.push_bind(like_pattern(word));
+        query.push(" ESCAPE '\\'");
+    }
+    query.push(" THEN 2 ELSE 3 END, ");
 }
 
 /// 語ごとに `search_text LIKE '%語%'` を AND でつなぐ。語がなければ全件。
@@ -175,9 +213,18 @@ fn push_filter(query: &mut QueryBuilder<Sqlite>, table: &str, words: &[String]) 
     }
 }
 
-/// 並べ替えキーの順。ID で順序を確定させ、offset で続きを取っても抜けや重なりが出ないようにする。
-fn push_page(query: &mut QueryBuilder<Sqlite>, table: &str, count: i64, offset: i64) {
-    query.push(format!(" ORDER BY {table}.sort_key, {table}.id"));
+/// 一致の度合い、並べ替えキーの順。ID で順序を確定させ、offset で続きを取っても抜けや重なりが出ないようにする。
+fn push_page(
+    query: &mut QueryBuilder<Sqlite>,
+    table: &str,
+    name: &str,
+    words: &[String],
+    count: i64,
+    offset: i64,
+) {
+    query.push(" ORDER BY ");
+    push_rank(query, name, words);
+    query.push(format!("{table}.sort_key, {table}.id"));
     push_limit(query, count, offset);
 }
 
@@ -188,18 +235,24 @@ fn push_limit(query: &mut QueryBuilder<Sqlite>, count: i64, offset: i64) {
     query.push_bind(offset);
 }
 
+/// 照らす文字列の欄の区切り（`tags::search_text`）。SQL では `char(31)`
+const SEP: char = '\u{1f}';
+
 /// `%` と `_` と `\` を文字として扱う部分一致の形。
 fn like_pattern(word: &str) -> String {
-    let mut pattern = String::with_capacity(word.len() + 2);
-    pattern.push('%');
+    format!("%{}%", escape_like(word))
+}
+
+/// `%` と `_` と `\` の前に `\` を置き、`LIKE` で文字として扱わせる。
+fn escape_like(word: &str) -> String {
+    let mut escaped = String::with_capacity(word.len());
     for c in word.chars() {
         if matches!(c, '%' | '_' | '\\') {
-            pattern.push('\\');
+            escaped.push('\\');
         }
-        pattern.push(c);
+        escaped.push(c);
     }
-    pattern.push('%');
-    pattern
+    escaped
 }
 
 #[cfg(test)]
