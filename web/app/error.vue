@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { NuxtError } from '#app'
+import { clearError, type NuxtError } from '#app'
 import { CircleAlert } from 'lucide-vue-next'
 
 defineProps<{ error: NuxtError }>()
