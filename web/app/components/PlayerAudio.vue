@@ -6,6 +6,7 @@ usePlayerVolume()
 const el = ref<HTMLAudioElement>()
 usePlayerScrobble(el)
 usePlayerMediaSession(el)
+usePlayerTrace(el)
 
 onMounted(() => attach(el.value!))
 onBeforeUnmount(detach)

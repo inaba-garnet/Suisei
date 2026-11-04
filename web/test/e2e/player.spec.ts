@@ -97,6 +97,36 @@ test('鳴らせない曲は再生バーで知らせる', async ({ page }) => {
   await expect(bar.getByRole('button', { name: '再生', exact: true })).toBeVisible()
 })
 
+test('ブラウザに再生を拒まれたら再生バーで知らせ、鳴り出したら消す', async ({ page }) => {
+  await mockApi(page, { loggedIn: true })
+  await mockLibrary(page, { count: 3 })
+  await mockStream(page)
+  // バックグラウンドのタブで再生を始めさせないときと同じく、play() を NotAllowedError で拒む
+  await page.addInitScript(() => {
+    const play = HTMLMediaElement.prototype.play
+    const w = window as unknown as { blockPlay: boolean }
+    w.blockPlay = true
+    HTMLMediaElement.prototype.play = function () {
+      return w.blockPlay ? Promise.reject(new DOMException('blocked', 'NotAllowedError')) : play.call(this)
+    }
+  })
+  const warnings: string[] = []
+  page.on('console', msg => msg.type() === 'warning' && warnings.push(msg.text()))
+  await page.goto('/library/albums/al-1')
+
+  await page.getByRole('button', { name: 'すべて再生' }).click()
+  const bar = page.getByTestId('player-bar')
+  await expect(bar).toContainText('ブラウザに再生を止められました')
+  expect(warnings.some(w => w.includes('play() was rejected'))).toBe(true)
+
+  await page.evaluate(() => {
+    (window as unknown as { blockPlay: boolean }).blockPlay = false
+  })
+  await bar.getByRole('button', { name: '再生', exact: true }).click()
+  await expect(bar.getByRole('button', { name: '一時停止' })).toBeVisible()
+  await expect(bar).not.toContainText('ブラウザに再生を止められました')
+})
+
 test('広い画面では右の欄に再生中の曲を出して操作する', async ({ page, isMobile }) => {
   test.skip(isMobile, 'PC の画面だけ')
   await mockApi(page, { loggedIn: true })

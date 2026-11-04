@@ -10,7 +10,7 @@ import { coverArtUrl } from '~/utils/subsonic'
 const props = defineProps<{ sheet?: boolean }>()
 defineEmits<{ close: [] }>()
 
-const { state, current, canPrevious, canNext, previous, next } = usePlayer()
+const { state, current, failureMessage, canPrevious, canNext, previous, next } = usePlayer()
 const queue = usePlayerQueueOpen()
 const lyricsOpen = usePlayerLyricsOpen()
 const showQueue = computed(() => queue.value && !!current.value)
@@ -97,8 +97,8 @@ const layout = computed(() => {
         <p class="truncate text-body-lg font-medium">
           {{ current.title }}
         </p>
-        <p v-if="state.failed" class="truncate text-body-sm text-danger">
-          再生できませんでした
+        <p v-if="failureMessage" class="truncate text-body-sm text-danger">
+          {{ failureMessage }}
         </p>
         <p v-else class="truncate text-body-sm text-fg-subtle">
           {{ [current.artist, current.album].filter(Boolean).join(' · ') }}

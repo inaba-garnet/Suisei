@@ -15,6 +15,8 @@ test('ブラウザが鳴らせない曲は変換して鳴らし、同じ形式�
     { id: 'al-1-1', format: null, timeOffset: null },
     { id: 'al-1-1', format: 'mp3', timeOffset: null },
   ])
+  // 鳴らせた形式を覚えるのは鳴り出した（playing の）とき。一時停止のボタンは play の event で先に出るので、再生位置が進むまで待つ
+  await expect(bar).toContainText('0:01 /')
 
   await page.getByTestId('songs').getByText('二曲目').click()
   await expect(bar).toContainText('二曲目')

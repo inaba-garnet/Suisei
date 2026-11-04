@@ -17,7 +17,7 @@ const props = defineProps<{
   swipe?: boolean
 }>()
 
-const { state, jump, remove } = usePlayer()
+const { state, failureMessage, jump, remove } = usePlayer()
 const playing = computed(() => props.index === state.value.index)
 
 const { swiping, handlers } = useSwipeRemove(() => !!props.swipe && !playing.value, () => remove(props.index))
@@ -60,7 +60,7 @@ const { swiping, handlers } = useSwipeRemove(() => !!props.swipe && !playing.val
         />
         <span class="min-w-0 flex-1">
           <span class="block truncate" :class="playing ? 'text-h3 font-semibold text-accent-base' : 'text-body'" data-testid="queue-title">{{ song.title }}</span>
-          <span v-if="playing && state.failed" class="block truncate text-body-sm text-danger">再生できませんでした</span>
+          <span v-if="playing && failureMessage" class="block truncate text-body-sm text-danger">{{ failureMessage }}</span>
           <span v-else class="block truncate text-body-sm text-fg-subtle">{{ playing ? [song.artist, song.album].filter(Boolean).join(' · ') : song.artist }}</span>
         </span>
       </button>

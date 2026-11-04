@@ -4,7 +4,7 @@ import { SkipBack, SkipForward } from 'lucide-vue-next'
 import { formatDuration } from '~/utils/subsonic'
 
 /** 再生バー。スマホではタブの上の小さな帯、PC では下端いっぱいに出す（docs/web.md の「再生」）。 */
-const { state, current, canPrevious, canNext, previous, next } = usePlayer()
+const { state, current, failureMessage, canPrevious, canNext, previous, next } = usePlayer()
 const sheet = usePlayerSheet()
 // PC（md 以上）では開かないので、ボタンにしない
 const wide = useMediaQuery('(min-width: 48rem)')
@@ -28,8 +28,8 @@ const wide = useMediaQuery('(min-width: 48rem)')
           <p class="truncate text-body">
             {{ current.title }}
           </p>
-          <p v-if="state.failed" class="truncate text-body-sm text-danger">
-            再生できませんでした
+          <p v-if="failureMessage" class="truncate text-body-sm text-danger">
+            {{ failureMessage }}
           </p>
           <p v-else class="truncate text-body-sm text-fg-subtle">
             {{ current.artist }}
