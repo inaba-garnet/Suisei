@@ -8,3 +8,8 @@ exclude-dev = true
 # 保守停止は直接の依存だけ見る。間接の依存は直接の依存の更新を待つしかないため
 unmaintained = "workspace"
 yanked = "warn"
+ignore = [
+    # 同梱の SQLite の脆弱性。信頼度の低い者が書いた DB を開くときだけ影響し、suisei は自分で書いた DB しか開かない。
+    # 修正版の libsqlite3-sys 0.39 は sqlx-sqlite 0.9.0 が許さないので、sqlx が許したら上げて外す
+    { id = "RUSTSEC-2026-0459", reason = "自分で書いた DB しか開かず、sqlx が修正版を許すまで上げられない" },
+]
